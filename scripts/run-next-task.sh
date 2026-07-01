@@ -97,7 +97,7 @@ mv "$ACTIVE_TASK" "$DONE_DIR/$TASK_NAME"
 
 scripts/update-progress.sh || true
 
-git add .
+git add -A
 git commit -m "태스크 ${TASK_NAME%.md} 완료"
 
 if git remote get-url origin >/dev/null 2>&1; then
