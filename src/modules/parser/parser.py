@@ -42,6 +42,12 @@ class PlainTextBlockParser:
     # 줄 바꿈 매크로 패턴: \\ (두 개의 백슬래시)
     LINE_BREAK_PATTERN = re.compile(r'^\\\\$')
 
+    # 넓히지않기 블록 시작 패턴: <nowiki>
+    NOWIKI_START_PATTERN = re.compile(r'^<nowiki>(.*)', re.IGNORECASE)
+
+    # 넓히지않기 블록 종료 패턴: </nowiki>
+    NOWIKI_END_PATTERN = re.compile(r'(.*?)</nowiki>(.*)', re.IGNORECASE)
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
@@ -79,8 +85,80 @@ class PlainTextBlockParser:
         blocks = []
         current_block_lines = []
         in_list = False
+        i = 0
 
-        for line in lines:
+        while i < len(lines):
+            line = lines[i]
+
+            # 현재 줄이 nowiki 시작인지 확인
+            nowiki_start_match = PlainTextBlockParser.NOWIKI_START_PATTERN.match(line)
+            if nowiki_start_match:
+                # 누적된 블록을 먼저 처리
+                if current_block_lines:
+                    block_content = '\n'.join(current_block_lines)
+                    if not PlainTextBlockParser._is_metadata_line(block_content):
+                        block = PlainTextBlockParser._create_block(block_content)
+                        blocks.append(block)
+                    current_block_lines = []
+                    in_list = False
+
+                # 시작 태그 이후의 콘텐츠
+                content_after_start = nowiki_start_match.group(1)
+
+                # 닫는 태그가 같은 줄에 있는지 확인
+                end_match = PlainTextBlockParser.NOWIKI_END_PATTERN.match(content_after_start)
+                if end_match:
+                    # 같은 줄에 <nowiki>content</nowiki> 형식
+                    nowiki_content = end_match.group(1)
+                    remaining_content = end_match.group(2)
+
+                    # nowiki 블록 생성
+                    nowiki_block = {
+                        'type': 'nowiki',
+                        'content': nowiki_content,
+                    }
+                    blocks.append(nowiki_block)
+
+                    # 남은 콘텐츠가 있으면 처리
+                    if remaining_content:
+                        current_block_lines.append(remaining_content)
+                else:
+                    # 닫는 태그가 다른 줄에 있음
+                    nowiki_lines = []
+                    if content_after_start:
+                        nowiki_lines.append(content_after_start)
+
+                    # </nowiki> 태그를 찾을 때까지 계속
+                    i += 1
+                    while i < len(lines):
+                        line = lines[i]
+                        end_match = PlainTextBlockParser.NOWIKI_END_PATTERN.match(line)
+                        if end_match:
+                            # 닫는 태그 앞의 내용
+                            content_before_end = end_match.group(1)
+                            if content_before_end:
+                                nowiki_lines.append(content_before_end)
+                            remaining_content = end_match.group(2)
+
+                            # nowiki 블록 생성
+                            nowiki_content = '\n'.join(nowiki_lines)
+                            nowiki_block = {
+                                'type': 'nowiki',
+                                'content': nowiki_content,
+                            }
+                            blocks.append(nowiki_block)
+
+                            # 남은 콘텐츠가 있으면 처리
+                            if remaining_content.strip():
+                                current_block_lines.append(remaining_content)
+                            break
+                        else:
+                            nowiki_lines.append(line)
+                        i += 1
+
+                i += 1
+                continue
+
             if line.strip():
                 # 현재 줄이 제목인지 확인
                 heading_match = PlainTextBlockParser.HEADING_PATTERN.match(line)
@@ -180,6 +258,8 @@ class PlainTextBlockParser:
                         blocks.append(block)
                     current_block_lines = []
                     in_list = False
+
+            i += 1
 
         # 마지막 블록 처리
         if current_block_lines:

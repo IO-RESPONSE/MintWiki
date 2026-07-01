@@ -1462,3 +1462,181 @@ class TestPlainTextBlockParserLineBreak:
         assert result.blocks[3]["type"] == "paragraph"
         assert result.blocks[4]["type"] == "horizontal_rule"
         assert result.blocks[5]["type"] == "paragraph"
+
+
+class TestPlainTextBlockParserNowiki:
+    """PlainTextBlockParser의 nowiki 블록 파싱 테스트."""
+
+    def test_parses_simple_nowiki_block(self):
+        """단순 nowiki 블록을 파싱한다."""
+        source = "<nowiki>'''bold'''</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "nowiki"
+        assert result.blocks[0]["content"] == "'''bold'''"
+
+    def test_parses_nowiki_with_wiki_markup(self):
+        """위키 마크업을 포함한 nowiki 블록을 파싱한다."""
+        source = "<nowiki>[[Link]] and '''bold''' and ''italic''</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "nowiki"
+        assert result.blocks[0]["content"] == "[[Link]] and '''bold''' and ''italic''"
+
+    def test_parses_nowiki_multiline(self):
+        """여러 줄의 nowiki 블록을 파싱한다."""
+        source = "<nowiki>\nFirst line\nSecond line\n</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "nowiki"
+        assert result.blocks[0]["content"] == "First line\nSecond line"
+
+    def test_parses_nowiki_with_text_before_and_after(self):
+        """텍스트와 함께 있는 nowiki 블록을 파싱한다."""
+        source = "This is a paragraph.\n\n<nowiki>'''bold'''</nowiki>\n\nAnother paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "This is a paragraph."
+        assert result.blocks[1]["type"] == "nowiki"
+        assert result.blocks[1]["content"] == "'''bold'''"
+        assert result.blocks[2]["type"] == "paragraph"
+        assert result.blocks[2]["content"] == "Another paragraph."
+
+    def test_parses_nowiki_with_special_characters(self):
+        """특수 문자를 포함한 nowiki 블록을 파싱한다."""
+        source = "<nowiki>< > & ' \" [[ ]] {{ }}</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "nowiki"
+        assert result.blocks[0]["content"] == "< > & ' \" [[ ]] {{ }}"
+
+    def test_parses_multiple_nowiki_blocks(self):
+        """여러 개의 nowiki 블록을 파싱한다."""
+        source = "<nowiki>First block</nowiki>\n\n<nowiki>Second block</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "nowiki"
+        assert result.blocks[0]["content"] == "First block"
+        assert result.blocks[1]["type"] == "nowiki"
+        assert result.blocks[1]["content"] == "Second block"
+
+    def test_parses_nowiki_with_heading(self):
+        """제목과 함께 있는 nowiki 블록을 파싱한다."""
+        source = "= Title =\n\n<nowiki>'''bold'''</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[0]["content"] == "Title"
+        assert result.blocks[1]["type"] == "nowiki"
+        assert result.blocks[1]["content"] == "'''bold'''"
+
+    def test_parses_nowiki_with_list(self):
+        """목록과 함께 있는 nowiki 블록을 파싱한다."""
+        source = "* Item 1\n* Item 2\n\n<nowiki>* Not a list</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "list"
+        assert result.blocks[1]["type"] == "nowiki"
+        assert result.blocks[1]["content"] == "* Not a list"
+
+    def test_parses_nowiki_with_horizontal_rule(self):
+        """수평선과 함께 있는 nowiki 블록을 파싱한다."""
+        source = "----\n\n<nowiki>----</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "horizontal_rule"
+        assert result.blocks[1]["type"] == "nowiki"
+        assert result.blocks[1]["content"] == "----"
+
+    def test_nowiki_does_not_extract_metadata(self):
+        """nowiki 블록의 내용은 메타데이터로 추출되지 않는다."""
+        source = "<nowiki>[[Link]] and [[Category:Test]]</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["links"]) == 0
+        assert len(result.metadata["categories"]) == 0
+
+    def test_nowiki_with_html_entities(self):
+        """HTML 엔티티를 포함한 nowiki 블록을 파싱한다."""
+        source = "<nowiki>&lt;tag&gt; and &amp;</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "nowiki"
+        assert result.blocks[0]["content"] == "&lt;tag&gt; and &amp;"
+
+    def test_nowiki_single_line_with_content(self):
+        """한 줄 내에 모든 콘텐츠가 있는 nowiki 블록을 파싱한다."""
+        source = "<nowiki>some content</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "some content"
+
+    def test_nowiki_empty_block(self):
+        """빈 nowiki 블록을 파싱한다."""
+        source = "<nowiki></nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "nowiki"
+        assert result.blocks[0]["content"] == ""
+
+    def test_nowiki_case_insensitive(self):
+        """대소문자를 무시하는 nowiki 태그를 파싱한다."""
+        source = "<NOWIKI>content</NOWIKI>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "nowiki"
+        assert result.blocks[0]["content"] == "content"
+
+    def test_nowiki_mixed_case(self):
+        """혼합 대소문자의 nowiki 태그를 파싱한다."""
+        source = "<NoWiki>content</noWIKI>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "nowiki"
+        assert result.blocks[0]["content"] == "content"
+
+    def test_nowiki_with_trailing_content_on_same_line(self):
+        """닫는 태그 이후 같은 줄에 콘텐츠가 있는 경우를 파싱한다."""
+        source = "<nowiki>content</nowiki> extra text"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "nowiki"
+        assert result.blocks[0]["content"] == "content"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[1]["content"] == " extra text"
+
+    def test_nowiki_spanning_many_lines(self):
+        """많은 줄에 걸쳐 있는 nowiki 블록을 파싱한다."""
+        source = "<nowiki>\nline1\nline2\nline3\nline4\n</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "nowiki"
+        assert "line1" in result.blocks[0]["content"]
+        assert "line4" in result.blocks[0]["content"]
+
+    def test_nowiki_preserves_exact_content(self):
+        """nowiki 블록이 정확한 콘텐츠를 보존한다."""
+        source = "<nowiki>  spaces  and\ttabs\t</nowiki>"
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["content"] == "  spaces  and\ttabs\t"
+
+    def test_multiple_blocks_complex(self):
+        """복잡한 다양한 블록들을 파싱한다."""
+        source = (
+            "= Header =\n"
+            "\n"
+            "Text paragraph.\n"
+            "\n"
+            "<nowiki>'''not bold'''</nowiki>\n"
+            "\n"
+            "* List item\n"
+            "\n"
+            "<nowiki>* not a list</nowiki>"
+        )
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 5
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[2]["type"] == "nowiki"
+        assert result.blocks[3]["type"] == "list"
+        assert result.blocks[4]["type"] == "nowiki"

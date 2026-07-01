@@ -65,6 +65,12 @@ class ParserFixtureLoader:
             ParserFixtureLoader._line_break_simple(),
             ParserFixtureLoader._line_break_with_text(),
             ParserFixtureLoader._line_break_multiple(),
+            ParserFixtureLoader._nowiki_simple(),
+            ParserFixtureLoader._nowiki_with_wiki_markup(),
+            ParserFixtureLoader._nowiki_multiline(),
+            ParserFixtureLoader._nowiki_with_text(),
+            ParserFixtureLoader._nowiki_with_special_chars(),
+            ParserFixtureLoader._nowiki_multiple(),
         ]
 
     @staticmethod
@@ -888,6 +894,117 @@ class ParserFixtureLoader:
                     {"type": "line_break"},
                     {"type": "line_break"},
                     {"type": "line_break"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _nowiki_simple() -> ParserFixture:
+        """단순 nowiki 블록 픽스처."""
+        return ParserFixture(
+            name="nowiki_simple",
+            source="<nowiki>'''bold'''</nowiki>",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "nowiki", "content": "'''bold'''"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _nowiki_with_wiki_markup() -> ParserFixture:
+        """위키 마크업을 포함한 nowiki 블록 픽스처."""
+        return ParserFixture(
+            name="nowiki_with_wiki_markup",
+            source="<nowiki>[[Link]] and '''bold''' and ''italic''</nowiki>",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "nowiki", "content": "[[Link]] and '''bold''' and ''italic''"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _nowiki_multiline() -> ParserFixture:
+        """여러 줄의 nowiki 블록 픽스처."""
+        return ParserFixture(
+            name="nowiki_multiline",
+            source="<nowiki>\nFirst line\nSecond line\n</nowiki>",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "nowiki", "content": "First line\nSecond line"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _nowiki_with_text() -> ParserFixture:
+        """텍스트와 함께 있는 nowiki 블록 픽스처."""
+        return ParserFixture(
+            name="nowiki_with_text",
+            source="This is a paragraph.\n\n<nowiki>'''bold'''</nowiki>\n\nAnother paragraph.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is a paragraph."},
+                    {"type": "nowiki", "content": "'''bold'''"},
+                    {"type": "paragraph", "content": "Another paragraph."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _nowiki_with_special_chars() -> ParserFixture:
+        """특수 문자를 포함한 nowiki 블록 픽스처."""
+        return ParserFixture(
+            name="nowiki_with_special_chars",
+            source="<nowiki>< > & ' \" [[ ]] {{ }}</nowiki>",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "nowiki", "content": "< > & ' \" [[ ]] {{ }}"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _nowiki_multiple() -> ParserFixture:
+        """여러 개의 nowiki 블록 픽스처."""
+        return ParserFixture(
+            name="nowiki_multiple",
+            source="<nowiki>First block</nowiki>\n\n<nowiki>Second block</nowiki>",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "nowiki", "content": "First block"},
+                    {"type": "nowiki", "content": "Second block"},
                 ],
                 metadata={
                     "links": [],
