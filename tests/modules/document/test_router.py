@@ -75,3 +75,61 @@ class TestCreateDocument:
         data = response.json()
         assert "id" in data
         assert "title" in data
+
+
+class TestGetDocument:
+    """문서 조회 엔드포인트 테스트."""
+
+    def test_get_document_by_id_success(self):
+        """엔드포인트는 id로 문서를 조회할 수 있다."""
+        app = create_app()
+        client = TestClient(app)
+
+        # 먼저 문서를 생성한다
+        create_response = client.post(
+            "/api/documents",
+            json={"title": "My Document", "source": "Some content"},
+        )
+        created_data = create_response.json()
+        doc_id = created_data["id"]
+
+        # 생성된 문서를 조회한다
+        response = client.get(f"/api/documents/{doc_id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == doc_id
+        assert data["title"] == "My Document"
+
+    def test_get_document_by_id_returns_404_when_not_found(self):
+        """엔드포인트는 존재하지 않는 id를 조회하면 404를 반환한다."""
+        app = create_app()
+        client = TestClient(app)
+
+        response = client.get("/api/documents/nonexistent-id")
+
+        assert response.status_code == 404
+        data = response.json()
+        assert "detail" in data
+
+    def test_get_document_returns_correct_fields(self):
+        """엔드포인트는 문서의 id와 title을 반환한다."""
+        app = create_app()
+        client = TestClient(app)
+
+        # 문서를 생성한다
+        create_response = client.post(
+            "/api/documents",
+            json={"title": "Test Document", "source": "Test content"},
+        )
+        created_data = create_response.json()
+        doc_id = created_data["id"]
+
+        # 문서를 조회한다
+        response = client.get(f"/api/documents/{doc_id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data["id"], str)
+        assert len(data["id"]) > 0
+        assert data["title"] == "Test Document"
