@@ -8,6 +8,7 @@ from modules.document.model import Document
 from modules.document.repository import (
     DocumentRepository,
     DuplicateNormalizedTitleError,
+    DocumentNotFoundError,
     InMemoryDocumentRepository,
     DatabaseDocumentRepository,
 )
@@ -572,3 +573,40 @@ class TestDatabaseDocumentRepository:
 
         assert reloaded_doc1.current_revision_id == "rev1_for_doc1"
         assert reloaded_doc2.current_revision_id == "rev2_for_doc2"
+
+    @pytest.mark.asyncio
+    async def test_update_nonexistent_document_raises_error(self, async_db_session):
+        """데이터베이스 저장소는 없는 문서를 업데이트하면 예외를 발생시킨다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        nonexistent_doc = Document(id="nonexistent", title="Test Document")
+
+        with pytest.raises(DocumentNotFoundError):
+            await repo.update(nonexistent_doc)
+
+
+class TestInMemoryDocumentRepositoryUpdate:
+    """인메모리 저장소의 업데이트 메서드 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_update_existing_document(self):
+        """인메모리 저장소는 기존 문서를 업데이트할 수 있다."""
+        repo = InMemoryDocumentRepository()
+        doc = Document(id="doc1", title="Original Title")
+        await repo.create(doc)
+
+        updated_doc = Document(
+            id="doc1",
+            title="Original Title",
+            current_revision_id="rev1",
+        )
+        result = await repo.update(updated_doc)
+        assert result.current_revision_id == "rev1"
+
+    @pytest.mark.asyncio
+    async def test_update_nonexistent_document_raises_error(self):
+        """인메모리 저장소는 없는 문서를 업데이트하면 예외를 발생시킨다."""
+        repo = InMemoryDocumentRepository()
+        nonexistent_doc = Document(id="nonexistent", title="Test Document")
+
+        with pytest.raises(DocumentNotFoundError):
+            await repo.update(nonexistent_doc)

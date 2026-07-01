@@ -16,6 +16,12 @@ class DuplicateNormalizedTitleError(Exception):
     pass
 
 
+class DocumentNotFoundError(Exception):
+    """문서를 찾을 수 없을 때 발생하는 예외."""
+
+    pass
+
+
 class DocumentRepository(ABC):
     """
     문서 저장소의 인터페이스.
@@ -157,9 +163,12 @@ class InMemoryDocumentRepository(DocumentRepository):
 
         Returns:
             업데이트된 문서
+
+        Raises:
+            DocumentNotFoundError: 문서가 없는 경우
         """
         if document.id not in self.documents:
-            raise KeyError(f"문서 id '{document.id}'를 찾을 수 없습니다")
+            raise DocumentNotFoundError(f"문서 id '{document.id}'를 찾을 수 없습니다")
         self.documents[document.id] = document
         return document
 
@@ -255,7 +264,17 @@ class DatabaseDocumentRepository(DocumentRepository):
 
         Returns:
             업데이트된 문서
+
+        Raises:
+            DocumentNotFoundError: 문서가 없는 경우
         """
+        # 문서가 존재하는지 확인
+        query = select(DocumentORM).where(DocumentORM.id == document.id)
+        result = await self.session.execute(query)
+        existing = result.scalar_one_or_none()
+        if existing is None:
+            raise DocumentNotFoundError(f"문서 id '{document.id}'를 찾을 수 없습니다")
+
         stmt = (
             update(DocumentORM)
             .where(DocumentORM.id == document.id)
