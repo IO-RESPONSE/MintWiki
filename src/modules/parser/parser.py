@@ -33,6 +33,9 @@ class PlainTextBlockParser:
     # 각주 패턴: [* text *] (인라인 각주)
     FOOTNOTE_PATTERN = re.compile(r'\[\*(.+?)\*\]', re.DOTALL)
 
+    # 포함 매크로 패턴: #include(PageName) (트랜스클루전)
+    INCLUDE_MACRO_PATTERN = re.compile(r'#include\(([^)]+)\)')
+
     # 순서 없는 목록 패턴: * 텍스트 (수준 1), ** 텍스트 (수준 2), 등
     UNORDERED_LIST_PATTERN = re.compile(r'^(\*+)\s+(.+)$')
 
@@ -506,7 +509,7 @@ class PlainTextBlockParser:
         """
         소스 텍스트와 블록들에서 메타데이터를 추출한다.
 
-        제목, 링크, 카테고리, 리다이렉트, 외부 링크, 백링크를 메타데이터로 추출한다.
+        제목, 링크, 카테고리, 리다이렉트, 외부 링크, 백링크, 각주, 트랜스클루전을 메타데이터로 추출한다.
 
         Args:
             source: 원본 소스 텍스트
@@ -522,6 +525,7 @@ class PlainTextBlockParser:
         redirects = []
         backlinks = []
         footnotes = []
+        transclusions = []
         main_heading = None
 
         # 소스에서 메타데이터 라인 추출
@@ -537,6 +541,9 @@ class PlainTextBlockParser:
             elif line.startswith('[[Backlink:') and line.endswith(']]'):
                 backlink_name = line[len('[[Backlink:'):-2]
                 backlinks.append(backlink_name)
+            # 소스 라인에서 포함 매크로 추출
+            extracted_transclusions = PlainTextBlockParser._extract_transclusions_from_content(line)
+            transclusions.extend(extracted_transclusions)
 
         # 블록에서 메타데이터 추출
         for block in blocks:
@@ -564,12 +571,16 @@ class PlainTextBlockParser:
                 # 문단에서 각주 추출
                 extracted_footnotes = PlainTextBlockParser._extract_footnotes_from_content(content)
                 footnotes.extend(extracted_footnotes)
+                # 문단에서 트랜스클루전 추출
+                extracted_transclusions = PlainTextBlockParser._extract_transclusions_from_content(content)
+                transclusions.extend(extracted_transclusions)
 
         # 중복 제거하되 순서 유지 (각주는 반복 발생을 추적하므로 중복 제거하지 않음)
         links = list(dict.fromkeys(links))
         categories = list(dict.fromkeys(categories))
         external_links = list(dict.fromkeys(external_links))
         backlinks = list(dict.fromkeys(backlinks))
+        transclusions = list(dict.fromkeys(transclusions))
 
         # 리다이렉트의 "from" 필드를 main heading으로 설정
         if redirects and main_heading:
@@ -598,6 +609,10 @@ class PlainTextBlockParser:
         # footnotes가 있으면 추가
         if footnotes:
             metadata['footnotes'] = footnotes
+
+        # transclusions가 있으면 추가
+        if transclusions:
+            metadata['transclusions'] = transclusions
 
         return metadata
 
@@ -687,6 +702,28 @@ class PlainTextBlockParser:
                 footnotes.append(footnote_text)
 
         return footnotes
+
+    @staticmethod
+    def _extract_transclusions_from_content(content: str) -> list:
+        """
+        콘텐츠에서 포함 매크로를 추출한다.
+
+        포함 매크로 형식: #include(PageName)
+
+        Args:
+            content: 파싱할 콘텐츠
+
+        Returns:
+            트랜스클루전(포함 매크로) 목록
+        """
+        transclusions = []
+
+        for match in PlainTextBlockParser.INCLUDE_MACRO_PATTERN.finditer(content):
+            page_name = match.group(1).strip()
+            if page_name:
+                transclusions.append(page_name)
+
+        return transclusions
 
     @staticmethod
     def _build_nested_list(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

@@ -115,6 +115,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._footnote_multiple(),
             ParserFixtureLoader._footnote_with_special_chars(),
             ParserFixtureLoader._footnote_repeated(),
+            ParserFixtureLoader._include_macro_simple(),
+            ParserFixtureLoader._include_macro_multiple(),
+            ParserFixtureLoader._include_macro_with_heading(),
         ]
 
     @staticmethod
@@ -2112,6 +2115,69 @@ class ParserFixtureLoader:
                     "categories": [],
                     "headings": [],
                     "footnotes": ["Same footnote", "Same footnote"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _include_macro_simple() -> ParserFixture:
+        """단순 포함 매크로 픽스처."""
+        return ParserFixture(
+            name="include_macro_simple",
+            source="See #include(Template:Header) for more info.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "See #include(Template:Header) for more info."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "transclusions": ["Template:Header"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _include_macro_multiple() -> ParserFixture:
+        """여러 포함 매크로 픽스처."""
+        return ParserFixture(
+            name="include_macro_multiple",
+            source="Use #include(Template:Sidebar) and #include(Template:Footer) together.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "Use #include(Template:Sidebar) and #include(Template:Footer) together."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "transclusions": ["Template:Sidebar", "Template:Footer"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _include_macro_with_heading() -> ParserFixture:
+        """제목과 함께 있는 포함 매크로 픽스처."""
+        return ParserFixture(
+            name="include_macro_with_heading",
+            source="= Main Section =\n\nContent: #include(Template:Content)\n\n== Subsection ==\n\n#include(Template:Sidebar)",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "heading", "level": 1, "content": "Main Section"},
+                    {"type": "paragraph", "content": "Content: #include(Template:Content)"},
+                    {"type": "heading", "level": 2, "content": "Subsection"},
+                    {"type": "paragraph", "content": "#include(Template:Sidebar)"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [
+                        {"level": 1, "text": "Main Section"},
+                        {"level": 2, "text": "Subsection"},
+                    ],
+                    "transclusions": ["Template:Content", "Template:Sidebar"],
                 },
             ),
         )
