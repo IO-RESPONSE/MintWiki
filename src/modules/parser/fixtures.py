@@ -102,6 +102,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._table_with_mixed_alignment(),
             ParserFixtureLoader._table_with_cell_background(),
             ParserFixtureLoader._table_with_background_and_alignment(),
+            ParserFixtureLoader._table_with_cell_colspan(),
+            ParserFixtureLoader._table_with_colspan_and_alignment(),
+            ParserFixtureLoader._table_with_colspan_and_background(),
         ]
 
     @staticmethod
@@ -1721,6 +1724,100 @@ class ParserFixtureLoader:
                                 'cells': [
                                     {'content': 'Right', 'bgcolor': '#0000FF', 'align': 'right'},
                                     {'content': 'Center', 'bgcolor': '#FFFF00', 'align': 'center'},
+                                ],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_with_cell_colspan() -> ParserFixture:
+        """colspan 옵션을 가진 테이블 픽스처."""
+        return ParserFixture(
+            name="table_with_cell_colspan",
+            source="||^2 Wide||Normal||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'data',
+                                'cells': [
+                                    {'content': 'Wide', 'colspan': 2},
+                                    'Normal',
+                                ],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_with_colspan_and_alignment() -> ParserFixture:
+        """colspan과 정렬 옵션을 가진 테이블 픽스처."""
+        return ParserFixture(
+            name="table_with_colspan_and_alignment",
+            source="!!^2 Wide Header!!Normal!!\n||^2 >Right||<Left<||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'header',
+                                'cells': [
+                                    {'content': 'Wide Header', 'colspan': 2},
+                                    'Normal',
+                                ],
+                            },
+                            {
+                                'type': 'data',
+                                'cells': [
+                                    {'content': 'Right', 'colspan': 2, 'align': 'right'},
+                                    {'content': 'Left', 'align': 'center'},
+                                ],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_with_colspan_and_background() -> ParserFixture:
+        """colspan과 배경색 옵션을 가진 테이블 픽스처."""
+        return ParserFixture(
+            name="table_with_colspan_and_background",
+            source="||^2 #FF0000 Wide Red||#00FF00 Green||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'data',
+                                'cells': [
+                                    {'content': 'Wide Red', 'colspan': 2, 'bgcolor': '#FF0000'},
+                                    {'content': 'Green', 'bgcolor': '#00FF00'},
                                 ],
                             },
                         ],
