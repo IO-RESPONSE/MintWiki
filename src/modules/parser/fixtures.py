@@ -121,6 +121,19 @@ class ParserFixtureLoader:
             ParserFixtureLoader._folding_macro_simple(),
             ParserFixtureLoader._folding_macro_multiple(),
             ParserFixtureLoader._folding_macro_with_heading(),
+            ParserFixtureLoader._abuse_unclosed_internal_link(),
+            ParserFixtureLoader._abuse_unclosed_bold(),
+            ParserFixtureLoader._abuse_unclosed_italic(),
+            ParserFixtureLoader._abuse_unclosed_strike(),
+            ParserFixtureLoader._abuse_unclosed_nowiki(),
+            ParserFixtureLoader._abuse_unclosed_code_block(),
+            ParserFixtureLoader._abuse_unclosed_folding_macro(),
+            ParserFixtureLoader._abuse_mismatched_brackets(),
+            ParserFixtureLoader._abuse_empty_bold(),
+            ParserFixtureLoader._abuse_unclosed_footnote(),
+            ParserFixtureLoader._abuse_only_whitespace(),
+            ParserFixtureLoader._abuse_deep_heading_levels(),
+            ParserFixtureLoader._abuse_bold_italic_conflict(),
         ]
 
     @staticmethod
@@ -2244,6 +2257,236 @@ class ParserFixtureLoader:
                         {"level": 2, "text": "Subsection"},
                     ],
                     "foldings": ["Info", "Advanced Details"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_unclosed_internal_link() -> ParserFixture:
+        """닫히지 않은 내부 링크 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_unclosed_internal_link",
+            source="See [[LinkName without closing bracket.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "See [[LinkName without closing bracket."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_unclosed_bold() -> ParserFixture:
+        """닫히지 않은 굵은 텍스트 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_unclosed_bold",
+            source="This text has '''unclosed bold.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This text has '''unclosed bold."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_unclosed_italic() -> ParserFixture:
+        """닫히지 않은 이탤릭 텍스트 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_unclosed_italic",
+            source="This text has ''unclosed italic.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This text has ''unclosed italic."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_unclosed_strike() -> ParserFixture:
+        """닫히지 않은 취소선 텍스트 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_unclosed_strike",
+            source="This text has ~~unclosed strike.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This text has ~~unclosed strike."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_unclosed_nowiki() -> ParserFixture:
+        """닫히지 않은 넓히지않기 블록 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_unclosed_nowiki",
+            source="<nowiki>This text is not properly closed.",
+            expected_result=ParserResult(
+                blocks=[],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_unclosed_code_block() -> ParserFixture:
+        """닫히지 않은 코드 블록 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_unclosed_code_block",
+            source="{{{def hello():\n    print('world')",
+            expected_result=ParserResult(
+                blocks=[],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_unclosed_folding_macro() -> ParserFixture:
+        """닫히지 않은 접기 매크로 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_unclosed_folding_macro",
+            source="See [[^Details without closing bracket.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "See [[^Details without closing bracket."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_mismatched_brackets() -> ParserFixture:
+        """불일치하는 괄호 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_mismatched_brackets",
+            source="[[Link1 and [[Link2]] only one closed.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "[[Link1 and [[Link2]] only one closed."},
+                ],
+                metadata={
+                    "links": ["Link1 and [[Link2"],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_empty_bold() -> ParserFixture:
+        """빈 굵은 텍스트 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_empty_bold",
+            source="This has ''''''empty bold.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This has ''''''empty bold."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_unclosed_footnote() -> ParserFixture:
+        """닫히지 않은 각주 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_unclosed_footnote",
+            source="Text with unclosed footnote [* note without closing.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "Text with unclosed footnote [* note without closing."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_only_whitespace() -> ParserFixture:
+        """공백만 있는 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_only_whitespace",
+            source="   \n\t\n   ",
+            expected_result=ParserResult(
+                blocks=[],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_deep_heading_levels() -> ParserFixture:
+        """깊은 제목 수준 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_deep_heading_levels",
+            source="======= Level 7 Heading =======",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "heading", "level": 7, "content": "Level 7 Heading"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [
+                        {"level": 7, "text": "Level 7 Heading"},
+                    ],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _abuse_bold_italic_conflict() -> ParserFixture:
+        """굵은 텍스트와 이탤릭 텍스트 충돌 남용 픽스처."""
+        return ParserFixture(
+            name="abuse_bold_italic_conflict",
+            source="Text with '''''bold italic''''' mixed.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "Text with '''''bold italic''''' mixed."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
                 },
             ),
         )
