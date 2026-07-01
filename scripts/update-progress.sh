@@ -55,7 +55,6 @@ block = f"""<!-- PROGRESS:START -->
 | ⏳ 대기 | {queue} |
 {fail_line}
 - 최근 완료: `{last}`
-- 다음 예정: `{nxt}`
 - 갱신: {ts}
 <!-- PROGRESS:END -->"""
 
