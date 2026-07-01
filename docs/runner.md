@@ -8,10 +8,12 @@ systemd timer
   -> scripts/claude-runner.sh or scripts/codex-runner.sh
   -> claude --print or codex exec
   -> scripts/test.sh
-  -> scripts/qa.sh
+  -> scripts/qa.sh (must pass before commit)
   -> git commit
   -> git push, when origin exists
 ```
+
+QA must pass (zero exit code from `scripts/qa.sh`) before any changes are committed.
 
 ## Requirements
 

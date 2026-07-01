@@ -31,11 +31,31 @@ tested, and committed in short runner cycles.
 Copy `.env.example` to `.env` before local runs, then adjust the placeholder
 database and Redis URLs for your local services as needed.
 
+### Bootstrap
+
 Start the local app and PostgreSQL services with Docker Compose:
 
 ```bash
 docker compose up --build
 ```
+
+### Testing
+
+Run the test suite locally:
+
+```bash
+scripts/test.sh
+```
+
+### QA Before Commit
+
+Run the complete local QA workflow to check your changes:
+
+```bash
+scripts/qa.sh
+```
+
+This runs tests and validates code formatting. QA must pass before committing.
 
 ## Repository Layout
 
