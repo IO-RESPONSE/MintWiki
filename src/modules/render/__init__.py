@@ -1,3 +1,5 @@
 """Render module package."""
 
-__all__ = []
+from modules.render.escape import escape_html
+
+__all__ = ["escape_html"]
