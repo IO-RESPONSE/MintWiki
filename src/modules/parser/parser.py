@@ -30,6 +30,9 @@ class PlainTextBlockParser:
     # 취소선 텍스트 패턴: ~~text~~ (중첩된 마크 지원)
     STRIKE_PATTERN = re.compile(r"~~(.+?)~~", re.DOTALL)
 
+    # 각주 패턴: [* text *] (인라인 각주)
+    FOOTNOTE_PATTERN = re.compile(r'\[\*(.+?)\*\]', re.DOTALL)
+
     # 순서 없는 목록 패턴: * 텍스트 (수준 1), ** 텍스트 (수준 2), 등
     UNORDERED_LIST_PATTERN = re.compile(r'^(\*+)\s+(.+)$')
 
@@ -518,6 +521,7 @@ class PlainTextBlockParser:
         categories = []
         redirects = []
         backlinks = []
+        footnotes = []
         main_heading = None
 
         # 소스에서 메타데이터 라인 추출
@@ -557,12 +561,16 @@ class PlainTextBlockParser:
                 # 문단에서 외부 링크 추출
                 extracted_external_links = PlainTextBlockParser._extract_external_links_from_content(content)
                 external_links.extend(extracted_external_links)
+                # 문단에서 각주 추출
+                extracted_footnotes = PlainTextBlockParser._extract_footnotes_from_content(content)
+                footnotes.extend(extracted_footnotes)
 
         # 중복 제거하되 순서 유지
         links = list(dict.fromkeys(links))
         categories = list(dict.fromkeys(categories))
         external_links = list(dict.fromkeys(external_links))
         backlinks = list(dict.fromkeys(backlinks))
+        footnotes = list(dict.fromkeys(footnotes))
 
         # 리다이렉트의 "from" 필드를 main heading으로 설정
         if redirects and main_heading:
@@ -587,6 +595,10 @@ class PlainTextBlockParser:
         # backlinks가 있으면 추가
         if backlinks:
             metadata['backlinks'] = backlinks
+
+        # footnotes가 있으면 추가
+        if footnotes:
+            metadata['footnotes'] = footnotes
 
         return metadata
 
@@ -654,6 +666,28 @@ class PlainTextBlockParser:
                 external_links.append(url)
 
         return external_links
+
+    @staticmethod
+    def _extract_footnotes_from_content(content: str) -> list:
+        """
+        콘텐츠에서 각주를 추출한다.
+
+        각주 형식: [* 각주 텍스트 *]
+
+        Args:
+            content: 파싱할 콘텐츠
+
+        Returns:
+            각주 목록
+        """
+        footnotes = []
+
+        for match in PlainTextBlockParser.FOOTNOTE_PATTERN.finditer(content):
+            footnote_text = match.group(1).strip()
+            if footnote_text:
+                footnotes.append(footnote_text)
+
+        return footnotes
 
     @staticmethod
     def _build_nested_list(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

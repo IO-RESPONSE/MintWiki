@@ -111,6 +111,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._malformed_table_row_missing_closing(),
             ParserFixtureLoader._malformed_table_with_multiple_rows(),
             ParserFixtureLoader._malformed_table_header_missing_closing(),
+            ParserFixtureLoader._footnote_simple(),
+            ParserFixtureLoader._footnote_multiple(),
+            ParserFixtureLoader._footnote_with_special_chars(),
         ]
 
     @staticmethod
@@ -2032,6 +2035,63 @@ class ParserFixtureLoader:
                     "links": [],
                     "categories": [],
                     "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _footnote_simple() -> ParserFixture:
+        """단순 각주 픽스처."""
+        return ParserFixture(
+            name="footnote_simple",
+            source="This is text with a footnote[* This is the footnote *].",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is text with a footnote[* This is the footnote *]."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "footnotes": ["This is the footnote"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _footnote_multiple() -> ParserFixture:
+        """여러 각주 픽스처."""
+        return ParserFixture(
+            name="footnote_multiple",
+            source="First note[* First footnote *] and second note[* Second footnote *].",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "First note[* First footnote *] and second note[* Second footnote *]."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "footnotes": ["First footnote", "Second footnote"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _footnote_with_special_chars() -> ParserFixture:
+        """특수 문자를 포함한 각주 픽스처."""
+        return ParserFixture(
+            name="footnote_with_special_chars",
+            source="Text with note[* See example: http://example.com & details *].",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "Text with note[* See example: http://example.com & details *]."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "footnotes": ["See example: http://example.com & details"],
                 },
             ),
         )
