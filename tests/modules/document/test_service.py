@@ -101,3 +101,72 @@ class TestDocumentService:
         assert doc1.normalized_title != doc2.normalized_title
         assert repo.get(doc1.id) is not None
         assert repo.get(doc2.id) is not None
+
+    def test_get_document_by_id(self):
+        """서비스는 id로 문서를 조회할 수 있다."""
+        repo = InMemoryDocumentRepository()
+        service = DocumentService(repo)
+
+        created = service.create("My Document")
+        retrieved = service.get(created.id)
+
+        assert retrieved is not None
+        assert retrieved.id == created.id
+        assert retrieved.title == "My Document"
+
+    def test_get_document_by_id_not_found(self):
+        """서비스는 존재하지 않는 id를 조회하면 None을 반환한다."""
+        repo = InMemoryDocumentRepository()
+        service = DocumentService(repo)
+
+        result = service.get("nonexistent-id")
+
+        assert result is None
+
+    def test_get_document_by_title(self):
+        """서비스는 제목으로 문서를 조회할 수 있다."""
+        repo = InMemoryDocumentRepository()
+        service = DocumentService(repo)
+
+        created = service.create("My Document")
+        retrieved = service.get_by_title("My Document")
+
+        assert retrieved is not None
+        assert retrieved.id == created.id
+        assert retrieved.title == "My Document"
+
+    def test_get_document_by_title_with_different_spacing(self):
+        """서비스는 공백이 다른 제목도 정규화하여 조회할 수 있다."""
+        repo = InMemoryDocumentRepository()
+        service = DocumentService(repo)
+
+        created = service.create("My Document")
+        retrieved = service.get_by_title("  My   Document  ")
+
+        assert retrieved is not None
+        assert retrieved.id == created.id
+
+    def test_get_document_by_title_not_found(self):
+        """서비스는 존재하지 않는 제목을 조회하면 None을 반환한다."""
+        repo = InMemoryDocumentRepository()
+        service = DocumentService(repo)
+
+        result = service.get_by_title("Nonexistent Document")
+
+        assert result is None
+
+    def test_get_by_title_raises_on_empty_title(self):
+        """서비스는 빈 제목으로 조회하면 예외를 발생시킨다."""
+        repo = InMemoryDocumentRepository()
+        service = DocumentService(repo)
+
+        with pytest.raises(EmptyTitleError):
+            service.get_by_title("")
+
+    def test_get_by_title_raises_on_whitespace_only_title(self):
+        """서비스는 공백만 있는 제목으로 조회하면 예외를 발생시킨다."""
+        repo = InMemoryDocumentRepository()
+        service = DocumentService(repo)
+
+        with pytest.raises(EmptyTitleError):
+            service.get_by_title("   ")
