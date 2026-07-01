@@ -1,5 +1,6 @@
 """문서 저장소 인터페이스 테스트."""
 import pytest
+import uuid
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -318,3 +319,59 @@ class TestDatabaseDocumentRepository:
         assert await repo.get_by_normalized_title("Document One") is not None
         assert await repo.get_by_normalized_title("Document Two") is not None
         assert await repo.get_by_normalized_title("Document Three") is not None
+
+    @pytest.mark.asyncio
+    async def test_get_preserves_all_document_properties(self, async_db_session):
+        """데이터베이스 저장소는 조회 시 문서의 모든 속성을 유지한다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc = Document(id="doc1", title="  Test   Document  ")
+        await repo.create(doc)
+        result = await repo.get("doc1")
+
+        assert result is not None
+        assert result.id == "doc1"
+        assert result.title == "  Test   Document  "
+        assert result.normalized_title == "Test Document"
+        assert result.current_revision_id is None
+
+    @pytest.mark.asyncio
+    async def test_get_with_uuid_id(self, async_db_session):
+        """데이터베이스 저장소는 UUID 형식의 id로 문서를 조회할 수 있다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc_id = str(uuid.uuid4())
+        doc = Document(id=doc_id, title="UUID Test Document")
+        await repo.create(doc)
+
+        result = await repo.get(doc_id)
+        assert result is not None
+        assert result.id == doc_id
+        assert result.title == "UUID Test Document"
+
+    @pytest.mark.asyncio
+    async def test_get_returns_correct_document_from_multiple(self, async_db_session):
+        """데이터베이스 저장소는 여러 문서 중 올바른 문서를 조회한다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc1 = Document(id="doc1", title="First Document")
+        doc2 = Document(id="doc2", title="Second Document")
+        doc3 = Document(id="doc3", title="Third Document")
+
+        await repo.create(doc1)
+        await repo.create(doc2)
+        await repo.create(doc3)
+
+        result = await repo.get("doc2")
+        assert result is not None
+        assert result.id == "doc2"
+        assert result.title == "Second Document"
+        assert result.normalized_title == "Second Document"
+
+    @pytest.mark.asyncio
+    async def test_get_with_special_characters_in_title(self, async_db_session):
+        """데이터베이스 저장소는 특수 문자가 있는 제목의 문서를 조회할 수 있다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc = Document(id="doc1", title="Document with 특수 문자 & symbols!")
+        await repo.create(doc)
+
+        result = await repo.get("doc1")
+        assert result is not None
+        assert result.title == "Document with 특수 문자 & symbols!"
