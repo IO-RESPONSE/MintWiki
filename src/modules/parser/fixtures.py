@@ -105,6 +105,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._table_with_cell_colspan(),
             ParserFixtureLoader._table_with_colspan_and_alignment(),
             ParserFixtureLoader._table_with_colspan_and_background(),
+            ParserFixtureLoader._table_with_cell_rowspan(),
+            ParserFixtureLoader._table_with_rowspan_and_alignment(),
+            ParserFixtureLoader._table_with_rowspan_and_background(),
         ]
 
     @staticmethod
@@ -1818,6 +1821,111 @@ class ParserFixtureLoader:
                                 'cells': [
                                     {'content': 'Wide Red', 'colspan': 2, 'bgcolor': '#FF0000'},
                                     {'content': 'Green', 'bgcolor': '#00FF00'},
+                                ],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_with_cell_rowspan() -> ParserFixture:
+        """rowspan 옵션을 가진 테이블 픽스처."""
+        return ParserFixture(
+            name="table_with_cell_rowspan",
+            source="||v2 Tall||Normal||\n||Normal||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'data',
+                                'cells': [
+                                    {'content': 'Tall', 'rowspan': 2},
+                                    'Normal',
+                                ],
+                            },
+                            {
+                                'type': 'data',
+                                'cells': [
+                                    'Normal',
+                                ],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_with_rowspan_and_alignment() -> ParserFixture:
+        """rowspan과 정렬 옵션을 가진 테이블 픽스처."""
+        return ParserFixture(
+            name="table_with_rowspan_and_alignment",
+            source="!!v2 >Header!!Normal!!\n!!<Left<!!",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'header',
+                                'cells': [
+                                    {'content': 'Header', 'rowspan': 2, 'align': 'right'},
+                                    'Normal',
+                                ],
+                            },
+                            {
+                                'type': 'header',
+                                'cells': [
+                                    {'content': 'Left', 'align': 'center'},
+                                ],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_with_rowspan_and_background() -> ParserFixture:
+        """rowspan과 배경색 옵션을 가진 테이블 픽스처."""
+        return ParserFixture(
+            name="table_with_rowspan_and_background",
+            source="||v2 #FF0000 Tall Red||#00FF00 Green||\n||#0000FF Blue||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'data',
+                                'cells': [
+                                    {'content': 'Tall Red', 'rowspan': 2, 'bgcolor': '#FF0000'},
+                                    {'content': 'Green', 'bgcolor': '#00FF00'},
+                                ],
+                            },
+                            {
+                                'type': 'data',
+                                'cells': [
+                                    {'content': 'Blue', 'bgcolor': '#0000FF'},
                                 ],
                             },
                         ],

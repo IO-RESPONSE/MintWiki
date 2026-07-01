@@ -829,6 +829,41 @@ class PlainTextBlockParser:
         return content, colspan
 
     @staticmethod
+    def _parse_cell_rowspan(cell_content: str) -> tuple:
+        """
+        셀 콘텐츠에서 rowspan 옵션을 추출한다.
+
+        rowspan 옵션 문법:
+        - vN text: N개 행을 병합 (예: v2 content는 2행 병합)
+
+        Args:
+            cell_content: 셀 콘텐츠
+
+        Returns:
+            (실제_콘텐츠, rowspan) 튜플
+            rowspan 옵션이 없으면 None을 반환
+        """
+        if not cell_content:
+            return cell_content, None
+
+        rowspan = None
+        content = cell_content
+
+        # rowspan 확인: vN text 형식 (N은 1 이상의 정수)
+        if content.startswith('v'):
+            # v 다음에 숫자가 있는지 확인
+            i = 1
+            while i < len(content) and content[i].isdigit():
+                i += 1
+
+            # 숫자가 있고 그 다음이 공백이면 rowspan으로 인식
+            if i > 1 and i < len(content) and content[i].isspace():
+                rowspan = int(content[1:i])
+                content = content[i:].lstrip()
+
+        return content, rowspan
+
+    @staticmethod
     def _parse_cell_alignment(cell_content: str) -> tuple:
         """
         셀 콘텐츠에서 정렬 옵션을 추출한다.
@@ -891,19 +926,22 @@ class PlainTextBlockParser:
                 cells_content = header_match.group(1)
                 # 빈 셀 처리를 위해 !! 기반으로 분할
                 cells_raw = cells_content.split('!!')
-                # 빈 셀을 제거하고 colspan, 정렬 및 배경색 옵션 추출
+                # 빈 셀을 제거하고 colspan, rowspan, 정렬 및 배경색 옵션 추출
                 cells = []
                 for cell in cells_raw:
                     cell = cell.strip()
                     if cell:
                         cell_text, colspan = PlainTextBlockParser._parse_cell_colspan(cell)
+                        cell_text, rowspan = PlainTextBlockParser._parse_cell_rowspan(cell_text)
                         cell_text, bgcolor = PlainTextBlockParser._parse_cell_background(cell_text)
                         cell_text, alignment = PlainTextBlockParser._parse_cell_alignment(cell_text)
                         # 옵션이 있으면 객체로 저장, 없으면 텍스트로 저장
-                        if colspan or bgcolor or alignment:
+                        if colspan or rowspan or bgcolor or alignment:
                             cell_obj = {'content': cell_text}
                             if colspan:
                                 cell_obj['colspan'] = colspan
+                            if rowspan:
+                                cell_obj['rowspan'] = rowspan
                             if bgcolor:
                                 cell_obj['bgcolor'] = bgcolor
                             if alignment:
@@ -921,19 +959,22 @@ class PlainTextBlockParser:
                 cells_content = row_match.group(1)
                 # 빈 셀 처리를 위해 || 기반으로 분할
                 cells_raw = cells_content.split('||')
-                # 빈 셀을 제거하고 colspan, 정렬 및 배경색 옵션 추출
+                # 빈 셀을 제거하고 colspan, rowspan, 정렬 및 배경색 옵션 추출
                 cells = []
                 for cell in cells_raw:
                     cell = cell.strip()
                     if cell:
                         cell_text, colspan = PlainTextBlockParser._parse_cell_colspan(cell)
+                        cell_text, rowspan = PlainTextBlockParser._parse_cell_rowspan(cell_text)
                         cell_text, bgcolor = PlainTextBlockParser._parse_cell_background(cell_text)
                         cell_text, alignment = PlainTextBlockParser._parse_cell_alignment(cell_text)
                         # 옵션이 있으면 객체로 저장, 없으면 텍스트로 저장
-                        if colspan or bgcolor or alignment:
+                        if colspan or rowspan or bgcolor or alignment:
                             cell_obj = {'content': cell_text}
                             if colspan:
                                 cell_obj['colspan'] = colspan
+                            if rowspan:
+                                cell_obj['rowspan'] = rowspan
                             if bgcolor:
                                 cell_obj['bgcolor'] = bgcolor
                             if alignment:
