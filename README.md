@@ -26,6 +26,11 @@ tested, and committed in short runner cycles.
 - Deployment: Docker Compose first
 - Scheduler: systemd timer calling a runner script
 
+## Local Environment
+
+Copy `.env.example` to `.env` before local runs, then adjust the placeholder
+database and Redis URLs for your local services as needed.
+
 ## Repository Layout
 
 ```text
