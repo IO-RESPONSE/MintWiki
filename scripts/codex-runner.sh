@@ -37,11 +37,15 @@ Repository rules:
 - Leave a concise final summary.
 PROMPT
 
+GLOBAL_ARGS=()
+if [ -n "$CODEX_APPROVAL" ]; then
+  GLOBAL_ARGS+=(--ask-for-approval "$CODEX_APPROVAL")
+fi
+
 ARGS=(
   exec
   --cd "$ROOT_DIR"
   --sandbox "$CODEX_SANDBOX"
-  --ask-for-approval "$CODEX_APPROVAL"
   --json
   --output-last-message "$FINAL_FILE"
 )
@@ -50,5 +54,4 @@ if [ -n "${CODEX_MODEL:-}" ]; then
   ARGS+=(--model "$CODEX_MODEL")
 fi
 
-"$CODEX_BIN" "${ARGS[@]}" - < "$PROMPT_FILE" > "$EVENTS_FILE"
-
+"$CODEX_BIN" "${GLOBAL_ARGS[@]}" "${ARGS[@]}" - < "$PROMPT_FILE" > "$EVENTS_FILE"
