@@ -55,6 +55,10 @@ class ParserFixtureLoader:
             ParserFixtureLoader._unordered_list_multiple(),
             ParserFixtureLoader._unordered_list_nested(),
             ParserFixtureLoader._unordered_list_with_special_chars(),
+            ParserFixtureLoader._ordered_list_simple(),
+            ParserFixtureLoader._ordered_list_multiple(),
+            ParserFixtureLoader._ordered_list_nested(),
+            ParserFixtureLoader._ordered_list_with_special_chars(),
         ]
 
     @staticmethod
@@ -641,6 +645,109 @@ class ParserFixtureLoader:
                     {
                         "type": "list",
                         "list_type": "unordered",
+                        "items": [
+                            {"level": 1, "text": "Item with & special!"},
+                            {"level": 1, "text": "Item with 123 numbers"},
+                        ],
+                    },
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _ordered_list_simple() -> ParserFixture:
+        """단순 순서 있는 목록 픽스처."""
+        return ParserFixture(
+            name="ordered_list_simple",
+            source="# Item 1\n# Item 2",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        "type": "list",
+                        "list_type": "ordered",
+                        "items": [
+                            {"level": 1, "text": "Item 1"},
+                            {"level": 1, "text": "Item 2"},
+                        ],
+                    },
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _ordered_list_multiple() -> ParserFixture:
+        """여러 개의 항목을 가진 순서 있는 목록 픽스처."""
+        return ParserFixture(
+            name="ordered_list_multiple",
+            source="# First item\n# Second item\n# Third item",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        "type": "list",
+                        "list_type": "ordered",
+                        "items": [
+                            {"level": 1, "text": "First item"},
+                            {"level": 1, "text": "Second item"},
+                            {"level": 1, "text": "Third item"},
+                        ],
+                    },
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _ordered_list_nested() -> ParserFixture:
+        """중첩된 순서 있는 목록 픽스처."""
+        return ParserFixture(
+            name="ordered_list_nested",
+            source="# Item 1\n## Nested 1.1\n## Nested 1.2\n# Item 2",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        "type": "list",
+                        "list_type": "ordered",
+                        "items": [
+                            {"level": 1, "text": "Item 1"},
+                            {"level": 2, "text": "Nested 1.1"},
+                            {"level": 2, "text": "Nested 1.2"},
+                            {"level": 1, "text": "Item 2"},
+                        ],
+                    },
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _ordered_list_with_special_chars() -> ParserFixture:
+        """특수 문자를 포함한 순서 있는 목록 픽스처."""
+        return ParserFixture(
+            name="ordered_list_with_special_chars",
+            source="# Item with & special!\n# Item with 123 numbers",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        "type": "list",
+                        "list_type": "ordered",
                         "items": [
                             {"level": 1, "text": "Item with & special!"},
                             {"level": 1, "text": "Item with 123 numbers"},

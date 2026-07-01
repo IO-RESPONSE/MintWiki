@@ -33,6 +33,9 @@ class PlainTextBlockParser:
     # 순서 없는 목록 패턴: * 텍스트 (수준 1), ** 텍스트 (수준 2), 등
     UNORDERED_LIST_PATTERN = re.compile(r'^(\*+)\s+(.+)$')
 
+    # 순서 있는 목록 패턴: # 텍스트 (수준 1), ## 텍스트 (수준 2), 등
+    ORDERED_LIST_PATTERN = re.compile(r'^(#+)\s+(.+)$')
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
@@ -76,7 +79,9 @@ class PlainTextBlockParser:
                 # 현재 줄이 제목인지 확인
                 heading_match = PlainTextBlockParser.HEADING_PATTERN.match(line)
                 # 현재 줄이 순서 없는 목록 항목인지 확인
-                list_match = PlainTextBlockParser.UNORDERED_LIST_PATTERN.match(line)
+                unordered_list_match = PlainTextBlockParser.UNORDERED_LIST_PATTERN.match(line)
+                # 현재 줄이 순서 있는 목록 항목인지 확인
+                ordered_list_match = PlainTextBlockParser.ORDERED_LIST_PATTERN.match(line)
 
                 if heading_match:
                     # 누적된 블록을 먼저 처리
@@ -99,7 +104,7 @@ class PlainTextBlockParser:
                         'content': heading_text,
                     }
                     blocks.append(heading_block)
-                elif list_match:
+                elif unordered_list_match or ordered_list_match:
                     # 현재 비-목록 블록이 있으면 먼저 처리
                     if current_block_lines and not in_list:
                         block_content = '\n'.join(current_block_lines)
@@ -158,6 +163,10 @@ class PlainTextBlockParser:
         # 순서 없는 목록 블록인지 확인
         if PlainTextBlockParser._is_unordered_list(content):
             return PlainTextBlockParser._create_unordered_list_block(content)
+
+        # 순서 있는 목록 블록인지 확인
+        if PlainTextBlockParser._is_ordered_list(content):
+            return PlainTextBlockParser._create_ordered_list_block(content)
 
         # 기본값: 문단 블록
         block = {
@@ -380,5 +389,55 @@ class PlainTextBlockParser:
         return {
             'type': 'list',
             'list_type': 'unordered',
+            'items': items,
+        }
+
+    @staticmethod
+    def _is_ordered_list(content: str) -> bool:
+        """
+        콘텐츠가 순서 있는 목록인지 확인한다.
+
+        Args:
+            content: 검사할 콘텐츠
+
+        Returns:
+            순서 있는 목록이면 True
+        """
+        lines = content.split('\n')
+        for line in lines:
+            if line.strip() and not PlainTextBlockParser.ORDERED_LIST_PATTERN.match(line):
+                # 한 줄이라도 목록 패턴과 일치하지 않으면 목록이 아님
+                return False
+        # 최소한 한 개 이상의 목록 줄이 있어야 함
+        return any(PlainTextBlockParser.ORDERED_LIST_PATTERN.match(line) for line in lines)
+
+    @staticmethod
+    def _create_ordered_list_block(content: str) -> Dict[str, Any]:
+        """
+        순서 있는 목록 블록을 생성한다.
+
+        Args:
+            content: 목록 콘텐츠
+
+        Returns:
+            목록 블록 딕셔너리
+        """
+        lines = content.split('\n')
+        items = []
+
+        for line in lines:
+            match = PlainTextBlockParser.ORDERED_LIST_PATTERN.match(line)
+            if match:
+                hashes = match.group(1)
+                text = match.group(2)
+                level = len(hashes)
+                items.append({
+                    'level': level,
+                    'text': text,
+                })
+
+        return {
+            'type': 'list',
+            'list_type': 'ordered',
             'items': items,
         }
