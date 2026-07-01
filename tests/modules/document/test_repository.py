@@ -439,3 +439,136 @@ class TestDatabaseDocumentRepository:
         assert result is not None
         assert result.title == "Document with 특수 문자 & symbols!"
         assert result.normalized_title == "Document with 특수 문자 & symbols!"
+
+    @pytest.mark.asyncio
+    async def test_update_document_current_revision_id(self, async_db_session):
+        """데이터베이스 저장소는 문서의 현재 리비전 id를 업데이트할 수 있다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc = Document(id="doc1", title="Test Document")
+        await repo.create(doc)
+
+        # 업데이트: 현재 리비전 id 설정
+        updated_doc = Document(
+            id="doc1",
+            title="Test Document",
+            current_revision_id="rev1",
+        )
+        result = await repo.update(updated_doc)
+        assert result.current_revision_id == "rev1"
+
+    @pytest.mark.asyncio
+    async def test_current_revision_id_survives_reload(self, async_db_session):
+        """현재 리비전 포인터는 재로드 후에도 유지된다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc = Document(id="doc1", title="Test Document")
+        await repo.create(doc)
+
+        # 현재 리비전 id 업데이트
+        updated_doc = Document(
+            id="doc1",
+            title="Test Document",
+            current_revision_id="rev1",
+        )
+        await repo.update(updated_doc)
+
+        # 재로드: 같은 저장소에서 다시 조회
+        reloaded_doc = await repo.get("doc1")
+        assert reloaded_doc is not None
+        assert reloaded_doc.current_revision_id == "rev1"
+
+    @pytest.mark.asyncio
+    async def test_current_revision_id_survives_reload_by_normalized_title(self, async_db_session):
+        """현재 리비전 포인터는 정규화된 제목으로 재로드 후에도 유지된다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc = Document(id="doc1", title="Test Document")
+        await repo.create(doc)
+
+        # 현재 리비전 id 업데이트
+        updated_doc = Document(
+            id="doc1",
+            title="Test Document",
+            current_revision_id="rev42",
+        )
+        await repo.update(updated_doc)
+
+        # 재로드: 정규화된 제목으로 조회
+        reloaded_doc = await repo.get_by_normalized_title("Test Document")
+        assert reloaded_doc is not None
+        assert reloaded_doc.current_revision_id == "rev42"
+
+    @pytest.mark.asyncio
+    async def test_current_revision_id_updates_from_none_to_value(self, async_db_session):
+        """현재 리비전 id를 None에서 값으로 업데이트할 수 있다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc = Document(id="doc1", title="Test Document", current_revision_id=None)
+        await repo.create(doc)
+
+        # 조회: 초기값은 None
+        initial_doc = await repo.get("doc1")
+        assert initial_doc.current_revision_id is None
+
+        # 업데이트: None -> rev100
+        updated_doc = Document(
+            id="doc1",
+            title="Test Document",
+            current_revision_id="rev100",
+        )
+        await repo.update(updated_doc)
+
+        # 재로드: 값이 유지되는지 확인
+        reloaded_doc = await repo.get("doc1")
+        assert reloaded_doc.current_revision_id == "rev100"
+
+    @pytest.mark.asyncio
+    async def test_current_revision_id_updates_from_value_to_different_value(self, async_db_session):
+        """현재 리비전 id를 한 값에서 다른 값으로 업데이트할 수 있다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc = Document(
+            id="doc1",
+            title="Test Document",
+            current_revision_id="rev_old",
+        )
+        await repo.create(doc)
+
+        # 업데이트: rev_old -> rev_new
+        updated_doc = Document(
+            id="doc1",
+            title="Test Document",
+            current_revision_id="rev_new",
+        )
+        await repo.update(updated_doc)
+
+        # 재로드: 새로운 값이 유지되는지 확인
+        reloaded_doc = await repo.get("doc1")
+        assert reloaded_doc.current_revision_id == "rev_new"
+
+    @pytest.mark.asyncio
+    async def test_multiple_documents_each_have_own_current_revision_id(self, async_db_session):
+        """여러 문서 각각은 독립적인 현재 리비전 id를 유지한다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+
+        doc1 = Document(id="doc1", title="Document One")
+        doc2 = Document(id="doc2", title="Document Two")
+        await repo.create(doc1)
+        await repo.create(doc2)
+
+        # 각 문서의 현재 리비전 id 업데이트
+        updated_doc1 = Document(
+            id="doc1",
+            title="Document One",
+            current_revision_id="rev1_for_doc1",
+        )
+        updated_doc2 = Document(
+            id="doc2",
+            title="Document Two",
+            current_revision_id="rev2_for_doc2",
+        )
+        await repo.update(updated_doc1)
+        await repo.update(updated_doc2)
+
+        # 재로드: 각 문서의 현재 리비전 id 확인
+        reloaded_doc1 = await repo.get("doc1")
+        reloaded_doc2 = await repo.get("doc2")
+
+        assert reloaded_doc1.current_revision_id == "rev1_for_doc1"
+        assert reloaded_doc2.current_revision_id == "rev2_for_doc2"
