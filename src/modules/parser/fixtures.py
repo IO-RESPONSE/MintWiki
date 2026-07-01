@@ -1638,7 +1638,7 @@ class ParserFixtureLoader:
                                 'cells': [
                                     {'content': 'right', 'align': 'right'},
                                     {'content': 'center', 'align': 'center'},
-                                    {'content': 'normal'},
+                                    'normal',
                                 ],
                             },
                         ],
@@ -1667,7 +1667,7 @@ class ParserFixtureLoader:
                                 'type': 'header',
                                 'cells': [
                                     {'content': 'Header1', 'align': 'right'},
-                                    {'content': 'Header2'},
+                                    'Header2',
                                 ],
                             },
                             {

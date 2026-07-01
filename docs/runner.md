@@ -21,6 +21,7 @@ QA must pass (zero exit code from `scripts/qa.sh`) before any changes are commit
 - `claude` or `codex` must be installed and authenticated for non-interactive use.
 - The runner process must have write access to the repository.
 - The working tree must be clean before a task starts.
+- The systemd timer checks for work every minute.
 
 This server currently has `codex exec`, which is the documented non-interactive
 Codex mode for scripts and scheduled jobs.
@@ -69,10 +70,10 @@ needs an action that requires approval, that run should fail instead of hanging.
 - The runner refuses to start when the working tree is dirty.
 - On success, the task moves from `tasks/queue` to `tasks/done`.
 - On failure, the task moves to `tasks/failed` and run logs remain under `runs/`.
-- Failed code changes are left in the working tree for inspection.
+- Failed code changes are reverted so the next clean cycle can continue.
 
-Because failed code changes are not automatically reverted, the next task will
-not start until a human reviews or cleans the working tree.
+Because the runner checks every minute and refuses dirty trees, it starts the
+next task quickly once the repository is clean.
 
 ## Manual Run
 

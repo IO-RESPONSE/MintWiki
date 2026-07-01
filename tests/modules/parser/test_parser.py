@@ -1,6 +1,7 @@
 """평문 텍스트 블록 파서 테스트."""
 import pytest
 from modules.parser import PlainTextBlockParser
+from modules.parser.fixtures import ParserFixtureLoader
 from modules.parser.model import ParserResult
 
 
@@ -2437,3 +2438,59 @@ class TestPlainTextBlockParserTableHeaders:
         assert len(result.blocks[0]["rows"]) == 3
         assert all(row["type"] == "header" for row in result.blocks[0]["rows"][:2])
         assert result.blocks[0]["rows"][2]["type"] == "data"
+
+
+class TestParserGoldenFixtureRunner:
+    """파서 황금 픽스처 실행 테스트."""
+
+    def test_all_golden_fixtures(self):
+        """모든 황금 픽스처에 대해 파서를 실행한다."""
+        fixtures = ParserFixtureLoader.load_all()
+        assert len(fixtures) > 0, "황금 픽스처가 없다"
+
+        failures = []
+        for fixture in fixtures:
+            result = PlainTextBlockParser.parse(fixture.source)
+
+            if result.blocks != fixture.expected_result.blocks:
+                failures.append({
+                    "fixture_name": fixture.name,
+                    "error": "블록이 예상과 다름",
+                    "expected_blocks": fixture.expected_result.blocks,
+                    "actual_blocks": result.blocks,
+                })
+                continue
+
+            if result.metadata != fixture.expected_result.metadata:
+                failures.append({
+                    "fixture_name": fixture.name,
+                    "error": "메타데이터가 예상과 다름",
+                    "expected_metadata": fixture.expected_result.metadata,
+                    "actual_metadata": result.metadata,
+                })
+
+        if failures:
+            failure_summary = "\n".join([
+                f"  - {f['fixture_name']}: {f['error']}"
+                for f in failures
+            ])
+            pytest.fail(f"{len(failures)}개 황금 픽스처 실패:\n{failure_summary}")
+
+    @pytest.mark.parametrize("fixture", ParserFixtureLoader.load_all(), ids=lambda f: f.name)
+    def test_golden_fixture(self, fixture):
+        """각 황금 픽스처를 개별적으로 테스트한다."""
+        result = PlainTextBlockParser.parse(fixture.source)
+
+        assert result.blocks == fixture.expected_result.blocks, (
+            f"픽스처 '{fixture.name}'의 블록이 예상과 다름\n"
+            f"소스: {fixture.source!r}\n"
+            f"예상: {fixture.expected_result.blocks}\n"
+            f"실제: {result.blocks}"
+        )
+
+        assert result.metadata == fixture.expected_result.metadata, (
+            f"픽스처 '{fixture.name}'의 메타데이터가 예상과 다름\n"
+            f"소스: {fixture.source!r}\n"
+            f"예상: {fixture.expected_result.metadata}\n"
+            f"실제: {result.metadata}"
+        )

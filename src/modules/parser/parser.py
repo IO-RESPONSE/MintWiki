@@ -655,7 +655,9 @@ class PlainTextBlockParser:
 
         matches = PlainTextBlockParser.INTERNAL_LINK_PATTERN.findall(content)
         for match in matches:
-            if match.startswith('Category:'):
+            if match.startswith('^'):
+                continue
+            elif match.startswith('Category:'):
                 category_name = match[len('Category:'):]
                 categories.append(category_name)
             elif match.startswith('Redirect:'):
@@ -1070,12 +1072,39 @@ class PlainTextBlockParser:
             if content.endswith('<') and len(content) > 2:
                 alignment = 'center'
                 content = content[1:-1].strip()
+            elif '<' in content[1:]:
+                alignment = 'center'
+                content = content.rsplit('<', 1)[1].strip()
             else:
                 # 좌측 정렬 (기본값이므로 별도로 표시하지 않음)
                 alignment = 'left'
                 content = content[1:].lstrip()
 
         return content, alignment
+
+    @staticmethod
+    def _parse_table_cell(cell: str) -> Any:
+        """
+        테이블 셀 옵션을 추출해 문자열 또는 셀 객체로 변환한다.
+        """
+        cell_text, colspan = PlainTextBlockParser._parse_cell_colspan(cell)
+        cell_text, rowspan = PlainTextBlockParser._parse_cell_rowspan(cell_text)
+        cell_text, alignment = PlainTextBlockParser._parse_cell_alignment(cell_text)
+        cell_text, bgcolor = PlainTextBlockParser._parse_cell_background(cell_text)
+
+        if colspan or rowspan or bgcolor or alignment:
+            cell_obj = {'content': cell_text}
+            if colspan:
+                cell_obj['colspan'] = colspan
+            if rowspan:
+                cell_obj['rowspan'] = rowspan
+            if bgcolor:
+                cell_obj['bgcolor'] = bgcolor
+            if alignment:
+                cell_obj['align'] = alignment
+            return cell_obj
+
+        return cell_text
 
     @staticmethod
     def _create_table_block(content: str) -> Dict[str, Any]:
@@ -1107,24 +1136,7 @@ class PlainTextBlockParser:
                 for cell in cells_raw:
                     cell = cell.strip()
                     if cell:
-                        cell_text, colspan = PlainTextBlockParser._parse_cell_colspan(cell)
-                        cell_text, rowspan = PlainTextBlockParser._parse_cell_rowspan(cell_text)
-                        cell_text, bgcolor = PlainTextBlockParser._parse_cell_background(cell_text)
-                        cell_text, alignment = PlainTextBlockParser._parse_cell_alignment(cell_text)
-                        # 옵션이 있으면 객체로 저장, 없으면 텍스트로 저장
-                        if colspan or rowspan or bgcolor or alignment:
-                            cell_obj = {'content': cell_text}
-                            if colspan:
-                                cell_obj['colspan'] = colspan
-                            if rowspan:
-                                cell_obj['rowspan'] = rowspan
-                            if bgcolor:
-                                cell_obj['bgcolor'] = bgcolor
-                            if alignment:
-                                cell_obj['align'] = alignment
-                            cells.append(cell_obj)
-                        else:
-                            cells.append(cell_text)
+                        cells.append(PlainTextBlockParser._parse_table_cell(cell))
                 rows.append({'type': 'header', 'cells': cells})
                 continue
 
@@ -1140,24 +1152,7 @@ class PlainTextBlockParser:
                 for cell in cells_raw:
                     cell = cell.strip()
                     if cell:
-                        cell_text, colspan = PlainTextBlockParser._parse_cell_colspan(cell)
-                        cell_text, rowspan = PlainTextBlockParser._parse_cell_rowspan(cell_text)
-                        cell_text, bgcolor = PlainTextBlockParser._parse_cell_background(cell_text)
-                        cell_text, alignment = PlainTextBlockParser._parse_cell_alignment(cell_text)
-                        # 옵션이 있으면 객체로 저장, 없으면 텍스트로 저장
-                        if colspan or rowspan or bgcolor or alignment:
-                            cell_obj = {'content': cell_text}
-                            if colspan:
-                                cell_obj['colspan'] = colspan
-                            if rowspan:
-                                cell_obj['rowspan'] = rowspan
-                            if bgcolor:
-                                cell_obj['bgcolor'] = bgcolor
-                            if alignment:
-                                cell_obj['align'] = alignment
-                            cells.append(cell_obj)
-                        else:
-                            cells.append(cell_text)
+                        cells.append(PlainTextBlockParser._parse_table_cell(cell))
                 rows.append({'type': 'data', 'cells': cells})
 
         return {

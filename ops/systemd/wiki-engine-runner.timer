@@ -1,9 +1,9 @@
 [Unit]
-Description=Run Wiki Engine Codex task runner every 10 minutes
+Description=Run Wiki Engine Codex task runner every minute
 
 [Timer]
 OnBootSec=2min
-OnUnitActiveSec=10min
+OnUnitActiveSec=1min
 Persistent=true
 RandomizedDelaySec=0
 
