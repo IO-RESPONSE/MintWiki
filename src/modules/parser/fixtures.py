@@ -98,6 +98,8 @@ class ParserFixtureLoader:
             ParserFixtureLoader._table_header_simple(),
             ParserFixtureLoader._table_header_with_data(),
             ParserFixtureLoader._table_header_with_heading(),
+            ParserFixtureLoader._table_with_cell_alignment(),
+            ParserFixtureLoader._table_with_mixed_alignment(),
         ]
 
     @staticmethod
@@ -1595,6 +1597,72 @@ class ParserFixtureLoader:
                     "headings": [
                         {'level': 1, 'text': 'Table Title'},
                     ],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_with_cell_alignment() -> ParserFixture:
+        """셀 정렬 옵션을 가진 테이블 픽스처."""
+        return ParserFixture(
+            name="table_with_cell_alignment",
+            source="||>right||<left<center||normal||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'data',
+                                'cells': [
+                                    {'content': 'right', 'align': 'right'},
+                                    {'content': 'center', 'align': 'center'},
+                                    {'content': 'normal'},
+                                ],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_with_mixed_alignment() -> ParserFixture:
+        """여러 행의 테이블에서 셀 정렬 옵션을 가진 픽스처."""
+        return ParserFixture(
+            name="table_with_mixed_alignment",
+            source="!!>Header1!!Header2!!\n||<Left<||>Right||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'header',
+                                'cells': [
+                                    {'content': 'Header1', 'align': 'right'},
+                                    {'content': 'Header2'},
+                                ],
+                            },
+                            {
+                                'type': 'data',
+                                'cells': [
+                                    {'content': 'Left', 'align': 'center'},
+                                    {'content': 'Right', 'align': 'right'},
+                                ],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
                 },
             ),
         )

@@ -762,6 +762,47 @@ class PlainTextBlockParser:
         return any(PlainTextBlockParser.TABLE_ROW_PATTERN.match(line) or PlainTextBlockParser.TABLE_HEADER_PATTERN.match(line) for line in lines)
 
     @staticmethod
+    def _parse_cell_alignment(cell_content: str) -> tuple:
+        """
+        셀 콘텐츠에서 정렬 옵션을 추출한다.
+
+        정렬 옵션 문법:
+        - >text: 우측 정렬
+        - <text: 좌측 또는 중앙 정렬
+        - <text<: 명시적 중앙 정렬
+
+        Args:
+            cell_content: 셀 콘텐츠
+
+        Returns:
+            (실제_콘텐츠, 정렬_옵션) 튜플
+            정렬 옵션이 없으면 None을 반환
+        """
+        if not cell_content:
+            return cell_content, None
+
+        alignment = None
+        content = cell_content
+
+        # 우측 정렬 확인: >text 형식
+        if content.startswith('>'):
+            alignment = 'right'
+            content = content[1:].lstrip()
+
+        # 중앙 정렬 확인: <text< 또는 <text 형식
+        elif content.startswith('<'):
+            # 양쪽에 < 가 있는 경우 중앙 정렬
+            if content.endswith('<') and len(content) > 2:
+                alignment = 'center'
+                content = content[1:-1].strip()
+            else:
+                # 좌측 정렬 (기본값이므로 별도로 표시하지 않음)
+                alignment = 'left'
+                content = content[1:].lstrip()
+
+        return content, alignment
+
+    @staticmethod
     def _create_table_block(content: str) -> Dict[str, Any]:
         """
         테이블 블록을 생성한다.
@@ -782,9 +823,18 @@ class PlainTextBlockParser:
                 # !!로 구분된 셀 추출
                 cells_content = header_match.group(1)
                 # 빈 셀 처리를 위해 !! 기반으로 분할
-                cells = cells_content.split('!!')
-                # 빈 셀 제거 (시작/끝의 빈 셀)
-                cells = [cell.strip() for cell in cells if cell.strip()]
+                cells_raw = cells_content.split('!!')
+                # 빈 셀을 제거하고 정렬 옵션 추출
+                cells = []
+                for cell in cells_raw:
+                    cell = cell.strip()
+                    if cell:
+                        cell_text, alignment = PlainTextBlockParser._parse_cell_alignment(cell)
+                        # 정렬 옵션이 있으면 객체로 저장, 없으면 텍스트로 저장
+                        if alignment:
+                            cells.append({'content': cell_text, 'align': alignment})
+                        else:
+                            cells.append(cell_text)
                 rows.append({'type': 'header', 'cells': cells})
                 continue
 
@@ -794,9 +844,18 @@ class PlainTextBlockParser:
                 # ||로 구분된 셀 추출
                 cells_content = row_match.group(1)
                 # 빈 셀 처리를 위해 || 기반으로 분할
-                cells = cells_content.split('||')
-                # 빈 셀 제거 (시작/끝의 빈 셀)
-                cells = [cell.strip() for cell in cells if cell.strip()]
+                cells_raw = cells_content.split('||')
+                # 빈 셀을 제거하고 정렬 옵션 추출
+                cells = []
+                for cell in cells_raw:
+                    cell = cell.strip()
+                    if cell:
+                        cell_text, alignment = PlainTextBlockParser._parse_cell_alignment(cell)
+                        # 정렬 옵션이 있으면 객체로 저장, 없으면 텍스트로 저장
+                        if alignment:
+                            cells.append({'content': cell_text, 'align': alignment})
+                        else:
+                            cells.append(cell_text)
                 rows.append({'type': 'data', 'cells': cells})
 
         return {
