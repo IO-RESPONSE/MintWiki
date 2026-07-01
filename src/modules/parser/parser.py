@@ -762,6 +762,38 @@ class PlainTextBlockParser:
         return any(PlainTextBlockParser.TABLE_ROW_PATTERN.match(line) or PlainTextBlockParser.TABLE_HEADER_PATTERN.match(line) for line in lines)
 
     @staticmethod
+    def _parse_cell_background(cell_content: str) -> tuple:
+        """
+        셀 콘텐츠에서 배경색 옵션을 추출한다.
+
+        배경색 옵션 문법:
+        - #RRGGBB text: 16진수 색상 코드를 가진 배경색
+
+        Args:
+            cell_content: 셀 콘텐츠
+
+        Returns:
+            (실제_콘텐츠, 배경색) 튜플
+            배경색 옵션이 없으면 None을 반환
+        """
+        if not cell_content or len(cell_content) < 7:
+            return cell_content, None
+
+        bgcolor = None
+        content = cell_content
+
+        # 배경색 확인: #RRGGBB text 형식
+        if content.startswith('#'):
+            # 최소 #RRGGBB (7자리) 필요
+            potential_color = content[1:7]
+            # 6개의 16진 문자 확인
+            if len(potential_color) == 6 and all(c in '0123456789abcdefABCDEF' for c in potential_color):
+                bgcolor = '#' + potential_color
+                content = content[7:].lstrip()
+
+        return content, bgcolor
+
+    @staticmethod
     def _parse_cell_alignment(cell_content: str) -> tuple:
         """
         셀 콘텐츠에서 정렬 옵션을 추출한다.
@@ -824,15 +856,21 @@ class PlainTextBlockParser:
                 cells_content = header_match.group(1)
                 # 빈 셀 처리를 위해 !! 기반으로 분할
                 cells_raw = cells_content.split('!!')
-                # 빈 셀을 제거하고 정렬 옵션 추출
+                # 빈 셀을 제거하고 정렬 및 배경색 옵션 추출
                 cells = []
                 for cell in cells_raw:
                     cell = cell.strip()
                     if cell:
                         cell_text, alignment = PlainTextBlockParser._parse_cell_alignment(cell)
-                        # 정렬 옵션이 있으면 객체로 저장, 없으면 텍스트로 저장
-                        if alignment:
-                            cells.append({'content': cell_text, 'align': alignment})
+                        cell_text, bgcolor = PlainTextBlockParser._parse_cell_background(cell_text)
+                        # 옵션이 있으면 객체로 저장, 없으면 텍스트로 저장
+                        if bgcolor or alignment:
+                            cell_obj = {'content': cell_text}
+                            if bgcolor:
+                                cell_obj['bgcolor'] = bgcolor
+                            if alignment:
+                                cell_obj['align'] = alignment
+                            cells.append(cell_obj)
                         else:
                             cells.append(cell_text)
                 rows.append({'type': 'header', 'cells': cells})
@@ -845,15 +883,21 @@ class PlainTextBlockParser:
                 cells_content = row_match.group(1)
                 # 빈 셀 처리를 위해 || 기반으로 분할
                 cells_raw = cells_content.split('||')
-                # 빈 셀을 제거하고 정렬 옵션 추출
+                # 빈 셀을 제거하고 정렬 및 배경색 옵션 추출
                 cells = []
                 for cell in cells_raw:
                     cell = cell.strip()
                     if cell:
                         cell_text, alignment = PlainTextBlockParser._parse_cell_alignment(cell)
-                        # 정렬 옵션이 있으면 객체로 저장, 없으면 텍스트로 저장
-                        if alignment:
-                            cells.append({'content': cell_text, 'align': alignment})
+                        cell_text, bgcolor = PlainTextBlockParser._parse_cell_background(cell_text)
+                        # 옵션이 있으면 객체로 저장, 없으면 텍스트로 저장
+                        if bgcolor or alignment:
+                            cell_obj = {'content': cell_text}
+                            if bgcolor:
+                                cell_obj['bgcolor'] = bgcolor
+                            if alignment:
+                                cell_obj['align'] = alignment
+                            cells.append(cell_obj)
                         else:
                             cells.append(cell_text)
                 rows.append({'type': 'data', 'cells': cells})

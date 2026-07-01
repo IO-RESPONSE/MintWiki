@@ -100,6 +100,8 @@ class ParserFixtureLoader:
             ParserFixtureLoader._table_header_with_heading(),
             ParserFixtureLoader._table_with_cell_alignment(),
             ParserFixtureLoader._table_with_mixed_alignment(),
+            ParserFixtureLoader._table_with_cell_background(),
+            ParserFixtureLoader._table_with_background_and_alignment(),
         ]
 
     @staticmethod
@@ -1654,6 +1656,71 @@ class ParserFixtureLoader:
                                 'cells': [
                                     {'content': 'Left', 'align': 'center'},
                                     {'content': 'Right', 'align': 'right'},
+                                ],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+    @staticmethod
+    def _table_with_cell_background() -> ParserFixture:
+        """배경색 옵션을 가진 테이블 픽스처."""
+        return ParserFixture(
+            name="table_with_cell_background",
+            source="||#FF0000 Red||#00FF00 Green||#0000FF Blue||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'data',
+                                'cells': [
+                                    {'content': 'Red', 'bgcolor': '#FF0000'},
+                                    {'content': 'Green', 'bgcolor': '#00FF00'},
+                                    {'content': 'Blue', 'bgcolor': '#0000FF'},
+                                ],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_with_background_and_alignment() -> ParserFixture:
+        """배경색과 정렬 옵션을 모두 가진 테이블 픽스처."""
+        return ParserFixture(
+            name="table_with_background_and_alignment",
+            source="!!#FF0000 Header!!#00FF00 Header!!\n||>#0000FF Right||<#FFFF00 Center<||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'header',
+                                'cells': [
+                                    {'content': 'Header', 'bgcolor': '#FF0000'},
+                                    {'content': 'Header', 'bgcolor': '#00FF00'},
+                                ],
+                            },
+                            {
+                                'type': 'data',
+                                'cells': [
+                                    {'content': 'Right', 'bgcolor': '#0000FF', 'align': 'right'},
+                                    {'content': 'Center', 'bgcolor': '#FFFF00', 'align': 'center'},
                                 ],
                             },
                         ],
