@@ -2151,6 +2151,7 @@ class TestPlainTextBlockParserSimpleTableRows:
         assert len(result.blocks) == 1
         assert result.blocks[0]["type"] == "table"
         assert len(result.blocks[0]["rows"]) == 1
+        assert result.blocks[0]["rows"][0]["type"] == "data"
         assert result.blocks[0]["rows"][0]["cells"] == ["cell1", "cell2", "cell3"]
 
     def test_parses_multiple_table_rows(self):
@@ -2160,7 +2161,9 @@ class TestPlainTextBlockParserSimpleTableRows:
         assert len(result.blocks) == 1
         assert result.blocks[0]["type"] == "table"
         assert len(result.blocks[0]["rows"]) == 2
+        assert result.blocks[0]["rows"][0]["type"] == "data"
         assert result.blocks[0]["rows"][0]["cells"] == ["row1cell1", "row1cell2"]
+        assert result.blocks[0]["rows"][1]["type"] == "data"
         assert result.blocks[0]["rows"][1]["cells"] == ["row2cell1", "row2cell2"]
 
     def test_parses_table_with_heading(self):
@@ -2254,3 +2257,131 @@ class TestPlainTextBlockParserSimpleTableRows:
         result = PlainTextBlockParser.parse(source)
         cells = result.blocks[0]["rows"][0]["cells"]
         assert "test&data" in cells or any("test" in c for c in cells)
+
+
+class TestPlainTextBlockParserTableHeaders:
+    """테이블 헤더 셀 파싱 테스트."""
+
+    def test_parses_single_header_row(self):
+        """단일 헤더 행을 파싱한다."""
+        source = "!!header1!!header2!!header3!!"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "table"
+        assert len(result.blocks[0]["rows"]) == 1
+        assert result.blocks[0]["rows"][0]["type"] == "header"
+        assert result.blocks[0]["rows"][0]["cells"] == ["header1", "header2", "header3"]
+
+    def test_parses_header_with_data_rows(self):
+        """헤더와 데이터 행을 함께 파싱한다."""
+        source = "!!header1!!header2!!\n||data1||data2||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "table"
+        assert len(result.blocks[0]["rows"]) == 2
+        assert result.blocks[0]["rows"][0]["type"] == "header"
+        assert result.blocks[0]["rows"][0]["cells"] == ["header1", "header2"]
+        assert result.blocks[0]["rows"][1]["type"] == "data"
+        assert result.blocks[0]["rows"][1]["cells"] == ["data1", "data2"]
+
+    def test_parses_multiple_data_rows_after_header(self):
+        """헤더 행 다음에 여러 데이터 행을 파싱한다."""
+        source = "!!Name!!Age!!\n||Alice||30||\n||Bob||25||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        table = result.blocks[0]
+        assert len(table["rows"]) == 3
+        assert table["rows"][0]["type"] == "header"
+        assert table["rows"][1]["type"] == "data"
+        assert table["rows"][2]["type"] == "data"
+
+    def test_header_row_followed_by_paragraph(self):
+        """헤더 행 뒤의 문단을 파싱한다."""
+        source = "!!col1!!col2!!\n\nFollowing paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "table"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[1]["content"] == "Following paragraph."
+
+    def test_header_cells_trimmed(self):
+        """헤더 셀의 공백을 제거한다."""
+        source = "!!  header1  !!  header2  !!"
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["rows"][0]["cells"] == ["header1", "header2"]
+
+    def test_header_with_heading(self):
+        """제목과 함께 있는 헤더를 파싱한다."""
+        source = "= Table Title =\n\n!!Name!!Value!!"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[1]["type"] == "table"
+        assert result.blocks[1]["rows"][0]["type"] == "header"
+
+    def test_header_row_structure_integrity(self):
+        """헤더 행 구조의 무결성을 검증한다."""
+        source = "!!header1!!header2!!"
+        result = PlainTextBlockParser.parse(source)
+        header_row = result.blocks[0]["rows"][0]
+        assert "type" in header_row
+        assert header_row["type"] == "header"
+        assert "cells" in header_row
+        assert isinstance(header_row["cells"], list)
+
+    def test_empty_header_cell_content(self):
+        """빈 헤더 셀을 처리한다."""
+        source = "!!header1!!!!header3!!"
+        result = PlainTextBlockParser.parse(source)
+        # 빈 셀은 제거되므로 header1과 header3만 남음
+        assert result.blocks[0]["rows"][0]["cells"] == ["header1", "header3"]
+
+    def test_header_with_many_cells(self):
+        """많은 셀을 가진 헤더 행을 파싱한다."""
+        source = "!!a!!b!!c!!d!!e!!f!!g!!"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks[0]["rows"][0]["cells"]) == 7
+
+    def test_header_with_special_characters(self):
+        """특수 문자를 포함한 헤더를 파싱한다."""
+        source = "!!test&data!!info<tag>!!value\"!!"
+        result = PlainTextBlockParser.parse(source)
+        cells = result.blocks[0]["rows"][0]["cells"]
+        assert len(cells) > 0
+
+    def test_mixed_header_and_data_rows(self):
+        """헤더와 데이터 행이 섞여 있는 경우를 파싱한다."""
+        source = "!!Col1!!Col2!!\n||Data1||Data2||\n!!SubHeader1!!SubHeader2!!\n||Data3||Data4||"
+        result = PlainTextBlockParser.parse(source)
+        table = result.blocks[0]
+        assert len(table["rows"]) == 4
+        assert table["rows"][0]["type"] == "header"
+        assert table["rows"][1]["type"] == "data"
+        assert table["rows"][2]["type"] == "header"
+        assert table["rows"][3]["type"] == "data"
+
+    def test_header_row_with_numeric_content(self):
+        """숫자 콘텐츠를 포함한 헤더를 파싱한다."""
+        source = "!!Col1!!Col2!!Col3!!\n||1||2||3||"
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["rows"][0]["cells"] == ["Col1", "Col2", "Col3"]
+        assert result.blocks[0]["rows"][1]["cells"] == ["1", "2", "3"]
+
+    def test_header_and_data_row_separated_by_blank_line(self):
+        """빈 줄로 분리된 헤더와 데이터를 파싱한다."""
+        source = "!!header1!!header2!!\n\n||data1||data2||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "table"
+        assert result.blocks[1]["type"] == "table"
+        assert result.blocks[0]["rows"][0]["type"] == "header"
+        assert result.blocks[1]["rows"][0]["type"] == "data"
+
+    def test_table_data_row_not_marked_with_type(self):
+        """기존 데이터 행도 type 필드가 있는지 확인한다."""
+        source = "||data1||data2||"
+        result = PlainTextBlockParser.parse(source)
+        row = result.blocks[0]["rows"][0]
+        # 기존 동작과 호환성을 유지하기 위해 데이터 행에도 type이 있어야 함
+        assert "type" in row
+        assert row["type"] == "data"

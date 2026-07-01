@@ -95,6 +95,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._table_multiple_rows(),
             ParserFixtureLoader._table_with_heading(),
             ParserFixtureLoader._table_with_content(),
+            ParserFixtureLoader._table_header_simple(),
+            ParserFixtureLoader._table_header_with_data(),
+            ParserFixtureLoader._table_header_with_heading(),
         ]
 
     @staticmethod
@@ -1425,7 +1428,7 @@ class ParserFixtureLoader:
                     {
                         'type': 'table',
                         'rows': [
-                            {'cells': ['cell1', 'cell2', 'cell3']},
+                            {'type': 'data', 'cells': ['cell1', 'cell2', 'cell3']},
                         ],
                     }
                 ],
@@ -1448,8 +1451,8 @@ class ParserFixtureLoader:
                     {
                         'type': 'table',
                         'rows': [
-                            {'cells': ['cell1', 'cell2']},
-                            {'cells': ['cell3', 'cell4']},
+                            {'type': 'data', 'cells': ['cell1', 'cell2']},
+                            {'type': 'data', 'cells': ['cell3', 'cell4']},
                         ],
                     }
                 ],
@@ -1477,7 +1480,7 @@ class ParserFixtureLoader:
                     {
                         'type': 'table',
                         'rows': [
-                            {'cells': ['row1cell1', 'row1cell2']},
+                            {'type': 'data', 'cells': ['row1cell1', 'row1cell2']},
                         ],
                     }
                 ],
@@ -1506,7 +1509,7 @@ class ParserFixtureLoader:
                     {
                         'type': 'table',
                         'rows': [
-                            {'cells': ['data1', 'data2']},
+                            {'type': 'data', 'cells': ['data1', 'data2']},
                         ],
                     }
                 ],
@@ -1514,6 +1517,84 @@ class ParserFixtureLoader:
                     "links": [],
                     "categories": [],
                     "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_header_simple() -> ParserFixture:
+        """간단한 테이블 헤더 픽스처."""
+        return ParserFixture(
+            name="table_header_simple",
+            source="!!header1!!header2!!header3!!",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {'type': 'header', 'cells': ['header1', 'header2', 'header3']},
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_header_with_data() -> ParserFixture:
+        """헤더와 데이터 행을 가진 테이블 픽스처."""
+        return ParserFixture(
+            name="table_header_with_data",
+            source="!!header1!!header2!!\n||data1||data2||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {'type': 'header', 'cells': ['header1', 'header2']},
+                            {'type': 'data', 'cells': ['data1', 'data2']},
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_header_with_heading() -> ParserFixture:
+        """제목과 함께 있는 테이블 헤더 픽스처."""
+        return ParserFixture(
+            name="table_header_with_heading",
+            source="= Table Title =\n\n!!col1!!col2!!\n||val1||val2||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'heading',
+                        'level': 1,
+                        'content': 'Table Title',
+                    },
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {'type': 'header', 'cells': ['col1', 'col2']},
+                            {'type': 'data', 'cells': ['val1', 'val2']},
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [
+                        {'level': 1, 'text': 'Table Title'},
+                    ],
                 },
             ),
         )

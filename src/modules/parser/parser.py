@@ -57,6 +57,9 @@ class PlainTextBlockParser:
     # 테이블 행 패턴: ||cell1||cell2||cell3|| (시작과 끝에 ||)
     TABLE_ROW_PATTERN = re.compile(r'^\|\|(.+)\|\|$')
 
+    # 테이블 헤더 행 패턴: !!header1!!header2!!header3!! (시작과 끝에 !!)
+    TABLE_HEADER_PATTERN = re.compile(r'^!!(.+)!!$')
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
@@ -251,6 +254,8 @@ class PlainTextBlockParser:
                 ordered_list_match = PlainTextBlockParser.ORDERED_LIST_PATTERN.match(line)
                 # 현재 줄이 테이블 행인지 확인
                 table_row_match = PlainTextBlockParser.TABLE_ROW_PATTERN.match(line)
+                # 현재 줄이 테이블 헤더 행인지 확인
+                table_header_match = PlainTextBlockParser.TABLE_HEADER_PATTERN.match(line)
 
                 if heading_match:
                     # 누적된 블록을 먼저 처리
@@ -318,7 +323,7 @@ class PlainTextBlockParser:
                     # 목록 줄을 현재 블록에 추가
                     current_block_lines.append(line)
                     in_list = True
-                elif table_row_match:
+                elif table_row_match or table_header_match:
                     # 현재 비-테이블 블록이 있으면 먼저 처리
                     if current_block_lines and not in_table:
                         block_content = '\n'.join(current_block_lines)
@@ -750,11 +755,11 @@ class PlainTextBlockParser:
         """
         lines = content.split('\n')
         for line in lines:
-            if line.strip() and not PlainTextBlockParser.TABLE_ROW_PATTERN.match(line):
+            if line.strip() and not (PlainTextBlockParser.TABLE_ROW_PATTERN.match(line) or PlainTextBlockParser.TABLE_HEADER_PATTERN.match(line)):
                 # 한 줄이라도 테이블 패턴과 일치하지 않으면 테이블이 아님
                 return False
         # 최소한 한 개 이상의 테이블 행이 있어야 함
-        return any(PlainTextBlockParser.TABLE_ROW_PATTERN.match(line) for line in lines)
+        return any(PlainTextBlockParser.TABLE_ROW_PATTERN.match(line) or PlainTextBlockParser.TABLE_HEADER_PATTERN.match(line) for line in lines)
 
     @staticmethod
     def _create_table_block(content: str) -> Dict[str, Any]:
@@ -771,15 +776,28 @@ class PlainTextBlockParser:
         rows = []
 
         for line in lines:
-            match = PlainTextBlockParser.TABLE_ROW_PATTERN.match(line)
-            if match:
+            # 헤더 행 확인
+            header_match = PlainTextBlockParser.TABLE_HEADER_PATTERN.match(line)
+            if header_match:
+                # !!로 구분된 셀 추출
+                cells_content = header_match.group(1)
+                # 빈 셀 처리를 위해 !! 기반으로 분할
+                cells = cells_content.split('!!')
+                # 빈 셀 제거 (시작/끝의 빈 셀)
+                cells = [cell.strip() for cell in cells if cell.strip()]
+                rows.append({'type': 'header', 'cells': cells})
+                continue
+
+            # 일반 행 확인
+            row_match = PlainTextBlockParser.TABLE_ROW_PATTERN.match(line)
+            if row_match:
                 # ||로 구분된 셀 추출
-                cells_content = match.group(1)
+                cells_content = row_match.group(1)
                 # 빈 셀 처리를 위해 || 기반으로 분할
                 cells = cells_content.split('||')
                 # 빈 셀 제거 (시작/끝의 빈 셀)
                 cells = [cell.strip() for cell in cells if cell.strip()]
-                rows.append({'cells': cells})
+                rows.append({'type': 'data', 'cells': cells})
 
         return {
             'type': 'table',
