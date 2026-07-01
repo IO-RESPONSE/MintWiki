@@ -48,6 +48,12 @@ class PlainTextBlockParser:
     # 넓히지않기 블록 종료 패턴: </nowiki>
     NOWIKI_END_PATTERN = re.compile(r'(.*?)</nowiki>(.*)', re.IGNORECASE)
 
+    # 코드 블록 시작 패턴: {{{
+    CODE_START_PATTERN = re.compile(r'^(\{\{\{)(.*)')
+
+    # 코드 블록 종료 패턴: }}}
+    CODE_END_PATTERN = re.compile(r'(.*?)\}\}\}(.*)')
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
@@ -89,6 +95,75 @@ class PlainTextBlockParser:
 
         while i < len(lines):
             line = lines[i]
+
+            # 현재 줄이 코드 블록 시작인지 확인
+            code_start_match = PlainTextBlockParser.CODE_START_PATTERN.match(line)
+            if code_start_match:
+                # 누적된 블록을 먼저 처리
+                if current_block_lines:
+                    block_content = '\n'.join(current_block_lines)
+                    if not PlainTextBlockParser._is_metadata_line(block_content):
+                        block = PlainTextBlockParser._create_block(block_content)
+                        blocks.append(block)
+                    current_block_lines = []
+                    in_list = False
+
+                # 시작 태그 이후의 콘텐츠
+                content_after_start = code_start_match.group(2)
+
+                # 닫는 태그가 같은 줄에 있는지 확인
+                end_match = PlainTextBlockParser.CODE_END_PATTERN.match(content_after_start)
+                if end_match:
+                    # 같은 줄에 {{{content}}} 형식
+                    code_content = end_match.group(1)
+                    remaining_content = end_match.group(2)
+
+                    # 코드 블록 생성
+                    code_block = {
+                        'type': 'code',
+                        'content': code_content,
+                    }
+                    blocks.append(code_block)
+
+                    # 남은 콘텐츠가 있으면 처리
+                    if remaining_content:
+                        current_block_lines.append(remaining_content)
+                else:
+                    # 닫는 태그가 다른 줄에 있음
+                    code_lines = []
+                    if content_after_start:
+                        code_lines.append(content_after_start)
+
+                    # }}} 태그를 찾을 때까지 계속
+                    i += 1
+                    while i < len(lines):
+                        line = lines[i]
+                        end_match = PlainTextBlockParser.CODE_END_PATTERN.match(line)
+                        if end_match:
+                            # 닫는 태그 앞의 내용
+                            content_before_end = end_match.group(1)
+                            if content_before_end:
+                                code_lines.append(content_before_end)
+                            remaining_content = end_match.group(2)
+
+                            # 코드 블록 생성
+                            code_content = '\n'.join(code_lines)
+                            code_block = {
+                                'type': 'code',
+                                'content': code_content,
+                            }
+                            blocks.append(code_block)
+
+                            # 남은 콘텐츠가 있으면 처리
+                            if remaining_content.strip():
+                                current_block_lines.append(remaining_content)
+                            break
+                        else:
+                            code_lines.append(line)
+                        i += 1
+
+                i += 1
+                continue
 
             # 현재 줄이 nowiki 시작인지 확인
             nowiki_start_match = PlainTextBlockParser.NOWIKI_START_PATTERN.match(line)

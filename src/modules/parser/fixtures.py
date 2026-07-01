@@ -71,6 +71,12 @@ class ParserFixtureLoader:
             ParserFixtureLoader._nowiki_with_text(),
             ParserFixtureLoader._nowiki_with_special_chars(),
             ParserFixtureLoader._nowiki_multiple(),
+            ParserFixtureLoader._code_simple(),
+            ParserFixtureLoader._code_with_syntax(),
+            ParserFixtureLoader._code_multiline(),
+            ParserFixtureLoader._code_with_text(),
+            ParserFixtureLoader._code_with_special_chars(),
+            ParserFixtureLoader._code_multiple(),
         ]
 
     @staticmethod
@@ -1005,6 +1011,117 @@ class ParserFixtureLoader:
                 blocks=[
                     {"type": "nowiki", "content": "First block"},
                     {"type": "nowiki", "content": "Second block"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _code_simple() -> ParserFixture:
+        """단순 코드 블록 픽스처."""
+        return ParserFixture(
+            name="code_simple",
+            source="{{{print('hello')}}}",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "code", "content": "print('hello')"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _code_with_syntax() -> ParserFixture:
+        """문법을 포함한 코드 블록 픽스처."""
+        return ParserFixture(
+            name="code_with_syntax",
+            source="{{{def foo():\n    return 42}}}",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "code", "content": "def foo():\n    return 42"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _code_multiline() -> ParserFixture:
+        """여러 줄의 코드 블록 픽스처."""
+        return ParserFixture(
+            name="code_multiline",
+            source="{{{\nFirst line\nSecond line\n}}}",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "code", "content": "First line\nSecond line"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _code_with_text() -> ParserFixture:
+        """텍스트와 함께 있는 코드 블록 픽스처."""
+        return ParserFixture(
+            name="code_with_text",
+            source="This is a paragraph.\n\n{{{x = 10}}}\n\nAnother paragraph.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is a paragraph."},
+                    {"type": "code", "content": "x = 10"},
+                    {"type": "paragraph", "content": "Another paragraph."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _code_with_special_chars() -> ParserFixture:
+        """특수 문자를 포함한 코드 블록 픽스처."""
+        return ParserFixture(
+            name="code_with_special_chars",
+            source="{{{& < > ' \" [ ] {{ # ! ~}}}",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "code", "content": "& < > ' \" [ ] {{ # ! ~"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _code_multiple() -> ParserFixture:
+        """여러 개의 코드 블록 픽스처."""
+        return ParserFixture(
+            name="code_multiple",
+            source="{{{First block}}}\n\n{{{Second block}}}",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "code", "content": "First block"},
+                    {"type": "code", "content": "Second block"},
                 ],
                 metadata={
                     "links": [],

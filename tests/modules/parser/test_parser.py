@@ -1640,3 +1640,154 @@ class TestPlainTextBlockParserNowiki:
         assert result.blocks[2]["type"] == "nowiki"
         assert result.blocks[3]["type"] == "list"
         assert result.blocks[4]["type"] == "nowiki"
+
+
+class TestPlainTextBlockParserCode:
+    """코드 블록 파서 테스트."""
+
+    def test_parses_simple_code_block(self):
+        """단순 코드 블록을 파싱한다."""
+        source = "{{{x = 10}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "code"
+        assert result.blocks[0]["content"] == "x = 10"
+
+    def test_parses_code_with_syntax(self):
+        """프로그래밍 문법을 포함한 코드 블록을 파싱한다."""
+        source = "{{{def foo():\n    return 42}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "code"
+        assert "def foo():" in result.blocks[0]["content"]
+        assert "return 42" in result.blocks[0]["content"]
+
+    def test_parses_code_multiline(self):
+        """여러 줄의 코드 블록을 파싱한다."""
+        source = "{{{\nFirst line\nSecond line\n}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "code"
+        assert result.blocks[0]["content"] == "First line\nSecond line"
+
+    def test_parses_code_with_text_before_and_after(self):
+        """텍스트 전후의 코드 블록을 파싱한다."""
+        source = "This is a paragraph.\n\n{{{x = 10}}}\n\nAnother paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "This is a paragraph."
+        assert result.blocks[1]["type"] == "code"
+        assert result.blocks[1]["content"] == "x = 10"
+        assert result.blocks[2]["type"] == "paragraph"
+        assert result.blocks[2]["content"] == "Another paragraph."
+
+    def test_parses_code_with_special_characters(self):
+        """특수 문자를 포함한 코드 블록을 파싱한다."""
+        source = "{{{& < > ' \" [ ] {{ # ! ~}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["type"] == "code"
+        assert result.blocks[0]["content"] == "& < > ' \" [ ] {{ # ! ~"
+
+    def test_parses_multiple_code_blocks(self):
+        """여러 개의 코드 블록을 파싱한다."""
+        source = "{{{First block}}}\n\n{{{Second block}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "code"
+        assert result.blocks[0]["content"] == "First block"
+        assert result.blocks[1]["type"] == "code"
+        assert result.blocks[1]["content"] == "Second block"
+
+    def test_code_with_heading(self):
+        """제목과 함께 있는 코드 블록을 파싱한다."""
+        source = "= Title =\n\n{{{code}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[1]["type"] == "code"
+
+    def test_code_with_list(self):
+        """목록과 함께 있는 코드 블록을 파싱한다."""
+        source = "* Item\n\n{{{code}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "list"
+        assert result.blocks[1]["type"] == "code"
+
+    def test_code_does_not_extract_metadata(self):
+        """코드 블록은 메타데이터를 추출하지 않는다."""
+        source = "{{{[[Link]] and [[Category:Test]]}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "code"
+        assert result.metadata["links"] == []
+        assert result.metadata["categories"] == []
+
+    def test_code_with_html_entities(self):
+        """HTML 엔티티를 포함한 코드 블록을 파싱한다."""
+        source = "{{{&lt;tag&gt; &amp; entity}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["content"] == "&lt;tag&gt; &amp; entity"
+
+    def test_code_empty_block(self):
+        """빈 코드 블록을 파싱한다."""
+        source = "{{{}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "code"
+        assert result.blocks[0]["content"] == ""
+
+    def test_code_single_line_with_content(self):
+        """한 줄 내에 완전한 코드 블록을 파싱한다."""
+        source = "{{{int x = 5;}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "code"
+        assert result.blocks[0]["content"] == "int x = 5;"
+
+    def test_code_spanning_many_lines(self):
+        """많은 줄에 걸쳐 있는 코드 블록을 파싱한다."""
+        source = "{{{\nline1\nline2\nline3\nline4\n}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "code"
+        assert "line1" in result.blocks[0]["content"]
+        assert "line4" in result.blocks[0]["content"]
+
+    def test_code_preserves_exact_content(self):
+        """코드 블록이 정확한 콘텐츠를 보존한다."""
+        source = "{{{  spaces  and\ttabs\t}}}"
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["content"] == "  spaces  and\ttabs\t"
+
+    def test_code_with_trailing_content_on_same_line(self):
+        """닫는 태그 이후 같은 줄에 콘텐츠가 있는 경우를 파싱한다."""
+        source = "{{{content}}} extra text"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "code"
+        assert result.blocks[0]["content"] == "content"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[1]["content"] == " extra text"
+
+    def test_multiple_blocks_with_code(self):
+        """코드와 다른 블록 타입들의 복합을 파싱한다."""
+        source = (
+            "= Header =\n"
+            "\n"
+            "Text paragraph.\n"
+            "\n"
+            "{{{code block}}}\n"
+            "\n"
+            "* List item\n"
+            "\n"
+            "{{{another code}}}"
+        )
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 5
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[2]["type"] == "code"
+        assert result.blocks[3]["type"] == "list"
+        assert result.blocks[4]["type"] == "code"
