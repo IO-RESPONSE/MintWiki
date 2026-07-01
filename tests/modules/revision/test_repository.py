@@ -454,3 +454,239 @@ class TestDatabaseRevisionRepository:
         assert result.author_id == "user1"
         assert result.summary == "Complex edit"
         assert result.parent_revision_id == "rev0"
+
+
+class TestRevisionListingOrder:
+    """리비전 나열 순서 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_in_memory_repository_lists_in_insertion_order(self):
+        """인메모리 저장소는 삽입 순서대로 리비전을 나열한다."""
+        repo = InMemoryRevisionRepository()
+        revision_ids = []
+        for i in range(5):
+            rev = Revision(
+                id=f"rev{i}",
+                document_id="doc1",
+                source=f"content {i}",
+                author_id="user1",
+                summary=f"Revision {i}",
+            )
+            await repo.create(rev)
+            revision_ids.append(f"rev{i}")
+
+        result = await repo.list_by_document_id("doc1")
+        assert len(result) == 5
+        for i, rev in enumerate(result):
+            assert rev.id == revision_ids[i]
+
+    @pytest.mark.asyncio
+    async def test_database_repository_lists_multiple_revisions_in_order(
+        self, async_db_session
+    ):
+        """데이터베이스 저장소는 많은 리비전을 생성 순서대로 나열한다."""
+        repo = DatabaseRevisionRepository(async_db_session)
+        revision_ids = []
+        for i in range(10):
+            rev = Revision(
+                id=f"rev{i}",
+                document_id="doc1",
+                source=f"content {i}",
+                author_id="user1",
+                summary=f"Revision {i}",
+            )
+            await repo.create(rev)
+            revision_ids.append(f"rev{i}")
+
+        result = await repo.list_by_document_id("doc1")
+        assert len(result) == 10
+        for i, rev in enumerate(result):
+            assert rev.id == revision_ids[i]
+
+    @pytest.mark.asyncio
+    async def test_database_repository_maintains_order_on_repeated_queries(
+        self, async_db_session
+    ):
+        """데이터베이스 저장소는 여러 번의 쿼리에서 일관된 순서를 유지한다."""
+        repo = DatabaseRevisionRepository(async_db_session)
+        for i in range(3):
+            rev = Revision(
+                id=f"rev{i}",
+                document_id="doc1",
+                source=f"content {i}",
+                author_id="user1",
+                summary=f"Revision {i}",
+            )
+            await repo.create(rev)
+
+        first_query = await repo.list_by_document_id("doc1")
+        second_query = await repo.list_by_document_id("doc1")
+        third_query = await repo.list_by_document_id("doc1")
+
+        assert len(first_query) == 3
+        assert len(second_query) == 3
+        assert len(third_query) == 3
+
+        first_ids = [rev.id for rev in first_query]
+        second_ids = [rev.id for rev in second_query]
+        third_ids = [rev.id for rev in third_query]
+
+        assert first_ids == second_ids == third_ids
+        assert first_ids == ["rev0", "rev1", "rev2"]
+
+    @pytest.mark.asyncio
+    async def test_database_repository_isolates_ordering_per_document(
+        self, async_db_session
+    ):
+        """데이터베이스 저장소는 문서별로 독립적인 순서를 유지한다."""
+        repo = DatabaseRevisionRepository(async_db_session)
+
+        for i in range(3):
+            rev_doc1 = Revision(
+                id=f"doc1_rev{i}",
+                document_id="doc1",
+                source=f"doc1 content {i}",
+                author_id="user1",
+                summary=f"Doc1 Revision {i}",
+            )
+            await repo.create(rev_doc1)
+
+        for i in range(2):
+            rev_doc2 = Revision(
+                id=f"doc2_rev{i}",
+                document_id="doc2",
+                source=f"doc2 content {i}",
+                author_id="user1",
+                summary=f"Doc2 Revision {i}",
+            )
+            await repo.create(rev_doc2)
+
+        doc1_revs = await repo.list_by_document_id("doc1")
+        doc2_revs = await repo.list_by_document_id("doc2")
+
+        assert len(doc1_revs) == 3
+        assert len(doc2_revs) == 2
+
+        doc1_ids = [rev.id for rev in doc1_revs]
+        doc2_ids = [rev.id for rev in doc2_revs]
+
+        assert doc1_ids == ["doc1_rev0", "doc1_rev1", "doc1_rev2"]
+        assert doc2_ids == ["doc2_rev0", "doc2_rev1"]
+
+    @pytest.mark.asyncio
+    async def test_database_repository_single_revision(self, async_db_session):
+        """데이터베이스 저장소는 단일 리비전을 올바르게 나열한다."""
+        repo = DatabaseRevisionRepository(async_db_session)
+        rev = Revision(
+            id="rev1",
+            document_id="doc1",
+            source="content",
+            author_id="user1",
+            summary="Single revision",
+        )
+        await repo.create(rev)
+
+        result = await repo.list_by_document_id("doc1")
+        assert len(result) == 1
+        assert result[0].id == "rev1"
+
+    @pytest.mark.asyncio
+    async def test_in_memory_repository_single_revision(self):
+        """인메모리 저장소는 단일 리비전을 올바르게 나열한다."""
+        repo = InMemoryRevisionRepository()
+        rev = Revision(
+            id="rev1",
+            document_id="doc1",
+            source="content",
+            author_id="user1",
+            summary="Single revision",
+        )
+        await repo.create(rev)
+
+        result = await repo.list_by_document_id("doc1")
+        assert len(result) == 1
+        assert result[0].id == "rev1"
+
+    @pytest.mark.asyncio
+    async def test_database_repository_preserves_parent_relationship_in_order(
+        self, async_db_session
+    ):
+        """데이터베이스 저장소는 부모 리비전 관계를 유지하며 순서를 보존한다."""
+        repo = DatabaseRevisionRepository(async_db_session)
+        rev1 = Revision(
+            id="rev1",
+            document_id="doc1",
+            source="v1",
+            author_id="user1",
+            summary="Initial",
+        )
+        rev2 = Revision(
+            id="rev2",
+            document_id="doc1",
+            source="v2",
+            author_id="user1",
+            summary="Edit 1",
+            parent_revision_id="rev1",
+        )
+        rev3 = Revision(
+            id="rev3",
+            document_id="doc1",
+            source="v3",
+            author_id="user1",
+            summary="Edit 2",
+            parent_revision_id="rev2",
+        )
+
+        await repo.create(rev1)
+        await repo.create(rev2)
+        await repo.create(rev3)
+
+        result = await repo.list_by_document_id("doc1")
+        assert len(result) == 3
+        assert result[0].parent_revision_id is None
+        assert result[1].parent_revision_id == "rev1"
+        assert result[2].parent_revision_id == "rev2"
+        assert result[0].id == "rev1"
+        assert result[1].id == "rev2"
+        assert result[2].id == "rev3"
+
+    @pytest.mark.asyncio
+    async def test_in_memory_repository_preserves_parent_relationship_in_order(self):
+        """인메모리 저장소는 부모 리비전 관계를 유지하며 순서를 보존한다."""
+        repo = InMemoryRevisionRepository()
+        rev1 = Revision(
+            id="rev1",
+            document_id="doc1",
+            source="v1",
+            author_id="user1",
+            summary="Initial",
+        )
+        rev2 = Revision(
+            id="rev2",
+            document_id="doc1",
+            source="v2",
+            author_id="user1",
+            summary="Edit 1",
+            parent_revision_id="rev1",
+        )
+        rev3 = Revision(
+            id="rev3",
+            document_id="doc1",
+            source="v3",
+            author_id="user1",
+            summary="Edit 2",
+            parent_revision_id="rev2",
+        )
+
+        await repo.create(rev1)
+        await repo.create(rev2)
+        await repo.create(rev3)
+
+        result = await repo.list_by_document_id("doc1")
+        assert len(result) == 3
+        assert result[0].parent_revision_id is None
+        assert result[1].parent_revision_id == "rev1"
+        assert result[2].parent_revision_id == "rev2"
+        assert result[0].id == "rev1"
+        assert result[1].id == "rev2"
+        assert result[2].id == "rev3"
