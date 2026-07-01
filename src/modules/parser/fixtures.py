@@ -47,6 +47,10 @@ class ParserFixtureLoader:
             ParserFixtureLoader._strike_simple(),
             ParserFixtureLoader._strike_multiple(),
             ParserFixtureLoader._strike_with_special_chars(),
+            ParserFixtureLoader._bold_with_nested_italic(),
+            ParserFixtureLoader._italic_with_nested_bold(),
+            ParserFixtureLoader._bold_with_nested_strike(),
+            ParserFixtureLoader._italic_with_nested_strike(),
         ]
 
     @staticmethod
@@ -463,6 +467,78 @@ class ParserFixtureLoader:
             expected_result=ParserResult(
                 blocks=[
                     {"type": "paragraph", "content": "This is ~~strike & obsolete!~~ text."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _bold_with_nested_italic() -> ParserFixture:
+        """이탤릭이 중첩된 굵은 텍스트 픽스처."""
+        return ParserFixture(
+            name="bold_with_nested_italic",
+            source="This is '''bold ''italic'' text''' here.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is '''bold ''italic'' text''' here."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _italic_with_nested_bold() -> ParserFixture:
+        """굵은 텍스트가 중첩된 이탤릭 픽스처."""
+        return ParserFixture(
+            name="italic_with_nested_bold",
+            source="This is ''italic '''bold''' text'' here.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is ''italic '''bold''' text'' here."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _bold_with_nested_strike() -> ParserFixture:
+        """취소선이 중첩된 굵은 텍스트 픽스처."""
+        return ParserFixture(
+            name="bold_with_nested_strike",
+            source="This is '''bold ~~strikethrough~~ text''' here.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is '''bold ~~strikethrough~~ text''' here."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _italic_with_nested_strike() -> ParserFixture:
+        """취소선이 중첩된 이탤릭 픽스처."""
+        return ParserFixture(
+            name="italic_with_nested_strike",
+            source="This is ''italic ~~strikethrough~~ text'' here.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is ''italic ~~strikethrough~~ text'' here."},
                 ],
                 metadata={
                     "links": [],

@@ -21,14 +21,14 @@ class PlainTextBlockParser:
     # 외부 링크 패턴: [URL] 또는 [URL label] 또는 [URL|label]
     EXTERNAL_LINK_PATTERN = re.compile(r'\[([^\s\]|]+)(?:(?:\s+|[|])[^\]]*)?\]')
 
-    # 굵은 텍스트 패턴: '''text'''
-    BOLD_PATTERN = re.compile(r"'''([^']+)'''", re.DOTALL)
+    # 굵은 텍스트 패턴: '''text''' (중첩된 마크 지원)
+    BOLD_PATTERN = re.compile(r"'''(.+?)'''", re.DOTALL)
 
-    # 이탤릭 텍스트 패턴: ''text''
-    ITALIC_PATTERN = re.compile(r"''([^']+)''", re.DOTALL)
+    # 이탤릭 텍스트 패턴: ''text'' (중첩된 마크 지원)
+    ITALIC_PATTERN = re.compile(r"''(.+?)''", re.DOTALL)
 
-    # 취소선 텍스트 패턴: ~~text~~
-    STRIKE_PATTERN = re.compile(r"~~([^~]+)~~", re.DOTALL)
+    # 취소선 텍스트 패턴: ~~text~~ (중첩된 마크 지원)
+    STRIKE_PATTERN = re.compile(r"~~(.+?)~~", re.DOTALL)
 
     @staticmethod
     def parse(source: str) -> ParserResult:

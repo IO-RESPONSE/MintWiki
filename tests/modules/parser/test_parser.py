@@ -955,3 +955,89 @@ class TestPlainTextBlockParserStrikeText:
         assert "'''bold'''" in result.blocks[0]["content"]
         assert "''italic''" in result.blocks[0]["content"]
         assert "~~strike~~" in result.blocks[0]["content"]
+
+
+class TestPlainTextBlockParserNestedInlineMarks:
+    """PlainTextBlockParser의 중첩된 인라인 마크 파싱 테스트."""
+
+    def test_parses_bold_with_nested_italic(self):
+        """굵은 텍스트 안에 중첩된 이탤릭을 파싱한다."""
+        source = "This is '''bold ''italic'' text''' here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "This is '''bold ''italic'' text''' here."
+
+    def test_parses_italic_with_nested_bold(self):
+        """이탤릭 안에 중첩된 굵은 텍스트를 파싱한다."""
+        source = "This is ''italic '''bold''' text'' here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "This is ''italic '''bold''' text'' here."
+
+    def test_parses_bold_with_nested_strike(self):
+        """굵은 텍스트 안에 중첩된 취소선을 파싱한다."""
+        source = "This is '''bold ~~strikethrough~~ text''' here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "This is '''bold ~~strikethrough~~ text''' here."
+
+    def test_parses_italic_with_nested_strike(self):
+        """이탤릭 안에 중첩된 취소선을 파싱한다."""
+        source = "This is ''italic ~~strikethrough~~ text'' here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "This is ''italic ~~strikethrough~~ text'' here."
+
+    def test_parses_multiple_nested_marks(self):
+        """여러 개의 중첩된 마크를 파싱한다."""
+        source = "Text with '''bold ''italic''' text and '''another ~~strike~~ bold'''."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert "'''bold ''italic'''" in result.blocks[0]["content"]
+        assert "'''another ~~strike~~ bold'''" in result.blocks[0]["content"]
+
+    def test_deeply_nested_marks(self):
+        """깊게 중첩된 마크를 파싱한다."""
+        source = "Text with '''bold ''italic ~~strike~~ italic'' bold'''."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text with '''bold ''italic ~~strike~~ italic'' bold'''."
+
+    def test_nested_marks_with_special_characters(self):
+        """특수 문자를 포함한 중첩된 마크를 파싱한다."""
+        source = "This is '''bold & ''important!'' text''' here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "This is '''bold & ''important!'' text''' here."
+
+    def test_nested_marks_at_paragraph_start(self):
+        """문단 시작의 중첩된 마크를 파싱한다."""
+        source = "'''Bold ''italic'' text''' continues here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "'''Bold ''italic'' text''' continues here."
+
+    def test_nested_marks_at_paragraph_end(self):
+        """문단 끝의 중첩된 마크를 파싱한다."""
+        source = "Text ends with '''bold ''italic'' text'''."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text ends with '''bold ''italic'' text'''."
+
+    def test_nested_marks_in_multiple_blocks(self):
+        """여러 블록의 중첩된 마크를 파싱한다."""
+        source = "First '''bold ''italic'' text'''.\n\nSecond ''italic '''bold''' text''."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert "'''bold ''italic'' text'''" in result.blocks[0]["content"]
+        assert "''italic '''bold''' text''" in result.blocks[1]["content"]
+
+    def test_nested_marks_do_not_create_escaped_html_flag(self):
+        """중첩된 마크는 이스케이프된 HTML 플래그를 생성하지 않는다."""
+        source = "Text with '''bold ''italic'' text''' only."
+        result = PlainTextBlockParser.parse(source)
+        assert "has_escaped_html" not in result.blocks[0]
