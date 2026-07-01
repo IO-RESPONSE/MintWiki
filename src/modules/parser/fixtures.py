@@ -38,6 +38,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._external_link_simple(),
             ParserFixtureLoader._external_links_multiple(),
             ParserFixtureLoader._external_link_with_label(),
+            ParserFixtureLoader._bold_simple(),
+            ParserFixtureLoader._bold_multiple(),
+            ParserFixtureLoader._bold_with_special_chars(),
         ]
 
     @staticmethod
@@ -297,6 +300,60 @@ class ParserFixtureLoader:
                     "categories": [],
                     "headings": [],
                     "external_links": ["https://example.com"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _bold_simple() -> ParserFixture:
+        """단순 굵은 텍스트 픽스처."""
+        return ParserFixture(
+            name="bold_simple",
+            source="This is '''bold text''' in a paragraph.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is '''bold text''' in a paragraph."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _bold_multiple() -> ParserFixture:
+        """여러 개의 굵은 텍스트 픽스처."""
+        return ParserFixture(
+            name="bold_multiple",
+            source="This has '''first bold''' and '''second bold''' text.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This has '''first bold''' and '''second bold''' text."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _bold_with_special_chars() -> ParserFixture:
+        """특수 문자를 포함한 굵은 텍스트 픽스처."""
+        return ParserFixture(
+            name="bold_with_special_chars",
+            source="This is '''bold & important!''' text.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is '''bold & important!''' text."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
                 },
             ),
         )

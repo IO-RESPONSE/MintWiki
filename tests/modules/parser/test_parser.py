@@ -682,3 +682,93 @@ class TestPlainTextBlockParserExternalLinks:
         source = "This [foobar://example.com] is not a valid link."
         result = PlainTextBlockParser.parse(source)
         assert "external_links" not in result.metadata or len(result.metadata.get("external_links", [])) == 0
+
+
+class TestPlainTextBlockParserBoldText:
+    """PlainTextBlockParser의 굵은 텍스트 파싱 테스트."""
+
+    def test_parses_single_bold_text(self):
+        """단일 굵은 텍스트를 파싱한다."""
+        source = "This is '''bold text''' in a paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "This is '''bold text''' in a paragraph."
+
+    def test_parses_bold_text_at_start(self):
+        """문장 시작의 굳은 텍스트를 파싱한다."""
+        source = "'''Bold''' text here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "'''Bold''' text here."
+
+    def test_parses_bold_text_at_end(self):
+        """문장 끝의 굵은 텍스트를 파싱한다."""
+        source = "Text is '''bold'''."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text is '''bold'''."
+
+    def test_parses_multiple_bold_texts(self):
+        """여러 개의 굵은 텍스트를 파싱한다."""
+        source = "This has '''first bold''' and '''second bold''' text."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "This has '''first bold''' and '''second bold''' text."
+
+    def test_bold_text_with_special_characters(self):
+        """특수 문자를 포함한 굵은 텍스트를 파싱한다."""
+        source = "This is '''bold & important!''' text."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "This is '''bold & important!''' text."
+
+    def test_bold_text_with_numbers(self):
+        """숫자를 포함한 굵은 텍스트를 파싱한다."""
+        source = "This is '''bold 123''' text."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "This is '''bold 123''' text."
+
+    def test_bold_text_preserved_in_multiple_blocks(self):
+        """여러 블록에서 굵은 텍스트가 보존된다."""
+        source = "First '''bold''' paragraph.\n\nSecond '''bold''' paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert "'''bold'''" in result.blocks[0]["content"]
+        assert "'''bold'''" in result.blocks[1]["content"]
+
+    def test_bold_text_with_internal_whitespace(self):
+        """내부 공백을 포함한 굵은 텍스트를 파싱한다."""
+        source = "Text with '''multiple words in bold''' here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text with '''multiple words in bold''' here."
+
+    def test_bold_text_adjacent_to_links(self):
+        """링크 옆의 굵은 텍스트를 파싱한다."""
+        source = "See '''bold''' and [[Link]] together."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert "'''bold'''" in result.blocks[0]["content"]
+        assert "[[Link]]" in result.blocks[0]["content"]
+
+    def test_bold_text_does_not_create_escaped_html_flag(self):
+        """굵은 텍스트는 이스케이프된 HTML 플래그를 생성하지 않는다."""
+        source = "Text with '''bold''' only."
+        result = PlainTextBlockParser.parse(source)
+        assert "has_escaped_html" not in result.blocks[0]
+
+    def test_bold_text_empty_not_parsed(self):
+        """빈 굵은 텍스트는 파싱되지 않는다."""
+        source = "Text with '''''' no content."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text with '''''' no content."
+
+    def test_bold_text_with_single_quotes_inside(self):
+        """굵은 텍스트 안에 단일 따옴표를 포함한다."""
+        source = "Text with '''it's bold''' here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text with '''it's bold''' here."

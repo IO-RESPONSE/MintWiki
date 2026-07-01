@@ -21,6 +21,9 @@ class PlainTextBlockParser:
     # 외부 링크 패턴: [URL] 또는 [URL label] 또는 [URL|label]
     EXTERNAL_LINK_PATTERN = re.compile(r'\[([^\s\]|]+)(?:(?:\s+|[|])[^\]]*)?\]')
 
+    # 굵은 텍스트 패턴: '''text'''
+    BOLD_PATTERN = re.compile(r"'''([^']+)'''", re.DOTALL)
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
