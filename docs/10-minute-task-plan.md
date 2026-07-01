@@ -49,10 +49,7 @@ Phase 1 establishes the development foundation.
 | `0029` | Connect document create to first revision |
 | `0030` | Add current revision read model |
 
-## Next Planned Ranges
-
-These ranges should be expanded into individual queue files before the runner
-reaches them.
+## Expanded MVP Queue
 
 | Range | Phase |
 |---|---|
@@ -63,7 +60,13 @@ reaches them.
 | `0191-0240` | Discussion MVP |
 | `0241-0290` | Search adapter and local fallback |
 | `0291-0340` | Job queue abstraction and indexing jobs |
-| `0341-0400` | Admin/audit basics |
+| `0341-0350` | Admin/audit seed |
+
+Tasks `0031-0350` have been expanded into individual queue files. The queue now
+covers the first MVP pass through document/revision persistence, parser, render,
+ACL, discussion, search, jobs, admin, and audit foundations.
+
+The `0351-0400` admin/audit range is intentionally reserved for the next queue
+expansion after the first admin/audit seed tasks are complete.
 
 The backlog must be replenished before `tasks/queue` becomes empty.
-
