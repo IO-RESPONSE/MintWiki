@@ -8,6 +8,7 @@ QUEUE_DIR="$ROOT_DIR/tasks/queue"
 IN_PROGRESS_DIR="$ROOT_DIR/tasks/in-progress"
 DONE_DIR="$ROOT_DIR/tasks/done"
 FAILED_DIR="$ROOT_DIR/tasks/failed"
+AGENT="${WIKI_ENGINE_AGENT:-claude}"
 
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
@@ -58,7 +59,18 @@ finish_failed() {
 
 trap 'finish_failed $?' ERR
 
-scripts/codex-runner.sh "$ACTIVE_TASK" "$RUN_DIR"
+case "$AGENT" in
+  claude)
+    scripts/claude-runner.sh "$ACTIVE_TASK" "$RUN_DIR"
+    ;;
+  codex)
+    scripts/codex-runner.sh "$ACTIVE_TASK" "$RUN_DIR"
+    ;;
+  *)
+    echo "Unsupported WIKI_ENGINE_AGENT: $AGENT" >&2
+    exit 64
+    ;;
+esac
 scripts/test.sh
 scripts/qa.sh
 
@@ -72,4 +84,3 @@ if git remote get-url origin >/dev/null 2>&1; then
 fi
 
 echo "Task complete: $TASK_NAME"
-

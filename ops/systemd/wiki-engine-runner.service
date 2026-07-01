@@ -8,9 +8,12 @@ Type=oneshot
 WorkingDirectory=/root/wiki-engine-blueprint
 Environment=WIKI_ENGINE_REPO=/root/wiki-engine-blueprint
 Environment=WIKI_ENGINE_LOCK=/tmp/wiki-engine-runner.lock
+Environment=WIKI_ENGINE_AGENT=claude
+Environment=CLAUDE_BIN=/root/.local/bin/claude
+Environment=CLAUDE_PERMISSION_MODE=acceptEdits
+Environment=CLAUDE_OUTPUT_FORMAT=json
 Environment=CODEX_BIN=/root/.nvm/versions/node/v22.22.2/bin/codex
 Environment=CODEX_SANDBOX=workspace-write
 Environment=CODEX_APPROVAL=never
 ExecStart=/root/wiki-engine-blueprint/scripts/run-next-task.sh
 TimeoutStartSec=540
-

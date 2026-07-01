@@ -5,8 +5,8 @@ The automated loop is:
 ```text
 systemd timer
   -> scripts/run-next-task.sh
-  -> scripts/codex-runner.sh
-  -> codex exec
+  -> scripts/claude-runner.sh or scripts/codex-runner.sh
+  -> claude --print or codex exec
   -> scripts/test.sh
   -> scripts/qa.sh
   -> git commit
@@ -16,7 +16,7 @@ systemd timer
 ## Requirements
 
 - The repository must be a Git repository.
-- `codex` must be installed and authenticated for non-interactive use.
+- `claude` or `codex` must be installed and authenticated for non-interactive use.
 - The runner process must have write access to the repository.
 - The working tree must be clean before a task starts.
 
@@ -31,13 +31,29 @@ The runner reads these optional environment variables:
 WIKI_ENGINE_REPO=/root/wiki-engine-blueprint
 WIKI_ENGINE_LOCK=/tmp/wiki-engine-runner.lock
 WIKI_ENGINE_RUNS_DIR=/root/wiki-engine-blueprint/runs
+WIKI_ENGINE_AGENT=claude
+CLAUDE_BIN=claude
+CLAUDE_PERMISSION_MODE=acceptEdits
+CLAUDE_OUTPUT_FORMAT=json
+CLAUDE_MODEL=
+CLAUDE_MAX_BUDGET_USD=
 CODEX_BIN=codex
 CODEX_MODEL=
 CODEX_SANDBOX=workspace-write
 CODEX_APPROVAL=never
 ```
 
-`CODEX_APPROVAL=never` is important for unattended systemd execution. If Codex
+`WIKI_ENGINE_AGENT=claude` makes the timer use Claude Code by default.
+Set `WIKI_ENGINE_AGENT=codex` to switch back to Codex.
+
+`CLAUDE_PERMISSION_MODE=acceptEdits` is the default because Claude Code refuses
+`bypassPermissions` when run as root. If you later run the systemd service as a
+non-root dedicated user in an isolated runner, you can evaluate
+`bypassPermissions`.
+
+Set `CLAUDE_MAX_BUDGET_USD` to cap spend for each print-mode invocation.
+
+`CODEX_APPROVAL=never` is important for unattended Codex execution. If Codex
 needs an action that requires approval, that run should fail instead of hanging.
 
 ## Safety Behavior
@@ -77,4 +93,3 @@ Check status and logs:
 systemctl status wiki-engine-runner.timer
 journalctl -u wiki-engine-runner.service -f
 ```
-
