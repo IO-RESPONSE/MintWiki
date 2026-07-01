@@ -118,6 +118,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._include_macro_simple(),
             ParserFixtureLoader._include_macro_multiple(),
             ParserFixtureLoader._include_macro_with_heading(),
+            ParserFixtureLoader._folding_macro_simple(),
+            ParserFixtureLoader._folding_macro_multiple(),
+            ParserFixtureLoader._folding_macro_with_heading(),
         ]
 
     @staticmethod
@@ -2178,6 +2181,69 @@ class ParserFixtureLoader:
                         {"level": 2, "text": "Subsection"},
                     ],
                     "transclusions": ["Template:Content", "Template:Sidebar"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _folding_macro_simple() -> ParserFixture:
+        """단순 접기 매크로 픽스처."""
+        return ParserFixture(
+            name="folding_macro_simple",
+            source="See [[^Details]] for more info.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "See [[^Details]] for more info."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "foldings": ["Details"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _folding_macro_multiple() -> ParserFixture:
+        """여러 접기 매크로 픽스처."""
+        return ParserFixture(
+            name="folding_macro_multiple",
+            source="Use [[^Expand Info]] and [[^More Details]] together.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "Use [[^Expand Info]] and [[^More Details]] together."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "foldings": ["Expand Info", "More Details"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _folding_macro_with_heading() -> ParserFixture:
+        """제목과 함께 있는 접기 매크로 픽스처."""
+        return ParserFixture(
+            name="folding_macro_with_heading",
+            source="= Main Section =\n\nContent: [[^Info]]\n\n== Subsection ==\n\n[[^Advanced Details]]",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "heading", "level": 1, "content": "Main Section"},
+                    {"type": "paragraph", "content": "Content: [[^Info]]"},
+                    {"type": "heading", "level": 2, "content": "Subsection"},
+                    {"type": "paragraph", "content": "[[^Advanced Details]]"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [
+                        {"level": 1, "text": "Main Section"},
+                        {"level": 2, "text": "Subsection"},
+                    ],
+                    "foldings": ["Info", "Advanced Details"],
                 },
             ),
         )

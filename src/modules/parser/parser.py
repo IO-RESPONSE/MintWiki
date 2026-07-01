@@ -36,6 +36,9 @@ class PlainTextBlockParser:
     # 포함 매크로 패턴: #include(PageName) (트랜스클루전)
     INCLUDE_MACRO_PATTERN = re.compile(r'#include\(([^)]+)\)')
 
+    # 접기 매크로 패턴: [[^Title]] (폴딩)
+    FOLDING_MACRO_PATTERN = re.compile(r'\[\[\^([^\]]+)\]\]')
+
     # 순서 없는 목록 패턴: * 텍스트 (수준 1), ** 텍스트 (수준 2), 등
     UNORDERED_LIST_PATTERN = re.compile(r'^(\*+)\s+(.+)$')
 
@@ -509,7 +512,7 @@ class PlainTextBlockParser:
         """
         소스 텍스트와 블록들에서 메타데이터를 추출한다.
 
-        제목, 링크, 카테고리, 리다이렉트, 외부 링크, 백링크, 각주, 트랜스클루전을 메타데이터로 추출한다.
+        제목, 링크, 카테고리, 리다이렉트, 외부 링크, 백링크, 각주, 트랜스클루전, 접기 매크로를 메타데이터로 추출한다.
 
         Args:
             source: 원본 소스 텍스트
@@ -526,6 +529,7 @@ class PlainTextBlockParser:
         backlinks = []
         footnotes = []
         transclusions = []
+        foldings = []
         main_heading = None
 
         # 소스에서 메타데이터 라인 추출
@@ -544,6 +548,9 @@ class PlainTextBlockParser:
             # 소스 라인에서 포함 매크로 추출
             extracted_transclusions = PlainTextBlockParser._extract_transclusions_from_content(line)
             transclusions.extend(extracted_transclusions)
+            # 소스 라인에서 접기 매크로 추출
+            extracted_foldings = PlainTextBlockParser._extract_foldings_from_content(line)
+            foldings.extend(extracted_foldings)
 
         # 블록에서 메타데이터 추출
         for block in blocks:
@@ -574,6 +581,9 @@ class PlainTextBlockParser:
                 # 문단에서 트랜스클루전 추출
                 extracted_transclusions = PlainTextBlockParser._extract_transclusions_from_content(content)
                 transclusions.extend(extracted_transclusions)
+                # 문단에서 접기 매크로 추출
+                extracted_foldings = PlainTextBlockParser._extract_foldings_from_content(content)
+                foldings.extend(extracted_foldings)
 
         # 중복 제거하되 순서 유지 (각주는 반복 발생을 추적하므로 중복 제거하지 않음)
         links = list(dict.fromkeys(links))
@@ -581,6 +591,7 @@ class PlainTextBlockParser:
         external_links = list(dict.fromkeys(external_links))
         backlinks = list(dict.fromkeys(backlinks))
         transclusions = list(dict.fromkeys(transclusions))
+        foldings = list(dict.fromkeys(foldings))
 
         # 리다이렉트의 "from" 필드를 main heading으로 설정
         if redirects and main_heading:
@@ -613,6 +624,10 @@ class PlainTextBlockParser:
         # transclusions가 있으면 추가
         if transclusions:
             metadata['transclusions'] = transclusions
+
+        # foldings이 있으면 추가
+        if foldings:
+            metadata['foldings'] = foldings
 
         return metadata
 
@@ -724,6 +739,28 @@ class PlainTextBlockParser:
                 transclusions.append(page_name)
 
         return transclusions
+
+    @staticmethod
+    def _extract_foldings_from_content(content: str) -> list:
+        """
+        콘텐츠에서 접기 매크로를 추출한다.
+
+        접기 매크로 형식: [[^Title]] 또는 [[^Title^]]
+
+        Args:
+            content: 파싱할 콘텐츠
+
+        Returns:
+            접기 매크로(폴딩) 목록
+        """
+        foldings = []
+
+        for match in PlainTextBlockParser.FOLDING_MACRO_PATTERN.finditer(content):
+            folding_title = match.group(1).strip()
+            if folding_title:
+                foldings.append(folding_title)
+
+        return foldings
 
     @staticmethod
     def _build_nested_list(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
