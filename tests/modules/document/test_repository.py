@@ -1,11 +1,17 @@
 """문서 저장소 인터페이스 테스트."""
 import pytest
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+
 from modules.document.model import Document
 from modules.document.repository import (
     DocumentRepository,
     DuplicateNormalizedTitleError,
     InMemoryDocumentRepository,
+    DatabaseDocumentRepository,
 )
+from persistence.base import Base
+from persistence.models import DocumentORM
 
 
 class ConcreteRepository(DocumentRepository):
@@ -179,3 +185,122 @@ class TestInMemoryDocumentRepository:
         assert repo.get_by_normalized_title("Document One") is not None
         assert repo.get_by_normalized_title("Document Two") is not None
         assert repo.get_by_normalized_title("Document Three") is not None
+
+
+@pytest.fixture
+async def async_db_session():
+    """테스트용 인메모리 SQLite 데이터베이스 세션을 생성한다."""
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        echo=False,
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async_session = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    async with async_session() as session:
+        yield session
+
+    await engine.dispose()
+
+
+class TestDatabaseDocumentRepository:
+    """데이터베이스 저장소 구현 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_can_create_document(self, async_db_session):
+        """데이터베이스 저장소는 문서를 생성할 수 있다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc = Document(id="doc1", title="Test Document")
+        result = await repo.create(doc)
+        assert result.id == "doc1"
+        assert result.title == "Test Document"
+
+    @pytest.mark.asyncio
+    async def test_can_fetch_document_by_id(self, async_db_session):
+        """데이터베이스 저장소는 id로 문서를 조회할 수 있다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc = Document(id="doc1", title="Test Document")
+        await repo.create(doc)
+        result = await repo.get("doc1")
+        assert result is not None
+        assert result.id == "doc1"
+        assert result.title == "Test Document"
+
+    @pytest.mark.asyncio
+    async def test_returns_none_for_missing_id(self, async_db_session):
+        """데이터베이스 저장소는 없는 id를 조회하면 None을 반환한다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        result = await repo.get("nonexistent")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_can_fetch_document_by_normalized_title(self, async_db_session):
+        """데이터베이스 저장소는 정규화된 제목으로 문서를 조회할 수 있다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc = Document(id="doc1", title="Test Document")
+        await repo.create(doc)
+        result = await repo.get_by_normalized_title("Test Document")
+        assert result is not None
+        assert result.id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_can_fetch_document_by_normalized_title_with_spaces(self, async_db_session):
+        """데이터베이스 저장소는 공백이 다른 제목도 정규화하여 조회할 수 있다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc = Document(id="doc1", title="  Test   Document  ")
+        await repo.create(doc)
+        result = await repo.get_by_normalized_title("Test Document")
+        assert result is not None
+        assert result.id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_returns_none_for_missing_normalized_title(self, async_db_session):
+        """데이터베이스 저장소는 없는 정규화된 제목을 조회하면 None을 반환한다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        result = await repo.get_by_normalized_title("Nonexistent Title")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_rejects_duplicate_normalized_title(self, async_db_session):
+        """데이터베이스 저장소는 중복된 정규화된 제목을 거부한다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc1 = Document(id="doc1", title="Test Document")
+        await repo.create(doc1)
+
+        doc2 = Document(id="doc2", title="Test Document")
+        with pytest.raises(DuplicateNormalizedTitleError):
+            await repo.create(doc2)
+
+    @pytest.mark.asyncio
+    async def test_rejects_duplicate_normalized_title_with_different_spaces(self, async_db_session):
+        """데이터베이스 저장소는 정규화 후 중복인 제목을 거부한다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc1 = Document(id="doc1", title="Test Document")
+        await repo.create(doc1)
+
+        doc2 = Document(id="doc2", title="  Test   Document  ")
+        with pytest.raises(DuplicateNormalizedTitleError):
+            await repo.create(doc2)
+
+    @pytest.mark.asyncio
+    async def test_stores_multiple_documents(self, async_db_session):
+        """데이터베이스 저장소는 여러 문서를 저장할 수 있다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        doc1 = Document(id="doc1", title="Document One")
+        doc2 = Document(id="doc2", title="Document Two")
+        doc3 = Document(id="doc3", title="Document Three")
+
+        await repo.create(doc1)
+        await repo.create(doc2)
+        await repo.create(doc3)
+
+        assert await repo.get("doc1") is not None
+        assert await repo.get("doc2") is not None
+        assert await repo.get("doc3") is not None
+        assert await repo.get_by_normalized_title("Document One") is not None
+        assert await repo.get_by_normalized_title("Document Two") is not None
+        assert await repo.get_by_normalized_title("Document Three") is not None

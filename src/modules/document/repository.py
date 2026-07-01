@@ -2,7 +2,12 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
+
 from modules.document.model import Document
+from persistence.models import DocumentORM
 
 
 class DuplicateNormalizedTitleError(Exception):
@@ -126,3 +131,86 @@ class InMemoryDocumentRepository(DocumentRepository):
         if doc_id is None:
             return None
         return self.documents.get(doc_id)
+
+
+class DatabaseDocumentRepository(DocumentRepository):
+    """
+    데이터베이스에 문서를 저장하는 저장소 구현.
+
+    PostgreSQL 데이터베이스를 사용하여 문서를 영속적으로 저장한다.
+    정규화된 제목의 중복을 방지한다.
+    """
+
+    def __init__(self, session: AsyncSession):
+        """
+        저장소를 초기화한다.
+
+        Args:
+            session: SQLAlchemy AsyncSession 인스턴스
+        """
+        self.session = session
+
+    async def create(self, document: Document) -> Document:
+        """
+        새로운 문서를 데이터베이스에 저장한다.
+
+        정규화된 제목이 이미 존재하면 DuplicateNormalizedTitleError를 발생시킨다.
+
+        Args:
+            document: 저장할 문서
+
+        Returns:
+            저장된 문서
+
+        Raises:
+            DuplicateNormalizedTitleError: 정규화된 제목이 중복된 경우
+        """
+        orm_document = DocumentORM.from_domain(document)
+        self.session.add(orm_document)
+        try:
+            await self.session.flush()
+            await self.session.commit()
+        except IntegrityError as e:
+            await self.session.rollback()
+            if "normalized_title" in str(e):
+                raise DuplicateNormalizedTitleError(
+                    f"문서 제목 '{document.normalized_title}'는 이미 존재합니다"
+                )
+            raise
+        return orm_document.to_domain()
+
+    async def get(self, id: str) -> Optional[Document]:
+        """
+        주어진 id로 문서를 조회한다.
+
+        Args:
+            id: 조회할 문서의 고유 식별자
+
+        Returns:
+            조회된 문서 또는 없으면 None
+        """
+        query = select(DocumentORM).where(DocumentORM.id == id)
+        result = await self.session.execute(query)
+        orm_document = result.scalar_one_or_none()
+        if orm_document is None:
+            return None
+        return orm_document.to_domain()
+
+    async def get_by_normalized_title(self, normalized_title: str) -> Optional[Document]:
+        """
+        정규화된 제목으로 문서를 조회한다.
+
+        Args:
+            normalized_title: 조회할 문서의 정규화된 제목
+
+        Returns:
+            조회된 문서 또는 없으면 None
+        """
+        query = select(DocumentORM).where(
+            DocumentORM.normalized_title == normalized_title
+        )
+        result = await self.session.execute(query)
+        orm_document = result.scalar_one_or_none()
+        if orm_document is None:
+            return None
+        return orm_document.to_domain()
