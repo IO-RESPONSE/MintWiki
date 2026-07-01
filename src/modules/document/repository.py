@@ -26,7 +26,7 @@ class DocumentRepository(ABC):
     """
 
     @abstractmethod
-    def create(self, document: Document) -> Document:
+    async def create(self, document: Document) -> Document:
         """
         새로운 문서를 저장소에 저장한다.
 
@@ -42,7 +42,7 @@ class DocumentRepository(ABC):
         pass
 
     @abstractmethod
-    def get(self, id: str) -> Optional[Document]:
+    async def get(self, id: str) -> Optional[Document]:
         """
         주어진 id로 문서를 조회한다.
 
@@ -55,7 +55,7 @@ class DocumentRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_normalized_title(self, normalized_title: str) -> Optional[Document]:
+    async def get_by_normalized_title(self, normalized_title: str) -> Optional[Document]:
         """
         정규화된 제목으로 문서를 조회한다.
 
@@ -81,7 +81,7 @@ class InMemoryDocumentRepository(DocumentRepository):
         self.documents: dict[str, Document] = {}
         self.normalized_title_to_id: dict[str, str] = {}
 
-    def create(self, document: Document) -> Document:
+    async def create(self, document: Document) -> Document:
         """
         새로운 문서를 저장소에 저장한다.
 
@@ -105,7 +105,7 @@ class InMemoryDocumentRepository(DocumentRepository):
         self.normalized_title_to_id[document.normalized_title] = document.id
         return document
 
-    def get(self, id: str) -> Optional[Document]:
+    async def get(self, id: str) -> Optional[Document]:
         """
         주어진 id로 문서를 조회한다.
 
@@ -117,7 +117,7 @@ class InMemoryDocumentRepository(DocumentRepository):
         """
         return self.documents.get(id)
 
-    def get_by_normalized_title(self, normalized_title: str) -> Optional[Document]:
+    async def get_by_normalized_title(self, normalized_title: str) -> Optional[Document]:
         """
         정규화된 제목으로 문서를 조회한다.
 

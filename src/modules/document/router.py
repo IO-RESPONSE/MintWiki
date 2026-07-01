@@ -1,7 +1,7 @@
 """문서 API 라우터."""
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from modules.document.repository import InMemoryDocumentRepository
+from modules.document.repository import DatabaseDocumentRepository
 from modules.document.schema import CreateDocumentRequest, DocumentResponse
 from modules.document.service import DocumentService
 
@@ -10,16 +10,27 @@ from modules.document.service import DocumentService
 router = APIRouter()
 
 
-def get_document_service(request: Request) -> DocumentService:
+async def get_session(request: Request):
+    """
+    요청에 대한 데이터베이스 세션을 생성한다.
+
+    세션은 요청의 지속 시간 동안 유지된다.
+    """
+    session_factory = request.app.state.session_factory
+    async with session_factory() as session:
+        yield session
+
+
+async def get_document_service(
+    session=Depends(get_session),
+) -> DocumentService:
     """
     문서 서비스를 반환한다.
 
-    애플리케이션 상태에서 저장소를 가져오거나 생성한다.
-    이를 통해 모든 요청에서 같은 저장소 인스턴스를 공유한다.
+    데이터베이스 세션을 사용하여 저장소를 생성한다.
     """
-    if not hasattr(request.app.state, "document_repository"):
-        request.app.state.document_repository = InMemoryDocumentRepository()
-    return DocumentService(request.app.state.document_repository)
+    repository = DatabaseDocumentRepository(session)
+    return DocumentService(repository)
 
 
 @router.get("/", tags=["documents"])
@@ -49,7 +60,7 @@ async def create_document(
     Returns:
         생성된 문서의 id와 title
     """
-    document = service.create(request.title)
+    document = await service.create(request.title)
     return DocumentResponse(id=document.id, title=document.title)
 
 
@@ -71,7 +82,7 @@ async def get_document(
     Raises:
         HTTPException: 문서를 찾을 수 없을 때 404 반환
     """
-    document = service.get(document_id)
+    document = await service.get(document_id)
     if document is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

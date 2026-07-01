@@ -21,16 +21,16 @@ class ConcreteRepository(DocumentRepository):
         """저장소를 초기화한다."""
         self.documents = {}
 
-    def create(self, document: Document) -> Document:
+    async def create(self, document: Document) -> Document:
         """문서를 저장소에 저장한다."""
         self.documents[document.id] = document
         return document
 
-    def get(self, id: str) -> Document | None:
+    async def get(self, id: str) -> Document | None:
         """id로 문서를 조회한다."""
         return self.documents.get(id)
 
-    def get_by_normalized_title(self, normalized_title: str) -> Document | None:
+    async def get_by_normalized_title(self, normalized_title: str) -> Document | None:
         """정규화된 제목으로 문서를 조회한다."""
         for doc in self.documents.values():
             if doc.normalized_title == normalized_title:
@@ -58,133 +58,147 @@ class TestDocumentRepositoryInterface:
         """저장소는 get_by_normalized_title 메서드를 정의한다."""
         assert hasattr(DocumentRepository, "get_by_normalized_title")
 
-    def test_concrete_implementation_can_create_document(self):
+    @pytest.mark.asyncio
+    async def test_concrete_implementation_can_create_document(self):
         """구체적인 구현은 문서를 생성할 수 있다."""
         repo = ConcreteRepository()
         doc = Document(id="doc1", title="Test Document")
-        result = repo.create(doc)
+        result = await repo.create(doc)
         assert result.id == "doc1"
         assert result.title == "Test Document"
 
-    def test_concrete_implementation_can_get_document_by_id(self):
+    @pytest.mark.asyncio
+    async def test_concrete_implementation_can_get_document_by_id(self):
         """구체적인 구현은 id로 문서를 조회할 수 있다."""
         repo = ConcreteRepository()
         doc = Document(id="doc1", title="Test Document")
-        repo.create(doc)
-        result = repo.get("doc1")
+        await repo.create(doc)
+        result = await repo.get("doc1")
         assert result is not None
         assert result.id == "doc1"
 
-    def test_concrete_implementation_returns_none_for_missing_id(self):
+    @pytest.mark.asyncio
+    async def test_concrete_implementation_returns_none_for_missing_id(self):
         """구체적인 구현은 없는 문서를 조회하면 None을 반환한다."""
         repo = ConcreteRepository()
-        result = repo.get("nonexistent")
+        result = await repo.get("nonexistent")
         assert result is None
 
-    def test_concrete_implementation_can_get_document_by_normalized_title(self):
+    @pytest.mark.asyncio
+    async def test_concrete_implementation_can_get_document_by_normalized_title(self):
         """구체적인 구현은 정규화된 제목으로 문서를 조회할 수 있다."""
         repo = ConcreteRepository()
         doc = Document(id="doc1", title="Test Document")
-        repo.create(doc)
-        result = repo.get_by_normalized_title("Test Document")
+        await repo.create(doc)
+        result = await repo.get_by_normalized_title("Test Document")
         assert result is not None
         assert result.id == "doc1"
 
-    def test_concrete_implementation_returns_none_for_missing_normalized_title(self):
+    @pytest.mark.asyncio
+    async def test_concrete_implementation_returns_none_for_missing_normalized_title(self):
         """구체적인 구현은 없는 정규화된 제목을 조회하면 None을 반환한다."""
         repo = ConcreteRepository()
-        result = repo.get_by_normalized_title("Nonexistent Title")
+        result = await repo.get_by_normalized_title("Nonexistent Title")
         assert result is None
 
 
 class TestInMemoryDocumentRepository:
     """인메모리 저장소 구현 테스트."""
 
-    def test_can_create_document(self):
+    @pytest.mark.asyncio
+    async def test_can_create_document(self):
         """인메모리 저장소는 문서를 생성할 수 있다."""
         repo = InMemoryDocumentRepository()
         doc = Document(id="doc1", title="Test Document")
-        result = repo.create(doc)
+        result = await repo.create(doc)
         assert result.id == "doc1"
         assert result.title == "Test Document"
 
-    def test_can_fetch_document_by_id(self):
+    @pytest.mark.asyncio
+    async def test_can_fetch_document_by_id(self):
         """인메모리 저장소는 id로 문서를 조회할 수 있다."""
         repo = InMemoryDocumentRepository()
         doc = Document(id="doc1", title="Test Document")
-        repo.create(doc)
-        result = repo.get("doc1")
+        await repo.create(doc)
+        result = await repo.get("doc1")
         assert result is not None
         assert result.id == "doc1"
         assert result.title == "Test Document"
 
-    def test_returns_none_for_missing_id(self):
+    @pytest.mark.asyncio
+    async def test_returns_none_for_missing_id(self):
         """인메모리 저장소는 없는 id를 조회하면 None을 반환한다."""
         repo = InMemoryDocumentRepository()
-        result = repo.get("nonexistent")
+        result = await repo.get("nonexistent")
         assert result is None
 
-    def test_can_fetch_document_by_normalized_title(self):
+    @pytest.mark.asyncio
+    async def test_can_fetch_document_by_normalized_title(self):
         """인메모리 저장소는 정규화된 제목으로 문서를 조회할 수 있다."""
         repo = InMemoryDocumentRepository()
         doc = Document(id="doc1", title="Test Document")
-        repo.create(doc)
-        result = repo.get_by_normalized_title("Test Document")
+        await repo.create(doc)
+        result = await repo.get_by_normalized_title("Test Document")
         assert result is not None
         assert result.id == "doc1"
 
-    def test_can_fetch_document_by_normalized_title_with_spaces(self):
+    @pytest.mark.asyncio
+    async def test_can_fetch_document_by_normalized_title_with_spaces(self):
         """인메모리 저장소는 공백이 다른 제목도 정규화하여 조회할 수 있다."""
         repo = InMemoryDocumentRepository()
         doc = Document(id="doc1", title="  Test   Document  ")
-        repo.create(doc)
-        result = repo.get_by_normalized_title("Test Document")
+        await repo.create(doc)
+        result = await repo.get_by_normalized_title("Test Document")
         assert result is not None
         assert result.id == "doc1"
 
-    def test_returns_none_for_missing_normalized_title(self):
+    @pytest.mark.asyncio
+    async def test_returns_none_for_missing_normalized_title(self):
         """인메모리 저장소는 없는 정규화된 제목을 조회하면 None을 반환한다."""
         repo = InMemoryDocumentRepository()
-        result = repo.get_by_normalized_title("Nonexistent Title")
+        result = await repo.get_by_normalized_title("Nonexistent Title")
         assert result is None
 
-    def test_rejects_duplicate_normalized_title(self):
+    @pytest.mark.asyncio
+    async def test_rejects_duplicate_normalized_title(self):
         """인메모리 저장소는 중복된 정규화된 제목을 거부한다."""
         repo = InMemoryDocumentRepository()
         doc1 = Document(id="doc1", title="Test Document")
-        repo.create(doc1)
+        await repo.create(doc1)
 
         doc2 = Document(id="doc2", title="Test Document")
         with pytest.raises(DuplicateNormalizedTitleError):
-            repo.create(doc2)
+            await repo.create(doc2)
 
-    def test_rejects_duplicate_normalized_title_with_different_spaces(self):
+    @pytest.mark.asyncio
+    async def test_rejects_duplicate_normalized_title_with_different_spaces(self):
         """인메모리 저장소는 정규화 후 중복인 제목을 거부한다."""
         repo = InMemoryDocumentRepository()
         doc1 = Document(id="doc1", title="Test Document")
-        repo.create(doc1)
+        await repo.create(doc1)
 
         doc2 = Document(id="doc2", title="  Test   Document  ")
         with pytest.raises(DuplicateNormalizedTitleError):
-            repo.create(doc2)
+            await repo.create(doc2)
 
-    def test_stores_multiple_documents(self):
+    @pytest.mark.asyncio
+    async def test_stores_multiple_documents(self):
         """인메모리 저장소는 여러 문서를 저장할 수 있다."""
         repo = InMemoryDocumentRepository()
         doc1 = Document(id="doc1", title="Document One")
         doc2 = Document(id="doc2", title="Document Two")
         doc3 = Document(id="doc3", title="Document Three")
 
-        repo.create(doc1)
-        repo.create(doc2)
-        repo.create(doc3)
+        await repo.create(doc1)
+        await repo.create(doc2)
+        await repo.create(doc3)
 
-        assert repo.get("doc1") is not None
-        assert repo.get("doc2") is not None
-        assert repo.get("doc3") is not None
-        assert repo.get_by_normalized_title("Document One") is not None
-        assert repo.get_by_normalized_title("Document Two") is not None
-        assert repo.get_by_normalized_title("Document Three") is not None
+        assert await repo.get("doc1") is not None
+        assert await repo.get("doc2") is not None
+        assert await repo.get("doc3") is not None
+        assert await repo.get_by_normalized_title("Document One") is not None
+        assert await repo.get_by_normalized_title("Document Two") is not None
+        assert await repo.get_by_normalized_title("Document Three") is not None
 
 
 @pytest.fixture

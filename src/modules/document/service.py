@@ -70,7 +70,7 @@ class DocumentService:
             else None
         )
 
-    def create(self, title: str, source: Optional[str] = None) -> Document:
+    async def create(self, title: str, source: Optional[str] = None) -> Document:
         """
         새로운 문서를 생성한다.
 
@@ -89,7 +89,7 @@ class DocumentService:
             DuplicateNormalizedTitleError: 정규화된 제목이 중복된 경우
         """
         document = Document(id=str(uuid.uuid4()), title=title)
-        document = self.document_repository.create(document)
+        document = await self.document_repository.create(document)
 
         if source is not None and self.revision_service is not None:
             revision = self.revision_service.create(
@@ -102,7 +102,7 @@ class DocumentService:
 
         return document
 
-    def get(self, id: str) -> Optional[Document]:
+    async def get(self, id: str) -> Optional[Document]:
         """
         주어진 id로 문서를 조회한다.
 
@@ -114,9 +114,9 @@ class DocumentService:
         Returns:
             조회된 문서 또는 없으면 None
         """
-        return self.document_repository.get(id)
+        return await self.document_repository.get(id)
 
-    def get_by_title(self, title: str) -> Optional[Document]:
+    async def get_by_title(self, title: str) -> Optional[Document]:
         """
         주어진 제목으로 문서를 조회한다.
 
@@ -133,9 +133,9 @@ class DocumentService:
             EmptyTitleError: 제목이 비어있거나 공백만 있는 경우
         """
         normalized = normalize_title(title)
-        return self.document_repository.get_by_normalized_title(normalized)
+        return await self.document_repository.get_by_normalized_title(normalized)
 
-    def get_current_revision_read_model(
+    async def get_current_revision_read_model(
         self, document_id: str
     ) -> Optional[CurrentRevisionReadModel]:
         """
@@ -154,7 +154,7 @@ class DocumentService:
             리비전 저장소가 없거나 현재 리비전 id는 있지만 리비전을 찾을 수 없으면
             현재 리비전 정보는 None으로 처리한다.
         """
-        document = self.document_repository.get(document_id)
+        document = await self.document_repository.get(document_id)
         if document is None:
             return None
 
