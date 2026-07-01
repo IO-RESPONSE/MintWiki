@@ -114,6 +114,7 @@ class ParserFixtureLoader:
             ParserFixtureLoader._footnote_simple(),
             ParserFixtureLoader._footnote_multiple(),
             ParserFixtureLoader._footnote_with_special_chars(),
+            ParserFixtureLoader._footnote_repeated(),
         ]
 
     @staticmethod
@@ -2092,6 +2093,25 @@ class ParserFixtureLoader:
                     "categories": [],
                     "headings": [],
                     "footnotes": ["See example: http://example.com & details"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _footnote_repeated() -> ParserFixture:
+        """반복되는 각주 픽스처."""
+        return ParserFixture(
+            name="footnote_repeated",
+            source="First note[* Same footnote *] and second note[* Same footnote *] again.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "First note[* Same footnote *] and second note[* Same footnote *] again."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "footnotes": ["Same footnote", "Same footnote"],
                 },
             ),
         )

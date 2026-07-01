@@ -565,12 +565,11 @@ class PlainTextBlockParser:
                 extracted_footnotes = PlainTextBlockParser._extract_footnotes_from_content(content)
                 footnotes.extend(extracted_footnotes)
 
-        # 중복 제거하되 순서 유지
+        # 중복 제거하되 순서 유지 (각주는 반복 발생을 추적하므로 중복 제거하지 않음)
         links = list(dict.fromkeys(links))
         categories = list(dict.fromkeys(categories))
         external_links = list(dict.fromkeys(external_links))
         backlinks = list(dict.fromkeys(backlinks))
-        footnotes = list(dict.fromkeys(footnotes))
 
         # 리다이렉트의 "from" 필드를 main heading으로 설정
         if redirects and main_heading:
