@@ -1,7 +1,10 @@
 """문서 API 라우터."""
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from modules.document.repository import DatabaseDocumentRepository
+from modules.document.repository import (
+    DatabaseDocumentRepository,
+    DuplicateNormalizedTitleError,
+)
 from modules.document.schema import CreateDocumentRequest, DocumentResponse
 from modules.document.service import DocumentService
 from modules.revision.repository import DatabaseRevisionRepository
@@ -74,8 +77,17 @@ async def create_document(
 
     Returns:
         생성된 문서의 id와 title
+
+    Raises:
+        HTTPException: 제목이 중복된 경우 409 Conflict 반환
     """
-    document = await service.create(request.title)
+    try:
+        document = await service.create(request.title)
+    except DuplicateNormalizedTitleError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(e),
+        )
     return DocumentResponse(id=document.id, title=document.title)
 
 

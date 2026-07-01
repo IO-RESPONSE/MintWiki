@@ -18,6 +18,44 @@ class TestCreateDocument:
         assert "id" in data
         assert data["title"] == "My Document"
 
+    def test_create_document_with_duplicate_title_returns_409(self, client: TestClient):
+        """엔드포인트는 중복된 제목으로 문서를 생성하면 409를 반환한다."""
+        # 첫 번째 문서 생성
+        response1 = client.post(
+            "/api/documents",
+            json={"title": "Duplicate Title", "source": "content"},
+        )
+        assert response1.status_code == 200
+
+        # 중복된 제목으로 생성 시도
+        response2 = client.post(
+            "/api/documents",
+            json={"title": "Duplicate Title", "source": "content2"},
+        )
+        assert response2.status_code == 409
+        data = response2.json()
+        assert "detail" in data
+
+    def test_create_document_with_duplicate_title_different_spacing_returns_409(
+        self, client: TestClient
+    ):
+        """엔드포인트는 정규화 후 중복인 제목도 409를 반환한다."""
+        # 첫 번째 문서 생성
+        response1 = client.post(
+            "/api/documents",
+            json={"title": "Duplicate Title", "source": "content"},
+        )
+        assert response1.status_code == 200
+
+        # 공백이 다른 중복된 제목으로 생성 시도
+        response2 = client.post(
+            "/api/documents",
+            json={"title": "  Duplicate   Title  ", "source": "content2"},
+        )
+        assert response2.status_code == 409
+        data = response2.json()
+        assert "detail" in data
+
     def test_create_document_returns_id_and_title(self, client: TestClient):
         """엔드포인트는 생성된 문서의 id와 title을 반환한다."""
         response = client.post(
