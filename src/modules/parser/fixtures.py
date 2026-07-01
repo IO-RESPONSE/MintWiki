@@ -34,6 +34,7 @@ class ParserFixtureLoader:
             ParserFixtureLoader._links_and_metadata(),
             ParserFixtureLoader._complex_document(),
             ParserFixtureLoader._escaped_html_text(),
+            ParserFixtureLoader._links_with_labels(),
         ]
 
     @staticmethod
@@ -216,6 +217,24 @@ class ParserFixtureLoader:
                 ],
                 metadata={
                     "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _links_with_labels() -> ParserFixture:
+        """레이블이 있는 내부 링크 픽스처."""
+        return ParserFixture(
+            name="links_with_labels",
+            source="See [[Document1|this document]] and [[Document2|another one]] for details.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "See [[Document1|this document]] and [[Document2|another one]] for details."},
+                ],
+                metadata={
+                    "links": ["Document1", "Document2"],
                     "categories": [],
                     "headings": [],
                 },

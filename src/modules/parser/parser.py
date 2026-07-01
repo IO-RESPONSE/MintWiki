@@ -15,8 +15,8 @@ class PlainTextBlockParser:
     # 패턴은 양쪽에 같은 개수의 등호 기호를 요구한다
     HEADING_PATTERN = re.compile(r'^(=+)\s+(.+?)\s+\1$')
 
-    # 내부 링크 패턴: [[LinkName]]
-    INTERNAL_LINK_PATTERN = re.compile(r'\[\[([^\]]+)\]\]')
+    # 내부 링크 패턴: [[LinkName]] 또는 [[LinkName|Label]]
+    INTERNAL_LINK_PATTERN = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')
 
     @staticmethod
     def parse(source: str) -> ParserResult:

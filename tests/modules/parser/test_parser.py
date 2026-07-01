@@ -367,6 +367,38 @@ class TestPlainTextBlockParserInternalLinks:
         assert "redirects" in result.metadata
         assert result.metadata["redirects"][0]["to"] == "NewPage"
 
+    def test_parses_internal_link_with_label(self):
+        """레이블이 있는 내부 링크를 파싱한다."""
+        source = "See [[Document|this document]] for details."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["links"]) == 1
+        assert result.metadata["links"][0] == "Document"
+        assert result.blocks[0]["content"] == "See [[Document|this document]] for details."
+
+    def test_parses_multiple_links_with_labels(self):
+        """여러 개의 레이블이 있는 내부 링크를 파싱한다."""
+        source = "See [[Link1|first link]] and [[Link2|second link]] for details."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["links"]) == 2
+        assert "Link1" in result.metadata["links"]
+        assert "Link2" in result.metadata["links"]
+
+    def test_parses_mixed_links_with_and_without_labels(self):
+        """레이블이 있는 링크와 없는 링크를 섞어서 파싱한다."""
+        source = "See [[Plain]] and [[Labeled|with label]] for details."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["links"]) == 2
+        assert "Plain" in result.metadata["links"]
+        assert "Labeled" in result.metadata["links"]
+        assert result.blocks[0]["content"] == "See [[Plain]] and [[Labeled|with label]] for details."
+
+    def test_link_with_label_preserves_label_in_content(self):
+        """레이블은 블록 콘텐츠에 보존된다."""
+        source = "Check [[WikiPage|our wiki]] now."
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["content"] == "Check [[WikiPage|our wiki]] now."
+        assert result.metadata["links"] == ["WikiPage"]
+
 
 class TestPlainTextBlockParserHeadingsNestedLevels:
     """PlainTextBlockParser의 중첩된 제목 수준 파싱 테스트."""
