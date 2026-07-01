@@ -31,6 +31,12 @@ tested, and committed in short runner cycles.
 Copy `.env.example` to `.env` before local runs, then adjust the placeholder
 database and Redis URLs for your local services as needed.
 
+Start the local app and PostgreSQL services with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
 ## Repository Layout
 
 ```text
