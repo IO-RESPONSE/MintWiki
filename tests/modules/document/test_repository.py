@@ -38,6 +38,13 @@ class ConcreteRepository(DocumentRepository):
                 return doc
         return None
 
+    async def update(self, document: Document) -> Document:
+        """기존 문서를 업데이트한다."""
+        if document.id not in self.documents:
+            raise KeyError(f"문서 id '{document.id}'를 찾을 수 없습니다")
+        self.documents[document.id] = document
+        return document
+
 
 class TestDocumentRepositoryInterface:
     """저장소 인터페이스 테스트."""

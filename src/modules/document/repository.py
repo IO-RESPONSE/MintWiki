@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -64,6 +64,22 @@ class DocumentRepository(ABC):
 
         Returns:
             조회된 문서 또는 없으면 None
+        """
+        pass
+
+    @abstractmethod
+    async def update(self, document: Document) -> Document:
+        """
+        기존 문서를 업데이트한다.
+
+        Args:
+            document: 업데이트할 문서
+
+        Returns:
+            업데이트된 문서
+
+        Raises:
+            다양한 저장소 구현별 예외가 발생할 수 있음
         """
         pass
 
@@ -131,6 +147,21 @@ class InMemoryDocumentRepository(DocumentRepository):
         if doc_id is None:
             return None
         return self.documents.get(doc_id)
+
+    async def update(self, document: Document) -> Document:
+        """
+        기존 문서를 업데이트한다.
+
+        Args:
+            document: 업데이트할 문서
+
+        Returns:
+            업데이트된 문서
+        """
+        if document.id not in self.documents:
+            raise KeyError(f"문서 id '{document.id}'를 찾을 수 없습니다")
+        self.documents[document.id] = document
+        return document
 
 
 class DatabaseDocumentRepository(DocumentRepository):
@@ -214,3 +245,22 @@ class DatabaseDocumentRepository(DocumentRepository):
         if orm_document is None:
             return None
         return orm_document.to_domain()
+
+    async def update(self, document: Document) -> Document:
+        """
+        데이터베이스에서 기존 문서를 업데이트한다.
+
+        Args:
+            document: 업데이트할 문서
+
+        Returns:
+            업데이트된 문서
+        """
+        stmt = (
+            update(DocumentORM)
+            .where(DocumentORM.id == document.id)
+            .values(current_revision_id=document.current_revision_id)
+        )
+        await self.session.execute(stmt)
+        await self.session.commit()
+        return document

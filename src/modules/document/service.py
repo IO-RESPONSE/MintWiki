@@ -75,7 +75,8 @@ class DocumentService:
         새로운 문서를 생성한다.
 
         제목을 정규화하고 저장소에 위임하여 문서를 생성한다.
-        소스가 제공되면 첫 리비전도 생성하고 document의 current_revision_id를 설정한다.
+        소스가 제공되면 첫 리비전도 생성하고 document의 current_revision_id를
+        설정한 후 데이터베이스에 저장한다.
 
         Args:
             title: 문서의 제목
@@ -99,6 +100,7 @@ class DocumentService:
                 summary="",
             )
             document.current_revision_id = revision.id
+            document = await self.document_repository.update(document)
 
         return document
 

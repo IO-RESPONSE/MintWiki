@@ -10,7 +10,10 @@ from modules.document.repository import (
 )
 from modules.document.service import DocumentService, CurrentRevisionReadModel
 from modules.document.title import EmptyTitleError
-from modules.revision.repository import InMemoryRevisionRepository
+from modules.revision.repository import (
+    InMemoryRevisionRepository,
+    DatabaseRevisionRepository,
+)
 from persistence.base import Base
 
 
@@ -495,3 +498,38 @@ class TestDocumentServiceWithDatabase:
         assert await service.get_by_title("Document One") is not None
         assert await service.get_by_title("Document Two") is not None
         assert await service.get_by_title("Document Three") is not None
+
+    @pytest.mark.asyncio
+    async def test_create_document_with_source_and_database_repository(
+        self, async_db_session
+    ):
+        """서비스는 데이터베이스 저장소에 소스를 포함하여 문서를 생성할 수 있다."""
+        doc_repo = DatabaseDocumentRepository(async_db_session)
+        rev_repo = DatabaseRevisionRepository(async_db_session)
+        service = DocumentService(doc_repo, rev_repo)
+
+        doc = await service.create("My Document", source="Initial content")
+
+        assert doc.id is not None
+        assert doc.title == "My Document"
+        assert doc.current_revision_id is not None
+
+        revision = await rev_repo.get(doc.current_revision_id)
+        assert revision is not None
+        assert revision.source == "Initial content"
+        assert revision.document_id == doc.id
+
+    @pytest.mark.asyncio
+    async def test_current_revision_id_persisted_to_database(self, async_db_session):
+        """현재 리비전 id가 데이터베이스에 저장된다."""
+        doc_repo = DatabaseDocumentRepository(async_db_session)
+        rev_repo = DatabaseRevisionRepository(async_db_session)
+        service = DocumentService(doc_repo, rev_repo)
+
+        doc = await service.create("My Document", source="Initial content")
+
+        retrieved = await service.get(doc.id)
+
+        assert retrieved is not None
+        assert retrieved.current_revision_id == doc.current_revision_id
+        assert retrieved.current_revision_id is not None
