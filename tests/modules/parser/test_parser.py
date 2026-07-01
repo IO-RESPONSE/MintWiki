@@ -1351,3 +1351,114 @@ class TestPlainTextBlockParserHorizontalRule:
         assert len(result.blocks) == 2
         assert result.blocks[0]["type"] == "heading"
         assert result.blocks[1]["type"] == "horizontal_rule"
+
+
+class TestPlainTextBlockParserLineBreak:
+    """줄 바꿈 매크로 파싱 테스트."""
+
+    def test_parses_line_break_simple(self):
+        """간단한 줄 바꿈을 파싱한다."""
+        source = "\\\\"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "line_break"
+
+    def test_parses_line_break_with_text(self):
+        """텍스트와 함께 있는 줄 바꿈을 파싱한다."""
+        source = "First line.\n\n\\\\\n\nSecond line."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "First line."
+        assert result.blocks[1]["type"] == "line_break"
+        assert result.blocks[2]["type"] == "paragraph"
+        assert result.blocks[2]["content"] == "Second line."
+
+    def test_parses_multiple_line_breaks(self):
+        """여러 개의 줄 바꿈을 파싱한다."""
+        source = "\\\\\n\n\\\\\n\n\\\\"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert all(block["type"] == "line_break" for block in result.blocks)
+
+    def test_line_break_between_paragraphs(self):
+        """문단 사이의 줄 바꿈을 파싱한다."""
+        source = "First paragraph.\n\n\\\\\n\nSecond paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[1]["type"] == "line_break"
+        assert result.blocks[2]["type"] == "paragraph"
+
+    def test_line_break_after_heading(self):
+        """제목 다음의 줄 바꿈을 파싱한다."""
+        source = "= Title =\n\n\\\\"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[1]["type"] == "line_break"
+
+    def test_line_break_before_heading(self):
+        """줄 바꿈 다음의 제목을 파싱한다."""
+        source = "\\\\\n\n= Title ="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "line_break"
+        assert result.blocks[1]["type"] == "heading"
+
+    def test_line_break_with_list(self):
+        """목록과 함께 있는 줄 바꿈을 파싱한다."""
+        source = "* Item 1\n* Item 2\n\n\\\\\n\n* Item 3"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert result.blocks[0]["type"] == "list"
+        assert result.blocks[1]["type"] == "line_break"
+        assert result.blocks[2]["type"] == "list"
+
+    def test_line_break_with_horizontal_rule(self):
+        """수평선과 함께 있는 줄 바꿈을 파싱한다."""
+        source = "----\n\n\\\\\n\n----"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert result.blocks[0]["type"] == "horizontal_rule"
+        assert result.blocks[1]["type"] == "line_break"
+        assert result.blocks[2]["type"] == "horizontal_rule"
+
+    def test_line_break_not_created_with_text_before_backslashes(self):
+        """백슬래시 앞에 텍스트가 있으면 줄 바꿈이 아니다."""
+        source = "text\\\\"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "text\\\\"
+
+    def test_line_break_metadata_extraction(self):
+        """줄 바꿈 블록이 메타데이터에 영향을 주지 않는다."""
+        source = "Text [[Link]].\n\n\\\\\n\nMore text."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["links"]) == 1
+        assert result.metadata["links"][0] == "Link"
+
+    def test_complex_document_with_line_breaks(self):
+        """줄 바꿈을 포함한 복잡한 문서를 파싱한다."""
+        source = (
+            "= Title =\n"
+            "\n"
+            "Introduction.\n"
+            "\n"
+            "\\\\\n"
+            "\n"
+            "More content.\n"
+            "\n"
+            "----\n"
+            "\n"
+            "Final paragraph."
+        )
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 6
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[2]["type"] == "line_break"
+        assert result.blocks[3]["type"] == "paragraph"
+        assert result.blocks[4]["type"] == "horizontal_rule"
+        assert result.blocks[5]["type"] == "paragraph"

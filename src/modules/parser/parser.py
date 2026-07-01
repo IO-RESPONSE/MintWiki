@@ -39,6 +39,9 @@ class PlainTextBlockParser:
     # 수평선 패턴: ---- (4개 이상의 대시)
     HORIZONTAL_RULE_PATTERN = re.compile(r'^-{4,}$')
 
+    # 줄 바꿈 매크로 패턴: \\ (두 개의 백슬래시)
+    LINE_BREAK_PATTERN = re.compile(r'^\\\\$')
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
@@ -83,6 +86,8 @@ class PlainTextBlockParser:
                 heading_match = PlainTextBlockParser.HEADING_PATTERN.match(line)
                 # 현재 줄이 수평선인지 확인
                 horizontal_rule_match = PlainTextBlockParser.HORIZONTAL_RULE_PATTERN.match(line.strip())
+                # 현재 줄이 줄 바꿈 매크로인지 확인
+                line_break_match = PlainTextBlockParser.LINE_BREAK_PATTERN.match(line.strip())
                 # 현재 줄이 순서 없는 목록 항목인지 확인
                 unordered_list_match = PlainTextBlockParser.UNORDERED_LIST_PATTERN.match(line)
                 # 현재 줄이 순서 있는 목록 항목인지 확인
@@ -125,6 +130,22 @@ class PlainTextBlockParser:
                         'type': 'horizontal_rule',
                     }
                     blocks.append(horizontal_rule_block)
+                elif line_break_match:
+                    # 누적된 블록을 먼저 처리
+                    if current_block_lines:
+                        block_content = '\n'.join(current_block_lines)
+                        # 메타데이터 줄은 스킵
+                        if not PlainTextBlockParser._is_metadata_line(block_content):
+                            block = PlainTextBlockParser._create_block(block_content)
+                            blocks.append(block)
+                        current_block_lines = []
+                        in_list = False
+
+                    # 줄 바꿈 블록 생성
+                    line_break_block = {
+                        'type': 'line_break',
+                    }
+                    blocks.append(line_break_block)
                 elif unordered_list_match or ordered_list_match:
                     # 현재 비-목록 블록이 있으면 먼저 처리
                     if current_block_lines and not in_list:

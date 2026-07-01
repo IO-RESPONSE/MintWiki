@@ -62,6 +62,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._horizontal_rule_simple(),
             ParserFixtureLoader._horizontal_rule_with_text(),
             ParserFixtureLoader._horizontal_rule_multiple(),
+            ParserFixtureLoader._line_break_simple(),
+            ParserFixtureLoader._line_break_with_text(),
+            ParserFixtureLoader._line_break_multiple(),
         ]
 
     @staticmethod
@@ -827,6 +830,64 @@ class ParserFixtureLoader:
                     {"type": "horizontal_rule"},
                     {"type": "horizontal_rule"},
                     {"type": "horizontal_rule"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _line_break_simple() -> ParserFixture:
+        """간단한 줄 바꿈 픽스처."""
+        return ParserFixture(
+            name="line_break_simple",
+            source="\\\\",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "line_break"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _line_break_with_text() -> ParserFixture:
+        """텍스트와 함께 있는 줄 바꿈 픽스처."""
+        return ParserFixture(
+            name="line_break_with_text",
+            source="First line.\n\n\\\\\n\nSecond line.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "First line."},
+                    {"type": "line_break"},
+                    {"type": "paragraph", "content": "Second line."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _line_break_multiple() -> ParserFixture:
+        """여러 개의 줄 바꿈 픽스처."""
+        return ParserFixture(
+            name="line_break_multiple",
+            source="\\\\\n\n\\\\\n\n\\\\",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "line_break"},
+                    {"type": "line_break"},
+                    {"type": "line_break"},
                 ],
                 metadata={
                     "links": [],
