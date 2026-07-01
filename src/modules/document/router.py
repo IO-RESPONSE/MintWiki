@@ -1,10 +1,7 @@
 """문서 API 라우터."""
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from modules.document.repository import (
-    DatabaseDocumentRepository,
-    DuplicateNormalizedTitleError,
-)
+from modules.document.repository import DuplicateNormalizedTitleError
 from modules.document.schema import CreateDocumentRequest, DocumentResponse
 from modules.document.service import DocumentService
 from modules.revision.repository import DatabaseRevisionRepository
@@ -28,14 +25,16 @@ async def get_session(request: Request):
 
 
 async def get_document_service(
+    request: Request,
     session=Depends(get_session),
 ) -> DocumentService:
     """
     문서 서비스를 반환한다.
 
-    데이터베이스 세션을 사용하여 저장소를 생성한다.
+    앱 상태에서 저장소 팩토리를 가져와 저장소를 생성한다.
     """
-    repository = DatabaseDocumentRepository(session)
+    repository_factory = request.app.state.document_repository_factory
+    repository = repository_factory(session)
     return DocumentService(repository)
 
 
