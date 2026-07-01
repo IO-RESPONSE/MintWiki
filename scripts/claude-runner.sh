@@ -34,6 +34,7 @@ Repository rules:
 - Add or update tests required by the task.
 - Run scripts/test.sh before finishing if possible.
 - Do not implement work listed as Out of Scope.
+- Do NOT run git commit or git push. The runner owns committing and pushing.
 - Do NOT create, move, rename, or delete any file under the tasks/ directory. The runner manages the task queue; touching tasks/ will break the runner.
 - Do not wait for user input.
 - Write all code comments and docstrings in Korean. Keep identifiers (variable, function, class names) in English.

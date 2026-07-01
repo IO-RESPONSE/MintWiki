@@ -43,6 +43,7 @@ TASK_NAME="$(basename "$TASK_PATH")"
 ACTIVE_TASK="$IN_PROGRESS_DIR/$TASK_NAME"
 RUN_ID="$(date '+%Y%m%d-%H%M%S')-${TASK_NAME%.md}"
 RUN_DIR="$RUNS_DIR/$RUN_ID"
+BASE_COMMIT="$(git rev-parse HEAD)"
 mkdir -p "$RUN_DIR"
 
 mv "$TASK_PATH" "$ACTIVE_TASK"
@@ -96,6 +97,10 @@ scripts/qa.sh
 mv "$ACTIVE_TASK" "$DONE_DIR/$TASK_NAME"
 
 scripts/update-progress.sh || true
+
+if [ "$(git rev-parse HEAD)" != "$BASE_COMMIT" ]; then
+  git reset --soft "$BASE_COMMIT"
+fi
 
 git add -A
 git commit -m "태스크 ${TASK_NAME%.md} 완료"
