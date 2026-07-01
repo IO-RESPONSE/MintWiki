@@ -88,6 +88,8 @@ scripts/qa.sh
 
 mv "$ACTIVE_TASK" "$DONE_DIR/$TASK_NAME"
 
+scripts/update-progress.sh || true
+
 git add .
 git commit -m "태스크 ${TASK_NAME%.md} 완료"
 
