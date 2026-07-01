@@ -8,6 +8,8 @@ from modules.document.repository import (
     DocumentRepository,
 )
 from modules.document.title import EmptyTitleError, normalize_title
+from modules.revision.repository import RevisionRepository
+from modules.revision.service import RevisionService
 
 
 class DocumentService:
@@ -16,25 +18,39 @@ class DocumentService:
 
     문서 생성 시 제목을 정규화하고 저장소에 위임한다.
     문서 조회는 id 또는 제목으로 할 수 있다.
+    소스가 제공되면 첫 리비전도 생성한다.
     """
 
-    def __init__(self, repository: DocumentRepository):
+    def __init__(
+        self,
+        document_repository: DocumentRepository,
+        revision_repository: Optional[RevisionRepository] = None,
+    ):
         """
         서비스를 초기화한다.
 
         Args:
-            repository: 문서 저장소
+            document_repository: 문서 저장소
+            revision_repository: 리비전 저장소 (선택사항)
         """
-        self.repository = repository
+        self.document_repository = document_repository
+        self.revision_repository = revision_repository
+        self.revision_service = (
+            RevisionService(revision_repository)
+            if revision_repository is not None
+            else None
+        )
 
-    def create(self, title: str) -> Document:
+    def create(self, title: str, source: Optional[str] = None) -> Document:
         """
         새로운 문서를 생성한다.
 
         제목을 정규화하고 저장소에 위임하여 문서를 생성한다.
+        소스가 제공되면 첫 리비전도 생성하고 document의 current_revision_id를 설정한다.
 
         Args:
             title: 문서의 제목
+            source: 문서의 초기 소스 텍스트 (선택사항)
 
         Returns:
             생성된 문서
@@ -44,7 +60,18 @@ class DocumentService:
             DuplicateNormalizedTitleError: 정규화된 제목이 중복된 경우
         """
         document = Document(id=str(uuid.uuid4()), title=title)
-        return self.repository.create(document)
+        document = self.document_repository.create(document)
+
+        if source is not None and self.revision_service is not None:
+            revision = self.revision_service.create(
+                document_id=document.id,
+                source=source,
+                author_id="",
+                summary="",
+            )
+            document.current_revision_id = revision.id
+
+        return document
 
     def get(self, id: str) -> Optional[Document]:
         """
@@ -58,7 +85,7 @@ class DocumentService:
         Returns:
             조회된 문서 또는 없으면 None
         """
-        return self.repository.get(id)
+        return self.document_repository.get(id)
 
     def get_by_title(self, title: str) -> Optional[Document]:
         """
@@ -77,4 +104,4 @@ class DocumentService:
             EmptyTitleError: 제목이 비어있거나 공백만 있는 경우
         """
         normalized = normalize_title(title)
-        return self.repository.get_by_normalized_title(normalized)
+        return self.document_repository.get_by_normalized_title(normalized)

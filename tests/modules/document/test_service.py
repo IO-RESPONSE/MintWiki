@@ -6,6 +6,7 @@ from modules.document.repository import (
 )
 from modules.document.service import DocumentService
 from modules.document.title import EmptyTitleError
+from modules.revision.repository import InMemoryRevisionRepository
 
 
 class TestDocumentService:
@@ -170,3 +171,75 @@ class TestDocumentService:
 
         with pytest.raises(EmptyTitleError):
             service.get_by_title("   ")
+
+    def test_create_document_with_source_creates_first_revision(self):
+        """서비스는 소스를 제공하면 첫 리비전을 생성한다."""
+        doc_repo = InMemoryDocumentRepository()
+        rev_repo = InMemoryRevisionRepository()
+        service = DocumentService(doc_repo, rev_repo)
+
+        doc = service.create("My Document", source="Initial content")
+
+        assert doc.id is not None
+        assert doc.title == "My Document"
+        assert doc.current_revision_id is not None
+
+        revision = rev_repo.get(doc.current_revision_id)
+        assert revision is not None
+        assert revision.source == "Initial content"
+        assert revision.document_id == doc.id
+        assert revision.parent_revision_id is None
+
+    def test_create_document_without_source_no_revision(self):
+        """서비스는 소스를 제공하지 않으면 리비전을 생성하지 않는다."""
+        doc_repo = InMemoryDocumentRepository()
+        rev_repo = InMemoryRevisionRepository()
+        service = DocumentService(doc_repo, rev_repo)
+
+        doc = service.create("My Document")
+
+        assert doc.current_revision_id is None
+        revisions = rev_repo.list_by_document_id(doc.id)
+        assert len(revisions) == 0
+
+    def test_create_document_with_source_without_revision_repository(self):
+        """서비스는 리비전 저장소가 없으면 소스를 무시한다."""
+        doc_repo = InMemoryDocumentRepository()
+        service = DocumentService(doc_repo)
+
+        doc = service.create("My Document", source="Initial content")
+
+        assert doc.current_revision_id is None
+
+    def test_created_revision_linked_to_document(self):
+        """서비스가 생성한 리비전은 문서와 올바르게 연결된다."""
+        doc_repo = InMemoryDocumentRepository()
+        rev_repo = InMemoryRevisionRepository()
+        service = DocumentService(doc_repo, rev_repo)
+
+        doc = service.create("My Document", source="Content here")
+
+        assert doc.current_revision_id is not None
+        revision = rev_repo.get(doc.current_revision_id)
+        assert revision.document_id == doc.id
+        assert revision.source == "Content here"
+
+    def test_multiple_documents_create_independent_revisions(self):
+        """서비스는 여러 문서마다 독립적인 리비전을 생성한다."""
+        doc_repo = InMemoryDocumentRepository()
+        rev_repo = InMemoryRevisionRepository()
+        service = DocumentService(doc_repo, rev_repo)
+
+        doc1 = service.create("Document One", source="Content One")
+        doc2 = service.create("Document Two", source="Content Two")
+
+        assert doc1.id != doc2.id
+        assert doc1.current_revision_id != doc2.current_revision_id
+
+        rev1 = rev_repo.get(doc1.current_revision_id)
+        rev2 = rev_repo.get(doc2.current_revision_id)
+
+        assert rev1.document_id == doc1.id
+        assert rev2.document_id == doc2.id
+        assert rev1.source == "Content One"
+        assert rev2.source == "Content Two"
