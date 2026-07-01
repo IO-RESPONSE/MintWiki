@@ -44,6 +44,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._italic_simple(),
             ParserFixtureLoader._italic_multiple(),
             ParserFixtureLoader._italic_with_special_chars(),
+            ParserFixtureLoader._strike_simple(),
+            ParserFixtureLoader._strike_multiple(),
+            ParserFixtureLoader._strike_with_special_chars(),
         ]
 
     @staticmethod
@@ -406,6 +409,60 @@ class ParserFixtureLoader:
             expected_result=ParserResult(
                 blocks=[
                     {"type": "paragraph", "content": "This is ''italic & emphasized!'' text."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _strike_simple() -> ParserFixture:
+        """단순 취소선 텍스트 픽스처."""
+        return ParserFixture(
+            name="strike_simple",
+            source="This is ~~strikethrough text~~ in a paragraph.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is ~~strikethrough text~~ in a paragraph."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _strike_multiple() -> ParserFixture:
+        """여러 개의 취소선 텍스트 픽스처."""
+        return ParserFixture(
+            name="strike_multiple",
+            source="This has ~~first strike~~ and ~~second strike~~ text.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This has ~~first strike~~ and ~~second strike~~ text."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _strike_with_special_chars() -> ParserFixture:
+        """특수 문자를 포함한 취소선 텍스트 픽스처."""
+        return ParserFixture(
+            name="strike_with_special_chars",
+            source="This is ~~strike & obsolete!~~ text.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is ~~strike & obsolete!~~ text."},
                 ],
                 metadata={
                     "links": [],

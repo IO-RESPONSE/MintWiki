@@ -863,3 +863,95 @@ class TestPlainTextBlockParserItalicText:
         assert len(result.blocks) == 1
         assert "'''bold'''" in result.blocks[0]["content"]
         assert "''italic''" in result.blocks[0]["content"]
+
+
+class TestPlainTextBlockParserStrikeText:
+    """PlainTextBlockParser의 취소선 텍스트 파싱 테스트."""
+
+    def test_parses_single_strike_text(self):
+        """단일 취소선 텍스트를 파싱한다."""
+        source = "This is ~~strikethrough text~~ in a paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "This is ~~strikethrough text~~ in a paragraph."
+
+    def test_parses_strike_text_at_start(self):
+        """문장 시작의 취소선 텍스트를 파싱한다."""
+        source = "~~Strike~~ text here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "~~Strike~~ text here."
+
+    def test_parses_strike_text_at_end(self):
+        """문장 끝의 취소선 텍스트를 파싱한다."""
+        source = "Text is ~~strike~~."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text is ~~strike~~."
+
+    def test_parses_multiple_strike_texts(self):
+        """여러 개의 취소선 텍스트를 파싱한다."""
+        source = "This has ~~first strike~~ and ~~second strike~~ text."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "This has ~~first strike~~ and ~~second strike~~ text."
+
+    def test_strike_text_with_special_characters(self):
+        """특수 문자를 포함한 취소선 텍스트를 파싱한다."""
+        source = "This is ~~strike & obsolete!~~ text."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "This is ~~strike & obsolete!~~ text."
+
+    def test_strike_text_with_numbers(self):
+        """숫자를 포함한 취소선 텍스트를 파싱한다."""
+        source = "This is ~~strike 123~~ text."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "This is ~~strike 123~~ text."
+
+    def test_strike_text_preserved_in_multiple_blocks(self):
+        """여러 블록에서 취소선 텍스트가 보존된다."""
+        source = "First ~~strike~~ paragraph.\n\nSecond ~~strike~~ paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert "~~strike~~" in result.blocks[0]["content"]
+        assert "~~strike~~" in result.blocks[1]["content"]
+
+    def test_strike_text_with_internal_whitespace(self):
+        """내부 공백을 포함한 취소선 텍스트를 파싱한다."""
+        source = "Text with ~~multiple words in strike~~ here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text with ~~multiple words in strike~~ here."
+
+    def test_strike_text_adjacent_to_links(self):
+        """링크 옆의 취소선 텍스트를 파싱한다."""
+        source = "See ~~strike~~ and [[Link]] together."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert "~~strike~~" in result.blocks[0]["content"]
+        assert "[[Link]]" in result.blocks[0]["content"]
+
+    def test_strike_text_does_not_create_escaped_html_flag(self):
+        """취소선 텍스트는 이스케이프된 HTML 플래그를 생성하지 않는다."""
+        source = "Text with ~~strike~~ only."
+        result = PlainTextBlockParser.parse(source)
+        assert "has_escaped_html" not in result.blocks[0]
+
+    def test_strike_text_empty_not_parsed(self):
+        """빈 취소선 텍스트는 파싱되지 않는다."""
+        source = "Text with ~~~~ no content."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text with ~~~~ no content."
+
+    def test_bold_italic_and_strike_together(self):
+        """굵은 텍스트, 이탤릭, 취소선이 함께 있을 때를 파싱한다."""
+        source = "Text with '''bold''', ''italic'' and ~~strike~~ here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert "'''bold'''" in result.blocks[0]["content"]
+        assert "''italic''" in result.blocks[0]["content"]
+        assert "~~strike~~" in result.blocks[0]["content"]
