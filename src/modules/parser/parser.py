@@ -427,6 +427,7 @@ class PlainTextBlockParser:
         external_links = []
         categories = []
         redirects = []
+        main_heading = None
 
         # 소스에서 메타데이터 라인 추출
         lines = source.split('\n')
@@ -442,10 +443,14 @@ class PlainTextBlockParser:
         # 블록에서 메타데이터 추출
         for block in blocks:
             if block.get('type') == 'heading':
-                headings.append({
+                heading_info = {
                     'level': block['level'],
                     'text': block['content'],
-                })
+                }
+                headings.append(heading_info)
+                # 첫 번째 레벨 1 제목을 main heading으로 저장
+                if main_heading is None and block['level'] == 1:
+                    main_heading = block['content']
             elif block.get('type') == 'paragraph':
                 # 문단에서 내부 링크 추출
                 content = block.get('content', '')
@@ -462,6 +467,12 @@ class PlainTextBlockParser:
         links = list(dict.fromkeys(links))
         categories = list(dict.fromkeys(categories))
         external_links = list(dict.fromkeys(external_links))
+
+        # 리다이렉트의 "from" 필드를 main heading으로 설정
+        if redirects and main_heading:
+            for redirect in redirects:
+                if redirect['from'] == '':
+                    redirect['from'] = main_heading
 
         metadata = {
             'links': links,

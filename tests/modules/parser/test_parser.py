@@ -1791,3 +1791,118 @@ class TestPlainTextBlockParserCode:
         assert result.blocks[2]["type"] == "code"
         assert result.blocks[3]["type"] == "list"
         assert result.blocks[4]["type"] == "code"
+
+
+class TestPlainTextBlockParserRedirect:
+    """리다이렉트 파싱 테스트."""
+
+    def test_parses_simple_redirect(self):
+        """단순 리다이렉트를 파싱한다."""
+        source = "[[Redirect:NewPage]]"
+        result = PlainTextBlockParser.parse(source)
+        assert "redirects" in result.metadata
+        assert len(result.metadata["redirects"]) == 1
+        assert result.metadata["redirects"][0]["to"] == "NewPage"
+
+    def test_redirect_with_from_field(self):
+        """리다이렉트에 "from" 필드가 있다."""
+        source = "[[Redirect:NewPage]]"
+        result = PlainTextBlockParser.parse(source)
+        assert "from" in result.metadata["redirects"][0]
+
+    def test_redirect_does_not_create_block(self):
+        """리다이렉트는 블록을 생성하지 않는다."""
+        source = "[[Redirect:NewPage]]"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 0
+
+    def test_redirect_with_main_heading(self):
+        """메인 제목이 있을 때 리다이렉트의 "from" 필드가 설정된다."""
+        source = "= Main Title =\n\n[[Redirect:NewPage]]"
+        result = PlainTextBlockParser.parse(source)
+        assert "redirects" in result.metadata
+        assert result.metadata["redirects"][0]["from"] == "Main Title"
+        assert result.metadata["redirects"][0]["to"] == "NewPage"
+
+    def test_redirect_at_top_of_document(self):
+        """문서 상단의 리다이렉트를 파싱한다."""
+        source = "[[Redirect:TargetPage]]\n\n= Title =\n\nContent."
+        result = PlainTextBlockParser.parse(source)
+        assert "redirects" in result.metadata
+        assert result.metadata["redirects"][0]["to"] == "TargetPage"
+        assert result.metadata["redirects"][0]["from"] == "Title"
+
+    def test_multiple_redirects(self):
+        """여러 개의 리다이렉트를 파싱한다."""
+        source = "= Page A =\n\n[[Redirect:NewPage]]\n\nContent with [[Redirect:Another]]."
+        result = PlainTextBlockParser.parse(source)
+        assert "redirects" in result.metadata
+        assert len(result.metadata["redirects"]) == 2
+
+    def test_redirect_with_category(self):
+        """카테고리와 함께 있는 리다이렉트를 파싱한다."""
+        source = "[[Category:Test]]\n[[Redirect:NewPage]]"
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["categories"] == ["Test"]
+        assert len(result.metadata["redirects"]) == 1
+        assert result.metadata["redirects"][0]["to"] == "NewPage"
+
+    def test_redirect_does_not_appear_in_blocks(self):
+        """리다이렉트 라인이 블록에 나타나지 않는다."""
+        source = "[[Redirect:NewPage]]\n\nContent here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "Content here."
+
+    def test_redirect_with_multiple_headings(self):
+        """여러 제목이 있을 때 첫 번째 레벨 1 제목이 "from"으로 사용된다."""
+        source = "= First Heading =\n\n[[Redirect:Target]]\n\n== Subsection =="
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["redirects"][0]["from"] == "First Heading"
+
+    def test_redirect_in_paragraph_content(self):
+        """문단 내의 리다이렉트를 파싱한다."""
+        source = "= Title =\n\nSee [[Redirect:Other]] for details."
+        result = PlainTextBlockParser.parse(source)
+        assert "redirects" in result.metadata
+        assert any(r["to"] == "Other" for r in result.metadata["redirects"])
+
+    def test_redirect_preserves_main_heading(self):
+        """리다이렉트는 메인 제목을 유지한다."""
+        source = "= Main =\n\n[[Redirect:Target]]"
+        result = PlainTextBlockParser.parse(source)
+        headings = result.metadata["headings"]
+        assert len(headings) == 1
+        assert headings[0]["text"] == "Main"
+
+    def test_redirect_target_with_spaces(self):
+        """공백이 포함된 리다이렉트 대상을 파싱한다."""
+        source = "= Title =\n\n[[Redirect:Target Page Name]]"
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["redirects"][0]["to"] == "Target Page Name"
+
+    def test_redirect_with_special_characters(self):
+        """특수 문자가 포함된 리다이렉트를 파싱한다."""
+        source = "= Main =\n\n[[Redirect:Target: Part 1 & Part 2]]"
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["redirects"][0]["to"] == "Target: Part 1 & Part 2"
+
+    def test_complex_document_with_redirect(self):
+        """리다이렉트를 포함한 복잡한 문서를 파싱한다."""
+        source = (
+            "[[Category:Wiki]]\n"
+            "[[Redirect:NewPage]]\n"
+            "= Main Title =\n"
+            "\n"
+            "Introduction.\n"
+            "\n"
+            "== Section ==\n"
+            "\n"
+            "More content [[Link1]]."
+        )
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["categories"] == ["Wiki"]
+        assert result.metadata["redirects"][0]["from"] == "Main Title"
+        assert result.metadata["redirects"][0]["to"] == "NewPage"
+        assert "Link1" in result.metadata["links"]

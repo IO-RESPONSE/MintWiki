@@ -77,6 +77,10 @@ class ParserFixtureLoader:
             ParserFixtureLoader._code_with_text(),
             ParserFixtureLoader._code_with_special_chars(),
             ParserFixtureLoader._code_multiple(),
+            ParserFixtureLoader._redirect_simple(),
+            ParserFixtureLoader._redirect_with_heading(),
+            ParserFixtureLoader._redirect_with_category(),
+            ParserFixtureLoader._redirect_with_content(),
         ]
 
     @staticmethod
@@ -1127,6 +1131,88 @@ class ParserFixtureLoader:
                     "links": [],
                     "categories": [],
                     "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _redirect_simple() -> ParserFixture:
+        """단순 리다이렉트 픽스처."""
+        return ParserFixture(
+            name="redirect_simple",
+            source="[[Redirect:NewPage]]",
+            expected_result=ParserResult(
+                blocks=[],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "redirects": [{"from": "", "to": "NewPage"}],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _redirect_with_heading() -> ParserFixture:
+        """제목이 있는 리다이렉트 픽스처."""
+        return ParserFixture(
+            name="redirect_with_heading",
+            source="= Main Title =\n\n[[Redirect:TargetPage]]",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "heading", "level": 1, "content": "Main Title"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [{"level": 1, "text": "Main Title"}],
+                    "redirects": [{"from": "Main Title", "to": "TargetPage"}],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _redirect_with_category() -> ParserFixture:
+        """카테고리와 리다이렉트 픽스처."""
+        return ParserFixture(
+            name="redirect_with_category",
+            source="[[Category:Wiki]]\n[[Redirect:NewPage]]",
+            expected_result=ParserResult(
+                blocks=[],
+                metadata={
+                    "links": [],
+                    "categories": ["Wiki"],
+                    "headings": [],
+                    "redirects": [{"from": "", "to": "NewPage"}],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _redirect_with_content() -> ParserFixture:
+        """콘텐츠와 리다이렉트 픽스처."""
+        return ParserFixture(
+            name="redirect_with_content",
+            source=(
+                "= Old Title =\n"
+                "\n"
+                "[[Redirect:New Title]]\n"
+                "\n"
+                "Some content here.\n"
+                "\n"
+                "See [[Link1]] for more."
+            ),
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "heading", "level": 1, "content": "Old Title"},
+                    {"type": "paragraph", "content": "Some content here."},
+                    {"type": "paragraph", "content": "See [[Link1]] for more."},
+                ],
+                metadata={
+                    "links": ["Link1"],
+                    "categories": [],
+                    "headings": [{"level": 1, "text": "Old Title"}],
+                    "redirects": [{"from": "Old Title", "to": "New Title"}],
                 },
             ),
         )
