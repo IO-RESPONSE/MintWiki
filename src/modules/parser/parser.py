@@ -380,7 +380,7 @@ class PlainTextBlockParser:
         """
         콘텐츠가 메타데이터 줄인지 확인한다.
 
-        메타데이터 줄은 [[Category:...]], [[Redirect:...]] 등의 형식이다.
+        메타데이터 줄은 [[Category:...]], [[Redirect:...]], [[Backlink:...]] 등의 형식이다.
 
         Args:
             content: 검사할 콘텐츠
@@ -391,7 +391,7 @@ class PlainTextBlockParser:
         lines = content.split('\n')
         for line in lines:
             # 모든 줄이 메타데이터 형식이어야 함
-            if not re.match(r'^\[\[(?:Category|Redirect):', line):
+            if not re.match(r'^\[\[(?:Category|Redirect|Backlink):', line):
                 return False
         return True
 
@@ -413,7 +413,7 @@ class PlainTextBlockParser:
         """
         소스 텍스트와 블록들에서 메타데이터를 추출한다.
 
-        제목, 링크, 카테고리, 리다이렉트, 외부 링크를 메타데이터로 추출한다.
+        제목, 링크, 카테고리, 리다이렉트, 외부 링크, 백링크를 메타데이터로 추출한다.
 
         Args:
             source: 원본 소스 텍스트
@@ -427,6 +427,7 @@ class PlainTextBlockParser:
         external_links = []
         categories = []
         redirects = []
+        backlinks = []
         main_heading = None
 
         # 소스에서 메타데이터 라인 추출
@@ -439,6 +440,9 @@ class PlainTextBlockParser:
             elif line.startswith('[[Redirect:') and line.endswith(']]'):
                 redirect_target = line[len('[[Redirect:'):-2]
                 redirects.append({'from': '', 'to': redirect_target})
+            elif line.startswith('[[Backlink:') and line.endswith(']]'):
+                backlink_name = line[len('[[Backlink:'):-2]
+                backlinks.append(backlink_name)
 
         # 블록에서 메타데이터 추출
         for block in blocks:
@@ -454,11 +458,12 @@ class PlainTextBlockParser:
             elif block.get('type') == 'paragraph':
                 # 문단에서 내부 링크 추출
                 content = block.get('content', '')
-                extracted_links, extracted_categories, extracted_redirects = \
+                extracted_links, extracted_categories, extracted_redirects, extracted_backlinks = \
                     PlainTextBlockParser._extract_links_from_content(content)
                 links.extend(extracted_links)
                 categories.extend(extracted_categories)
                 redirects.extend(extracted_redirects)
+                backlinks.extend(extracted_backlinks)
                 # 문단에서 외부 링크 추출
                 extracted_external_links = PlainTextBlockParser._extract_external_links_from_content(content)
                 external_links.extend(extracted_external_links)
@@ -467,6 +472,7 @@ class PlainTextBlockParser:
         links = list(dict.fromkeys(links))
         categories = list(dict.fromkeys(categories))
         external_links = list(dict.fromkeys(external_links))
+        backlinks = list(dict.fromkeys(backlinks))
 
         # 리다이렉트의 "from" 필드를 main heading으로 설정
         if redirects and main_heading:
@@ -488,27 +494,33 @@ class PlainTextBlockParser:
         if redirects:
             metadata['redirects'] = redirects
 
+        # backlinks가 있으면 추가
+        if backlinks:
+            metadata['backlinks'] = backlinks
+
         return metadata
 
     @staticmethod
     def _extract_links_from_content(content: str) -> tuple:
         """
-        콘텐츠에서 내부 링크, 카테고리, 리다이렉트를 추출한다.
+        콘텐츠에서 내부 링크, 카테고리, 리다이렉트, 백링크를 추출한다.
 
         내부 링크 형식:
         - [[LinkName]] - 일반 링크
         - [[Category:Name]] - 카테고리
         - [[Redirect:Name]] - 리다이렉트
+        - [[Backlink:Name]] - 백링크
 
         Args:
             content: 파싱할 콘텐츠
 
         Returns:
-            (links, categories, redirects) 튜플
+            (links, categories, redirects, backlinks) 튜플
         """
         links = []
         categories = []
         redirects = []
+        backlinks = []
 
         matches = PlainTextBlockParser.INTERNAL_LINK_PATTERN.findall(content)
         for match in matches:
@@ -518,11 +530,14 @@ class PlainTextBlockParser:
             elif match.startswith('Redirect:'):
                 redirect_target = match[len('Redirect:'):]
                 redirects.append({'from': '', 'to': redirect_target})
+            elif match.startswith('Backlink:'):
+                backlink_name = match[len('Backlink:'):]
+                backlinks.append(backlink_name)
             else:
                 # 일반 링크
                 links.append(match)
 
-        return links, categories, redirects
+        return links, categories, redirects, backlinks
 
     @staticmethod
     def _extract_external_links_from_content(content: str) -> list:

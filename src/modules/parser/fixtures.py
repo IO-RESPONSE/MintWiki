@@ -86,6 +86,11 @@ class ParserFixtureLoader:
             ParserFixtureLoader._categories_with_heading(),
             ParserFixtureLoader._categories_with_content(),
             ParserFixtureLoader._categories_with_special_chars(),
+            ParserFixtureLoader._backlinks_simple(),
+            ParserFixtureLoader._backlinks_multiple(),
+            ParserFixtureLoader._backlinks_with_heading(),
+            ParserFixtureLoader._backlinks_with_content(),
+            ParserFixtureLoader._backlinks_with_special_chars(),
         ]
 
     @staticmethod
@@ -1303,6 +1308,104 @@ class ParserFixtureLoader:
                     "links": [],
                     "categories": ["Science & Technology", "2024 Events"],
                     "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _backlinks_simple() -> ParserFixture:
+        """단순 백링크 픽스처."""
+        return ParserFixture(
+            name="backlinks_simple",
+            source="[[Backlink:Test]]",
+            expected_result=ParserResult(
+                blocks=[],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "backlinks": ["Test"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _backlinks_multiple() -> ParserFixture:
+        """여러 백링크 픽스처."""
+        return ParserFixture(
+            name="backlinks_multiple",
+            source="[[Backlink:Page1]]\n[[Backlink:Page2]]\n[[Backlink:Page3]]",
+            expected_result=ParserResult(
+                blocks=[],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "backlinks": ["Page1", "Page2", "Page3"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _backlinks_with_heading() -> ParserFixture:
+        """제목과 함께 있는 백링크 픽스처."""
+        return ParserFixture(
+            name="backlinks_with_heading",
+            source="[[Backlink:Reference]]\n\n= Main Article =",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        "type": "heading",
+                        "level": 1,
+                        "content": "Main Article",
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [
+                        {"level": 1, "text": "Main Article"}
+                    ],
+                    "backlinks": ["Reference"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _backlinks_with_content() -> ParserFixture:
+        """콘텐츠와 함께 있는 백링크 픽스처."""
+        return ParserFixture(
+            name="backlinks_with_content",
+            source="[[Backlink:Tutorial]]\n\nSome content here.",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        "type": "paragraph",
+                        "content": "Some content here.",
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "backlinks": ["Tutorial"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _backlinks_with_special_chars() -> ParserFixture:
+        """특수 문자를 포함한 백링크 픽스처."""
+        return ParserFixture(
+            name="backlinks_with_special_chars",
+            source="[[Backlink:Science & Technology]]\n[[Backlink:2024 Events]]",
+            expected_result=ParserResult(
+                blocks=[],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "backlinks": ["Science & Technology", "2024 Events"],
                 },
             ),
         )

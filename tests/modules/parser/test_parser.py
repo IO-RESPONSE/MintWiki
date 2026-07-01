@@ -2036,3 +2036,106 @@ class TestPlainTextBlockParserCategories:
         assert "categories" in result.metadata
         assert isinstance(result.metadata["categories"], list)
         assert all(isinstance(c, str) for c in result.metadata["categories"])
+
+
+class TestPlainTextBlockParserBacklinks:
+    """백링크 추출 파싱 테스트."""
+
+    def test_parses_single_backlink(self):
+        """단일 백링크를 파싱한다."""
+        source = "[[Backlink:Test]]"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["backlinks"]) == 1
+        assert result.metadata["backlinks"][0] == "Test"
+
+    def test_parses_multiple_backlinks(self):
+        """여러 백링크를 파싱한다."""
+        source = "[[Backlink:Page1]]\n[[Backlink:Page2]]"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["backlinks"]) == 2
+        assert "Page1" in result.metadata["backlinks"]
+        assert "Page2" in result.metadata["backlinks"]
+
+    def test_backlinks_do_not_create_blocks(self):
+        """백링크는 블록을 생성하지 않는다."""
+        source = "[[Backlink:Test]]"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 0
+
+    def test_backlinks_with_heading(self):
+        """제목이 있는 백링크를 파싱한다."""
+        source = "[[Backlink:Documentation]]\n\n= Main Article ="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["backlinks"]) == 1
+        assert result.metadata["backlinks"][0] == "Documentation"
+        assert len(result.metadata["headings"]) == 1
+
+    def test_backlinks_with_content(self):
+        """콘텐츠와 함께 있는 백링크를 파싱한다."""
+        source = "[[Backlink:Tutorial]]\n\nSome content here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["backlinks"]) == 1
+        assert result.metadata["backlinks"][0] == "Tutorial"
+        assert len(result.blocks) == 1
+
+    def test_backlinks_order_preserved(self):
+        """백링크의 순서가 유지된다."""
+        source = "[[Backlink:Alpha]]\n[[Backlink:Beta]]\n[[Backlink:Gamma]]"
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["backlinks"] == ["Alpha", "Beta", "Gamma"]
+
+    def test_duplicate_backlinks_removed(self):
+        """중복 백링크는 제거된다."""
+        source = "[[Backlink:Test]]\n\nContent.\n\n[[Backlink:Test]]"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["backlinks"]) == 1
+        assert result.metadata["backlinks"][0] == "Test"
+
+    def test_backlinks_with_special_characters(self):
+        """특수 문자를 포함한 백링크를 파싱한다."""
+        source = "[[Backlink:Science & Technology]]\n[[Backlink:2024 Events]]"
+        result = PlainTextBlockParser.parse(source)
+        assert "Science & Technology" in result.metadata["backlinks"]
+        assert "2024 Events" in result.metadata["backlinks"]
+
+    def test_backlinks_with_spaces(self):
+        """공백을 포함한 백링크를 파싱한다."""
+        source = "[[Backlink:Multi Word Backlink]]"
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["backlinks"] == ["Multi Word Backlink"]
+
+    def test_backlinks_in_paragraph_content(self):
+        """문단 콘텐츠 내의 백링크를 파싱한다."""
+        source = "= Title =\n\nSee [[Backlink:Reference]] for details."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["backlinks"]) == 1
+        assert result.metadata["backlinks"][0] == "Reference"
+
+    def test_empty_backlinks_list_when_none_found(self):
+        """백링크가 없을 때 메타데이터에 포함되지 않는다."""
+        source = "Just a paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert "backlinks" not in result.metadata
+
+    def test_backlinks_at_top_of_document(self):
+        """문서 상단의 백링크를 파싱한다."""
+        source = "[[Backlink:Featured]]\n\n= Main =\n\nContent."
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["backlinks"] == ["Featured"]
+        assert len(result.blocks) == 2
+
+    def test_backlinks_with_multiple_content_blocks(self):
+        """여러 콘텐츠 블록이 있는 백링크를 파싱한다."""
+        source = "[[Backlink:Guide]]\n\nFirst paragraph.\n\nSecond paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["backlinks"]) == 1
+        assert result.metadata["backlinks"][0] == "Guide"
+        assert len(result.blocks) == 2
+
+    def test_backlinks_metadata_extraction(self):
+        """백링크 메타데이터를 올바르게 추출한다."""
+        source = "[[Backlink:Test]]\n\nContent."
+        result = PlainTextBlockParser.parse(source)
+        assert "backlinks" in result.metadata
+        assert isinstance(result.metadata["backlinks"], list)
+        assert all(isinstance(b, str) for b in result.metadata["backlinks"])
