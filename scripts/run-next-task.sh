@@ -55,8 +55,15 @@ finish_failed() {
     echo "Task failed with exit code $exit_code"
     echo "Timestamp: $(date '+%Y-%m-%d %H:%M:%S %Z %z')"
   } > "$RUN_DIR/failure.txt"
-  if [ -f "$ACTIVE_TASK" ]; then
-    mv "$ACTIVE_TASK" "$FAILED_DIR/$TASK_NAME"
+  # 실패 시 워킹트리를 마지막 커밋 상태로 되돌려, 다음 사이클이 dirty tree 로 막히지 않게 한다.
+  # (runs/ 는 gitignore 라 clean 에서 제외되어 실패 로그는 보존된다.)
+  git reset --hard HEAD >/dev/null 2>&1 || true
+  git clean -fd >/dev/null 2>&1 || true
+  # 실패한 태스크를 failed/ 로 이동하고 커밋해 트리를 clean 상태로 만든다.
+  if [ -f "$QUEUE_DIR/$TASK_NAME" ]; then
+    mv "$QUEUE_DIR/$TASK_NAME" "$FAILED_DIR/$TASK_NAME"
+    git add -A >/dev/null 2>&1 || true
+    git commit -q -m "태스크 ${TASK_NAME%.md} 실패" >/dev/null 2>&1 || true
   fi
   echo "Task failed: $TASK_NAME" >&2
   exit "$exit_code"

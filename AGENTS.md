@@ -17,6 +17,10 @@ acceptance criteria, out-of-scope items, and QA.
 Complete exactly one task per runner cycle. Do not start the next queued task,
 even if the current task is small or finishes quickly.
 
+**`tasks/` 디렉토리는 절대 건드리지 않는다.** 태스크 파일을 생성·이동·이름변경·
+삭제하지 않는다. 태스크 큐(queue/in-progress/done/failed 이동)는 러너가 전담한다.
+에이전트가 `tasks/`를 손대면 러너가 깨진다.
+
 ## 언어 규칙 (Language)
 
 - 코드 주석과 docstring은 **한글**로 작성한다.
