@@ -2258,6 +2258,36 @@ class TestPlainTextBlockParserSimpleTableRows:
         cells = result.blocks[0]["rows"][0]["cells"]
         assert "test&data" in cells or any("test" in c for c in cells)
 
+    def test_table_row_missing_closing_delimiter(self):
+        """닫는 구분자가 없는 테이블 행을 복구한다."""
+        source = "||cell1||cell2\n||cell3||cell4||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "table"
+        assert len(result.blocks[0]["rows"]) == 2
+        assert result.blocks[0]["rows"][0]["cells"] == ["cell1", "cell2"]
+        assert result.blocks[0]["rows"][1]["cells"] == ["cell3", "cell4"]
+
+    def test_multiple_malformed_table_rows(self):
+        """여러 개의 손상된 테이블 행을 복구한다."""
+        source = "||cell1||cell2\n||cell3||cell4\n||cell5||cell6||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "table"
+        assert len(result.blocks[0]["rows"]) == 3
+        assert result.blocks[0]["rows"][0]["cells"] == ["cell1", "cell2"]
+        assert result.blocks[0]["rows"][1]["cells"] == ["cell3", "cell4"]
+        assert result.blocks[0]["rows"][2]["cells"] == ["cell5", "cell6"]
+
+    def test_malformed_table_row_with_options(self):
+        """옵션이 있는 손상된 테이블 행을 복구한다."""
+        source = "||^2 Wide||Normal\n||Left||Right||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "table"
+        first_row = result.blocks[0]["rows"][0]
+        assert first_row["cells"][0]["colspan"] == 2
+
 
 class TestPlainTextBlockParserTableHeaders:
     """테이블 헤더 셀 파싱 테스트."""
@@ -2385,3 +2415,25 @@ class TestPlainTextBlockParserTableHeaders:
         # 기존 동작과 호환성을 유지하기 위해 데이터 행에도 type이 있어야 함
         assert "type" in row
         assert row["type"] == "data"
+
+    def test_header_row_missing_closing_delimiter(self):
+        """닫는 구분자가 없는 헤더 행을 복구한다."""
+        source = "!!header1!!header2\n||cell1||cell2||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "table"
+        assert len(result.blocks[0]["rows"]) == 2
+        assert result.blocks[0]["rows"][0]["type"] == "header"
+        assert result.blocks[0]["rows"][0]["cells"] == ["header1", "header2"]
+        assert result.blocks[0]["rows"][1]["type"] == "data"
+        assert result.blocks[0]["rows"][1]["cells"] == ["cell1", "cell2"]
+
+    def test_multiple_malformed_header_rows(self):
+        """여러 개의 손상된 헤더 행을 복구한다."""
+        source = "!!header1!!header2\n!!header3!!header4\n||cell1||cell2||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "table"
+        assert len(result.blocks[0]["rows"]) == 3
+        assert all(row["type"] == "header" for row in result.blocks[0]["rows"][:2])
+        assert result.blocks[0]["rows"][2]["type"] == "data"

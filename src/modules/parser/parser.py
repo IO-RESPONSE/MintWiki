@@ -60,6 +60,9 @@ class PlainTextBlockParser:
     # 테이블 헤더 행 패턴: !!header1!!header2!!header3!! (시작과 끝에 !!)
     TABLE_HEADER_PATTERN = re.compile(r'^!!(.+)!!$')
 
+    # 손상된 테이블 행 패턴: || 또는 !!로 시작하지만 끝나지 않거나, 끝나지만 시작하지 않는 줄
+    MALFORMED_TABLE_ROW_PATTERN = re.compile(r'^(\|\||!!)')
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
@@ -78,6 +81,62 @@ class PlainTextBlockParser:
         metadata = PlainTextBlockParser._extract_metadata(source, blocks)
 
         return ParserResult(blocks=blocks, metadata=metadata)
+
+    @staticmethod
+    def _is_potential_malformed_table_row(line: str) -> bool:
+        """
+        줄이 손상된 테이블 행일 가능성이 있는지 확인한다.
+
+        손상된 테이블 행 후보:
+        - ||로 시작하지만 ||로 끝나지 않는 경우
+        - !!로 시작하지만 !!로 끝나지 않는 경우
+
+        Args:
+            line: 확인할 줄
+
+        Returns:
+            손상된 테이블 행일 가능성이 있으면 True
+        """
+        if not line or not line.strip():
+            return False
+
+        # ||로 시작하지만 ||로 끝나지 않는 경우
+        if line.startswith('||') and not line.endswith('||'):
+            return True
+
+        # !!로 시작하지만 !!로 끝나지 않는 경우
+        if line.startswith('!!') and not line.endswith('!!'):
+            return True
+
+        return False
+
+    @staticmethod
+    def _recover_malformed_table_row(line: str) -> str:
+        """
+        손상된 테이블 행을 복구한다.
+
+        손상된 테이블 행 패턴:
+        - ||로 시작하지만 ||로 끝나지 않는 경우: 끝에 ||를 추가
+        - !!로 시작하지만 !!로 끝나지 않는 경우: 끝에 !!를 추가
+
+        Args:
+            line: 복구할 줄
+
+        Returns:
+            복구된 줄 (손상되지 않은 경우 원본 반환)
+        """
+        if not line or not line.strip():
+            return line
+
+        # ||로 시작하지만 ||로 끝나지 않는 경우
+        if line.startswith('||') and not line.endswith('||'):
+            return line + '||'
+
+        # !!로 시작하지만 !!로 끝나지 않는 경우
+        if line.startswith('!!') and not line.endswith('!!'):
+            return line + '!!'
+
+        return line
 
     @staticmethod
     def _parse_blocks(source: str) -> List[Dict[str, Any]]:
@@ -323,7 +382,7 @@ class PlainTextBlockParser:
                     # 목록 줄을 현재 블록에 추가
                     current_block_lines.append(line)
                     in_list = True
-                elif table_row_match or table_header_match:
+                elif table_row_match or table_header_match or PlainTextBlockParser._is_potential_malformed_table_row(line):
                     # 현재 비-테이블 블록이 있으면 먼저 처리
                     if current_block_lines and not in_table:
                         block_content = '\n'.join(current_block_lines)
@@ -754,12 +813,19 @@ class PlainTextBlockParser:
             테이블이면 True
         """
         lines = content.split('\n')
+        has_valid_row = False
         for line in lines:
-            if line.strip() and not (PlainTextBlockParser.TABLE_ROW_PATTERN.match(line) or PlainTextBlockParser.TABLE_HEADER_PATTERN.match(line)):
-                # 한 줄이라도 테이블 패턴과 일치하지 않으면 테이블이 아님
-                return False
-        # 최소한 한 개 이상의 테이블 행이 있어야 함
-        return any(PlainTextBlockParser.TABLE_ROW_PATTERN.match(line) or PlainTextBlockParser.TABLE_HEADER_PATTERN.match(line) for line in lines)
+            if line.strip():
+                # 정상적인 테이블 행이거나 손상된 테이블 행인지 확인
+                is_valid_row = PlainTextBlockParser.TABLE_ROW_PATTERN.match(line) or PlainTextBlockParser.TABLE_HEADER_PATTERN.match(line)
+                is_malformed_row = PlainTextBlockParser.MALFORMED_TABLE_ROW_PATTERN.match(line)
+                if not (is_valid_row or is_malformed_row):
+                    # 한 줄이라도 테이블 패턴과 일치하지 않으면 테이블이 아님
+                    return False
+                if is_valid_row:
+                    has_valid_row = True
+        # 최소한 한 개 이상의 정상 테이블 행이 있어야 함
+        return has_valid_row
 
     @staticmethod
     def _parse_cell_background(cell_content: str) -> tuple:
@@ -919,8 +985,11 @@ class PlainTextBlockParser:
         rows = []
 
         for line in lines:
+            # 손상된 테이블 행을 복구
+            recovered_line = PlainTextBlockParser._recover_malformed_table_row(line)
+
             # 헤더 행 확인
-            header_match = PlainTextBlockParser.TABLE_HEADER_PATTERN.match(line)
+            header_match = PlainTextBlockParser.TABLE_HEADER_PATTERN.match(recovered_line)
             if header_match:
                 # !!로 구분된 셀 추출
                 cells_content = header_match.group(1)
@@ -953,7 +1022,7 @@ class PlainTextBlockParser:
                 continue
 
             # 일반 행 확인
-            row_match = PlainTextBlockParser.TABLE_ROW_PATTERN.match(line)
+            row_match = PlainTextBlockParser.TABLE_ROW_PATTERN.match(recovered_line)
             if row_match:
                 # ||로 구분된 셀 추출
                 cells_content = row_match.group(1)

@@ -108,6 +108,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._table_with_cell_rowspan(),
             ParserFixtureLoader._table_with_rowspan_and_alignment(),
             ParserFixtureLoader._table_with_rowspan_and_background(),
+            ParserFixtureLoader._malformed_table_row_missing_closing(),
+            ParserFixtureLoader._malformed_table_with_multiple_rows(),
+            ParserFixtureLoader._malformed_table_header_missing_closing(),
         ]
 
     @staticmethod
@@ -1927,6 +1930,100 @@ class ParserFixtureLoader:
                                 'cells': [
                                     {'content': 'Blue', 'bgcolor': '#0000FF'},
                                 ],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _malformed_table_row_missing_closing() -> ParserFixture:
+        """닫는 구분자가 없는 손상된 테이블 행 픽스처."""
+        return ParserFixture(
+            name="malformed_table_row_missing_closing",
+            source="||cell1||cell2\n||cell3||cell4||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'data',
+                                'cells': ['cell1', 'cell2'],
+                            },
+                            {
+                                'type': 'data',
+                                'cells': ['cell3', 'cell4'],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _malformed_table_with_multiple_rows() -> ParserFixture:
+        """여러 개의 손상된 테이블 행 픽스처."""
+        return ParserFixture(
+            name="malformed_table_with_multiple_rows",
+            source="||row1col1||row1col2\n||row2col1||row2col2\n||row3col1||row3col2||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'data',
+                                'cells': ['row1col1', 'row1col2'],
+                            },
+                            {
+                                'type': 'data',
+                                'cells': ['row2col1', 'row2col2'],
+                            },
+                            {
+                                'type': 'data',
+                                'cells': ['row3col1', 'row3col2'],
+                            },
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _malformed_table_header_missing_closing() -> ParserFixture:
+        """닫는 구분자가 없는 손상된 헤더 행 픽스처."""
+        return ParserFixture(
+            name="malformed_table_header_missing_closing",
+            source="!!header1!!header2\n||cell1||cell2||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {
+                                'type': 'header',
+                                'cells': ['header1', 'header2'],
+                            },
+                            {
+                                'type': 'data',
+                                'cells': ['cell1', 'cell2'],
                             },
                         ],
                     }
