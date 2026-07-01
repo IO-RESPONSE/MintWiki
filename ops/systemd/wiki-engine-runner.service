@@ -17,5 +17,6 @@ Environment=CLAUDE_OUTPUT_FORMAT=json
 Environment=CODEX_BIN=/root/.nvm/versions/node/v22.22.2/bin/codex
 Environment=CODEX_SANDBOX=workspace-write
 Environment=CODEX_APPROVAL=never
+Environment=GITHUB_TOKEN_FILE=/root/.github-mintwiki-token
 ExecStart=/root/wiki-engine-blueprint/scripts/run-next-task.sh
 TimeoutStartSec=540

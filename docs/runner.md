@@ -41,6 +41,7 @@ CODEX_BIN=codex
 CODEX_MODEL=
 CODEX_SANDBOX=workspace-write
 CODEX_APPROVAL=never
+GITHUB_TOKEN_FILE=/root/.github-mintwiki-token
 ```
 
 `WIKI_ENGINE_AGENT=claude` makes the timer use Claude Code by default.
@@ -52,6 +53,10 @@ non-root dedicated user in an isolated runner, you can evaluate
 `bypassPermissions`.
 
 Set `CLAUDE_MAX_BUDGET_USD` to cap spend for each print-mode invocation.
+
+When `GITHUB_TOKEN_FILE` is set, `scripts/run-next-task.sh` uses
+`scripts/github-token-askpass.sh` for non-interactive HTTPS git pull/push.
+The token file must be readable only by the runner user.
 
 `CODEX_APPROVAL=never` is important for unattended Codex execution. If Codex
 needs an action that requires approval, that run should fail instead of hanging.

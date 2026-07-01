@@ -10,6 +10,11 @@ DONE_DIR="$ROOT_DIR/tasks/done"
 FAILED_DIR="$ROOT_DIR/tasks/failed"
 AGENT="${WIKI_ENGINE_AGENT:-claude}"
 
+if [ -n "${GITHUB_TOKEN_FILE:-}" ]; then
+  export GIT_ASKPASS="${GIT_ASKPASS:-$ROOT_DIR/scripts/github-token-askpass.sh}"
+  export GIT_TERMINAL_PROMPT="${GIT_TERMINAL_PROMPT:-0}"
+fi
+
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
   echo "Another runner is already active."
