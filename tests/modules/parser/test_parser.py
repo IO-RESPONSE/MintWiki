@@ -1074,11 +1074,13 @@ class TestPlainTextBlockParserUnorderedLists:
         result = PlainTextBlockParser.parse(source)
         assert len(result.blocks) == 1
         assert result.blocks[0]["type"] == "list"
-        assert len(result.blocks[0]["items"]) == 4
+        assert len(result.blocks[0]["items"]) == 2
         assert result.blocks[0]["items"][0]["level"] == 1
-        assert result.blocks[0]["items"][1]["level"] == 2
-        assert result.blocks[0]["items"][2]["level"] == 2
-        assert result.blocks[0]["items"][3]["level"] == 1
+        assert len(result.blocks[0]["items"][0]["children"]) == 2
+        assert result.blocks[0]["items"][0]["children"][0]["level"] == 2
+        assert result.blocks[0]["items"][0]["children"][1]["level"] == 2
+        assert result.blocks[0]["items"][1]["level"] == 1
+        assert len(result.blocks[0]["items"][1]["children"]) == 0
 
     def test_list_followed_by_paragraph(self):
         """목록 다음에 문단이 있는 경우를 파싱한다."""
@@ -1112,9 +1114,9 @@ class TestPlainTextBlockParserUnorderedLists:
         assert len(result.blocks) == 1
         items = result.blocks[0]["items"]
         assert items[0]["level"] == 1
-        assert items[1]["level"] == 2
-        assert items[2]["level"] == 3
-        assert items[3]["level"] == 2
+        assert items[0]["children"][0]["level"] == 2
+        assert items[0]["children"][0]["children"][0]["level"] == 3
+        assert items[0]["children"][1]["level"] == 2
 
     def test_list_with_spaces_after_asterisk(self):
         """별표 뒤에 공백이 있는 목록을 파싱한다."""
@@ -1190,11 +1192,13 @@ class TestPlainTextBlockParserOrderedLists:
         result = PlainTextBlockParser.parse(source)
         assert len(result.blocks) == 1
         assert result.blocks[0]["type"] == "list"
-        assert len(result.blocks[0]["items"]) == 4
+        assert len(result.blocks[0]["items"]) == 2
         assert result.blocks[0]["items"][0]["level"] == 1
-        assert result.blocks[0]["items"][1]["level"] == 2
-        assert result.blocks[0]["items"][2]["level"] == 2
-        assert result.blocks[0]["items"][3]["level"] == 1
+        assert len(result.blocks[0]["items"][0]["children"]) == 2
+        assert result.blocks[0]["items"][0]["children"][0]["level"] == 2
+        assert result.blocks[0]["items"][0]["children"][1]["level"] == 2
+        assert result.blocks[0]["items"][1]["level"] == 1
+        assert len(result.blocks[0]["items"][1]["children"]) == 0
 
     def test_list_followed_by_paragraph(self):
         """목록 다음에 문단이 있는 경우를 파싱한다."""
@@ -1228,9 +1232,9 @@ class TestPlainTextBlockParserOrderedLists:
         assert len(result.blocks) == 1
         items = result.blocks[0]["items"]
         assert items[0]["level"] == 1
-        assert items[1]["level"] == 2
-        assert items[2]["level"] == 3
-        assert items[3]["level"] == 2
+        assert items[0]["children"][0]["level"] == 2
+        assert items[0]["children"][0]["children"][0]["level"] == 3
+        assert items[0]["children"][1]["level"] == 2
 
     def test_list_with_spaces_after_hash(self):
         """해시 뒤에 공백이 있는 목록을 파싱한다."""

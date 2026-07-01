@@ -343,6 +343,46 @@ class PlainTextBlockParser:
         return external_links
 
     @staticmethod
+    def _build_nested_list(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        평탄한 아이템 배열을 중첩된 구조로 변환한다.
+
+        레벨이 높은 아이템들을 낮은 레벨의 부모 아이템 아래 children으로 배치한다.
+
+        Args:
+            items: 레벨 정보가 있는 평탄한 아이템 배열
+
+        Returns:
+            중첩된 구조의 아이템 배열
+        """
+        if not items:
+            return []
+
+        result = []
+        stack = []  # (item, level) 튜플의 스택
+
+        for item in items:
+            current_level = item['level']
+            current_item = item.copy()
+            current_item['children'] = []
+
+            # 스택에서 같거나 더 낮은 레벨의 아이템들을 제거
+            while stack and stack[-1][1] >= current_level:
+                stack.pop()
+
+            # 부모 아이템에 추가
+            if stack:
+                stack[-1][0]['children'].append(current_item)
+            else:
+                # 루트 레벨 아이템
+                result.append(current_item)
+
+            # 현재 아이템을 스택에 추가
+            stack.append((current_item, current_level))
+
+        return result
+
+    @staticmethod
     def _is_unordered_list(content: str) -> bool:
         """
         콘텐츠가 순서 없는 목록인지 확인한다.
@@ -386,10 +426,13 @@ class PlainTextBlockParser:
                     'text': text,
                 })
 
+        # 평탄한 아이템 배열을 중첩된 구조로 변환
+        nested_items = PlainTextBlockParser._build_nested_list(items)
+
         return {
             'type': 'list',
             'list_type': 'unordered',
-            'items': items,
+            'items': nested_items,
         }
 
     @staticmethod
@@ -436,8 +479,11 @@ class PlainTextBlockParser:
                     'text': text,
                 })
 
+        # 평탄한 아이템 배열을 중첩된 구조로 변환
+        nested_items = PlainTextBlockParser._build_nested_list(items)
+
         return {
             'type': 'list',
             'list_type': 'ordered',
-            'items': items,
+            'items': nested_items,
         }
