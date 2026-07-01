@@ -1277,3 +1277,77 @@ class TestPlainTextBlockParserOrderedLists:
         assert len(result.blocks) == 2
         assert result.blocks[0]["list_type"] == "ordered"
         assert result.blocks[1]["list_type"] == "unordered"
+
+
+class TestPlainTextBlockParserHorizontalRule:
+    """수평선 파싱 테스트."""
+
+    def test_parses_horizontal_rule_simple(self):
+        """간단한 수평선을 파싱한다."""
+        source = "----"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "horizontal_rule"
+
+    def test_parses_horizontal_rule_with_text(self):
+        """텍스트와 함께 있는 수평선을 파싱한다."""
+        source = "= Title =\n\nContent here.\n\n----\n\nMore content."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 4
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[2]["type"] == "horizontal_rule"
+        assert result.blocks[3]["type"] == "paragraph"
+
+    def test_parses_horizontal_rule_multiple(self):
+        """여러 개의 수평선을 파싱한다."""
+        source = "----\n\n----\n\n-----"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert all(block["type"] == "horizontal_rule" for block in result.blocks)
+
+    def test_parses_horizontal_rule_with_more_dashes(self):
+        """4개보다 많은 대시로 이루어진 수평선을 파싱한다."""
+        source = "----------"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "horizontal_rule"
+
+    def test_horizontal_rule_not_parsed_with_less_than_four_dashes(self):
+        """4개 미만의 대시는 수평선이 아니다."""
+        source = "---"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "---"
+
+    def test_horizontal_rule_with_leading_spaces(self):
+        """앞에 공백이 있는 수평선을 파싱한다."""
+        source = "  ----"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "horizontal_rule"
+
+    def test_horizontal_rule_with_trailing_spaces(self):
+        """뒤에 공백이 있는 수평선을 파싱한다."""
+        source = "----  "
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "horizontal_rule"
+
+    def test_horizontal_rule_between_paragraphs(self):
+        """문단 사이의 수평선을 파싱한다."""
+        source = "First paragraph.\n\n----\n\nSecond paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[1]["type"] == "horizontal_rule"
+        assert result.blocks[2]["type"] == "paragraph"
+
+    def test_horizontal_rule_after_heading(self):
+        """제목 다음의 수평선을 파싱한다."""
+        source = "= Title =\n\n----"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[1]["type"] == "horizontal_rule"

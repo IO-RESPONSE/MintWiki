@@ -59,6 +59,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._ordered_list_multiple(),
             ParserFixtureLoader._ordered_list_nested(),
             ParserFixtureLoader._ordered_list_with_special_chars(),
+            ParserFixtureLoader._horizontal_rule_simple(),
+            ParserFixtureLoader._horizontal_rule_with_text(),
+            ParserFixtureLoader._horizontal_rule_multiple(),
         ]
 
     @staticmethod
@@ -763,6 +766,67 @@ class ParserFixtureLoader:
                             {"level": 1, "text": "Item with 123 numbers", "children": []},
                         ],
                     },
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _horizontal_rule_simple() -> ParserFixture:
+        """간단한 수평선 픽스처."""
+        return ParserFixture(
+            name="horizontal_rule_simple",
+            source="----",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "horizontal_rule"},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _horizontal_rule_with_text() -> ParserFixture:
+        """텍스트와 함께 있는 수평선 픽스처."""
+        return ParserFixture(
+            name="horizontal_rule_with_text",
+            source="= Title =\n\nContent here.\n\n----\n\nMore content.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "heading", "level": 1, "content": "Title"},
+                    {"type": "paragraph", "content": "Content here."},
+                    {"type": "horizontal_rule"},
+                    {"type": "paragraph", "content": "More content."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [
+                        {"level": 1, "text": "Title"},
+                    ],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _horizontal_rule_multiple() -> ParserFixture:
+        """여러 개의 수평선 픽스처."""
+        return ParserFixture(
+            name="horizontal_rule_multiple",
+            source="----\n\n----\n\n-----",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "horizontal_rule"},
+                    {"type": "horizontal_rule"},
+                    {"type": "horizontal_rule"},
                 ],
                 metadata={
                     "links": [],
