@@ -110,3 +110,18 @@ class TestGetDocument:
         assert isinstance(data["id"], str)
         assert len(data["id"]) > 0
         assert data["title"] == "Test Document"
+
+
+class TestListRevisions:
+    """리비전 목록 조회 엔드포인트 테스트."""
+
+    def test_list_revisions_returns_empty_list_for_document_without_revisions(
+        self, client: TestClient
+    ):
+        """문서에 리비전이 없을 때 빈 목록을 반환한다."""
+        response = client.get("/api/documents/nonexistent-doc/revisions")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) == 0

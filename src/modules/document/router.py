@@ -4,6 +4,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from modules.document.repository import DatabaseDocumentRepository
 from modules.document.schema import CreateDocumentRequest, DocumentResponse
 from modules.document.service import DocumentService
+from modules.revision.repository import DatabaseRevisionRepository
+from modules.revision.schema import RevisionResponse
+from modules.revision.service import RevisionService
 
 # 문서 API 라우터를 생성한다.
 # 라우터의 접두사는 main.py에서 등록할 때 지정된다.
@@ -31,6 +34,18 @@ async def get_document_service(
     """
     repository = DatabaseDocumentRepository(session)
     return DocumentService(repository)
+
+
+async def get_revision_service(
+    session=Depends(get_session),
+) -> RevisionService:
+    """
+    리비전 서비스를 반환한다.
+
+    데이터베이스 세션을 사용하여 저장소를 생성한다.
+    """
+    repository = DatabaseRevisionRepository(session)
+    return RevisionService(repository)
 
 
 @router.get("/", tags=["documents"])
@@ -91,6 +106,35 @@ async def get_document_by_title(
             detail="문서를 찾을 수 없습니다",
         )
     return DocumentResponse(id=document.id, title=document.title)
+
+
+@router.get("/{document_id}/revisions", tags=["revisions"])
+async def list_revisions(
+    document_id: str,
+    revision_service: RevisionService = Depends(get_revision_service),
+) -> list[RevisionResponse]:
+    """
+    주어진 문서의 리비전을 생성 순서대로 나열한다.
+
+    Args:
+        document_id: 조회할 문서의 고유 식별자
+        revision_service: 리비전 서비스
+
+    Returns:
+        문서의 리비전 목록 (생성 순서)
+    """
+    revisions = await revision_service.list_by_document_id(document_id)
+    return [
+        RevisionResponse(
+            id=revision.id,
+            document_id=revision.document_id,
+            source=revision.source,
+            author_id=revision.author_id,
+            summary=revision.summary,
+            parent_revision_id=revision.parent_revision_id,
+        )
+        for revision in revisions
+    ]
 
 
 @router.get("/{document_id}", tags=["documents"])
