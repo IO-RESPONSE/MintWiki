@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.config import get_settings
+from modules.document.router import router as document_router
 
 
 def create_app() -> FastAPI:
@@ -14,6 +15,8 @@ def create_app() -> FastAPI:
             "app": settings.app_name,
             "environment": settings.environment,
         }
+
+    app.include_router(document_router, prefix="/api/documents")
 
     return app
 
