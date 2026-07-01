@@ -3,6 +3,7 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+from modules.document.model import Document
 from modules.document.repository import (
     DuplicateNormalizedTitleError,
     InMemoryDocumentRepository,
@@ -10,6 +11,7 @@ from modules.document.repository import (
 )
 from modules.document.service import DocumentService, CurrentRevisionReadModel
 from modules.document.title import EmptyTitleError
+from modules.revision.model import Revision
 from modules.revision.repository import (
     InMemoryRevisionRepository,
     DatabaseRevisionRepository,
@@ -571,3 +573,49 @@ class TestDocumentServiceWithDatabase:
         assert retrieved_doc.current_revision_id == doc.current_revision_id
         assert retrieved_rev is not None
         assert retrieved_rev.source == "Test content"
+
+    @pytest.mark.asyncio
+    async def test_create_rolls_back_document_when_revision_fails(self, async_db_session):
+        """리비전 생성이 실패하면 문서 생성이 롤백된다."""
+        from sqlalchemy.exc import IntegrityError
+        from sqlalchemy import select
+        from persistence.models import DocumentORM, RevisionORM
+
+        # flush 메서드를 모의하여 IntegrityError를 발생시킨다
+        async def mock_flush():
+            raise IntegrityError("FK constraint violated", None, None)
+
+        transaction = DocumentRevisionTransaction(async_db_session)
+        original_flush = async_db_session.flush
+
+        document = Document(id="rollback-doc-1", title="Document to Rollback")
+        revision = Revision(
+            id="rollback-rev-1",
+            document_id="doc-1",
+            source="Content that won't be saved",
+            author_id="author-1",
+            summary="This should fail",
+        )
+
+        # flush를 모의하여 IntegrityError 발생시키기
+        async_db_session.flush = mock_flush
+
+        try:
+            # 트랜잭션 실패를 기대함
+            with pytest.raises(IntegrityError):
+                await transaction.create_document_with_revision(document, revision)
+
+            # 문서가 세션에 추가되었지만 저장되지 않았는지 확인
+            doc_query = select(DocumentORM).where(DocumentORM.id == "rollback-doc-1")
+            doc_result = await async_db_session.execute(doc_query)
+            doc_in_db = doc_result.scalar_one_or_none()
+            assert doc_in_db is None, "롤백 후 문서가 데이터베이스에 저장되지 않아야 함"
+
+            # 리비전도 저장되지 않았는지 확인
+            rev_query = select(RevisionORM).where(RevisionORM.id == "rollback-rev-1")
+            rev_result = await async_db_session.execute(rev_query)
+            rev_in_db = rev_result.scalar_one_or_none()
+            assert rev_in_db is None, "롤백 후 리비전이 데이터베이스에 저장되지 않아야 함"
+        finally:
+            # flush 메서드 복원
+            async_db_session.flush = original_flush

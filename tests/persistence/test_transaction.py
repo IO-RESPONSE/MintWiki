@@ -2,6 +2,7 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import IntegrityError
 
 from modules.document.model import Document
 from modules.revision.model import Revision
@@ -151,3 +152,48 @@ class TestDocumentRevisionTransaction:
         db_doc = result.scalar_one_or_none()
 
         assert db_doc.current_revision_id == "rev-5"
+
+    @pytest.mark.asyncio
+    async def test_rollback_on_revision_creation_failure(self, async_db_session):
+        """리비전 생성 실패 시 문서와 리비전이 모두 롤백된다."""
+        from sqlalchemy import select
+        from persistence.models import DocumentORM, RevisionORM
+
+        # flush 메서드를 모의하여 IntegrityError를 발생시킨다
+        async def mock_flush():
+            raise IntegrityError("FK constraint violated", None, None)
+
+        transaction = DocumentRevisionTransaction(async_db_session)
+        original_flush = async_db_session.flush
+
+        document = Document(id="rollback-doc", title="Rollback Test")
+        revision = Revision(
+            id="rollback-rev",
+            document_id="rollback-doc",
+            source="This will fail",
+            author_id="author-1",
+            summary="Rollback test",
+        )
+
+        # flush를 모의하여 IntegrityError 발생시키기
+        async_db_session.flush = mock_flush
+
+        try:
+            # 트랜잭션 실패를 기대함
+            with pytest.raises(IntegrityError):
+                await transaction.create_document_with_revision(document, revision)
+
+            # 문서가 저장되지 않았는지 확인
+            doc_query = select(DocumentORM).where(DocumentORM.id == "rollback-doc")
+            doc_result = await async_db_session.execute(doc_query)
+            db_doc = doc_result.scalar_one_or_none()
+            assert db_doc is None, "롤백 후 문서가 데이터베이스에 저장되지 않아야 함"
+
+            # 리비전이 저장되지 않았는지 확인
+            rev_query = select(RevisionORM).where(RevisionORM.id == "rollback-rev")
+            rev_result = await async_db_session.execute(rev_query)
+            db_rev = rev_result.scalar_one_or_none()
+            assert db_rev is None, "롤백 후 리비전이 데이터베이스에 저장되지 않아야 함"
+        finally:
+            # flush 메서드 복원
+            async_db_session.flush = original_flush
