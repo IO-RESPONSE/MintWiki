@@ -81,6 +81,11 @@ class ParserFixtureLoader:
             ParserFixtureLoader._redirect_with_heading(),
             ParserFixtureLoader._redirect_with_category(),
             ParserFixtureLoader._redirect_with_content(),
+            ParserFixtureLoader._categories_simple(),
+            ParserFixtureLoader._categories_multiple(),
+            ParserFixtureLoader._categories_with_heading(),
+            ParserFixtureLoader._categories_with_content(),
+            ParserFixtureLoader._categories_with_special_chars(),
         ]
 
     @staticmethod
@@ -1213,6 +1218,91 @@ class ParserFixtureLoader:
                     "categories": [],
                     "headings": [{"level": 1, "text": "Old Title"}],
                     "redirects": [{"from": "Old Title", "to": "New Title"}],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _categories_simple() -> ParserFixture:
+        """단순 카테고리 픽스처."""
+        return ParserFixture(
+            name="categories_simple",
+            source="[[Category:Test]]",
+            expected_result=ParserResult(
+                blocks=[],
+                metadata={
+                    "links": [],
+                    "categories": ["Test"],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _categories_multiple() -> ParserFixture:
+        """여러 카테고리 픽스처."""
+        return ParserFixture(
+            name="categories_multiple",
+            source="[[Category:Wiki]]\n[[Category:Technology]]\n[[Category:Science]]",
+            expected_result=ParserResult(
+                blocks=[],
+                metadata={
+                    "links": [],
+                    "categories": ["Wiki", "Technology", "Science"],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _categories_with_heading() -> ParserFixture:
+        """제목과 함께 있는 카테고리 픽스처."""
+        return ParserFixture(
+            name="categories_with_heading",
+            source="[[Category:Documentation]]\n\n= Main Article =\n\nThis is the content.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "heading", "level": 1, "content": "Main Article"},
+                    {"type": "paragraph", "content": "This is the content."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": ["Documentation"],
+                    "headings": [{"level": 1, "text": "Main Article"}],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _categories_with_content() -> ParserFixture:
+        """콘텐츠와 함께 있는 카테고리 픽스처."""
+        return ParserFixture(
+            name="categories_with_content",
+            source="[[Category:Tutorial]]\n\nThis paragraph contains text with [[Link1]].",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This paragraph contains text with [[Link1]]."},
+                ],
+                metadata={
+                    "links": ["Link1"],
+                    "categories": ["Tutorial"],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _categories_with_special_chars() -> ParserFixture:
+        """특수 문자를 포함한 카테고리 픽스처."""
+        return ParserFixture(
+            name="categories_with_special_chars",
+            source="[[Category:Science & Technology]]\n[[Category:2024 Events]]",
+            expected_result=ParserResult(
+                blocks=[],
+                metadata={
+                    "links": [],
+                    "categories": ["Science & Technology", "2024 Events"],
+                    "headings": [],
                 },
             ),
         )

@@ -1906,3 +1906,133 @@ class TestPlainTextBlockParserRedirect:
         assert result.metadata["redirects"][0]["from"] == "Main Title"
         assert result.metadata["redirects"][0]["to"] == "NewPage"
         assert "Link1" in result.metadata["links"]
+
+
+class TestPlainTextBlockParserCategories:
+    """카테고리 추출 파싱 테스트."""
+
+    def test_parses_single_category(self):
+        """단일 카테고리를 파싱한다."""
+        source = "[[Category:Test]]"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["categories"]) == 1
+        assert result.metadata["categories"][0] == "Test"
+
+    def test_parses_multiple_categories(self):
+        """여러 카테고리를 파싱한다."""
+        source = "[[Category:Wiki]]\n[[Category:Technology]]"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["categories"]) == 2
+        assert "Wiki" in result.metadata["categories"]
+        assert "Technology" in result.metadata["categories"]
+
+    def test_categories_do_not_create_blocks(self):
+        """카테고리는 블록을 생성하지 않는다."""
+        source = "[[Category:Test]]"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 0
+
+    def test_categories_with_heading(self):
+        """제목이 있는 카테고리를 파싱한다."""
+        source = "[[Category:Documentation]]\n\n= Main Article ="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["categories"]) == 1
+        assert result.metadata["categories"][0] == "Documentation"
+        assert len(result.metadata["headings"]) == 1
+
+    def test_categories_with_content(self):
+        """콘텐츠와 함께 있는 카테고리를 파싱한다."""
+        source = "[[Category:Tutorial]]\n\nSome content here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["categories"]) == 1
+        assert result.metadata["categories"][0] == "Tutorial"
+        assert len(result.blocks) == 1
+
+    def test_categories_with_multiple_content_blocks(self):
+        """여러 콘텐츠 블록이 있는 카테고리를 파싱한다."""
+        source = "[[Category:Guide]]\n\nFirst paragraph.\n\nSecond paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["categories"]) == 1
+        assert result.metadata["categories"][0] == "Guide"
+        assert len(result.blocks) == 2
+
+    def test_categories_order_preserved(self):
+        """카테고리의 순서가 유지된다."""
+        source = "[[Category:Alpha]]\n[[Category:Beta]]\n[[Category:Gamma]]"
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["categories"] == ["Alpha", "Beta", "Gamma"]
+
+    def test_duplicate_categories_removed(self):
+        """중복 카테고리는 제거된다."""
+        source = "[[Category:Test]]\n\nContent.\n\n[[Category:Test]]"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["categories"]) == 1
+        assert result.metadata["categories"][0] == "Test"
+
+    def test_categories_with_special_characters(self):
+        """특수 문자를 포함한 카테고리를 파싱한다."""
+        source = "[[Category:Science & Technology]]\n[[Category:2024 Events]]"
+        result = PlainTextBlockParser.parse(source)
+        assert "Science & Technology" in result.metadata["categories"]
+        assert "2024 Events" in result.metadata["categories"]
+
+    def test_categories_with_numbers(self):
+        """숫자를 포함한 카테고리를 파싱한다."""
+        source = "[[Category:Level1]]\n[[Category:Chapter 2.5]]"
+        result = PlainTextBlockParser.parse(source)
+        assert "Level1" in result.metadata["categories"]
+        assert "Chapter 2.5" in result.metadata["categories"]
+
+    def test_categories_with_spaces(self):
+        """공백을 포함한 카테고리를 파싱한다."""
+        source = "[[Category:Multi Word Category]]"
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["categories"] == ["Multi Word Category"]
+
+    def test_categories_in_paragraph_content(self):
+        """문단 콘텐츠 내의 카테고리를 파싱한다."""
+        source = "= Title =\n\nSee [[Category:Reference]] for details."
+        result = PlainTextBlockParser.parse(source)
+        assert "Reference" in result.metadata["categories"]
+
+    def test_categories_with_links(self):
+        """링크와 함께 있는 카테고리를 파싱한다."""
+        source = "[[Category:Wiki]]\n\nSee [[Document1]] for more."
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["categories"] == ["Wiki"]
+        assert "Document1" in result.metadata["links"]
+
+    def test_categories_with_redirects(self):
+        """리다이렉트와 함께 있는 카테고리를 파싱한다."""
+        source = "[[Category:Archived]]\n[[Redirect:NewPage]]"
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["categories"] == ["Archived"]
+        assert "redirects" in result.metadata
+
+    def test_categories_at_top_of_document(self):
+        """문서 상단의 카테고리를 파싱한다."""
+        source = "[[Category:Featured]]\n\n= Main =\n\nContent."
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["categories"] == ["Featured"]
+        assert len(result.blocks) == 2
+
+    def test_categories_between_content(self):
+        """콘텐츠 사이의 카테고리를 파싱한다."""
+        source = "First paragraph.\n\n[[Category:Mixed]]\n\nSecond paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["categories"] == ["Mixed"]
+        assert len(result.blocks) == 2
+
+    def test_empty_categories_list_when_none_found(self):
+        """카테고리가 없을 때 빈 리스트를 반환한다."""
+        source = "Just a paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["categories"] == []
+
+    def test_categories_metadata_extraction(self):
+        """카테고리 메타데이터를 올바르게 추출한다."""
+        source = "[[Category:Test]]\n\nContent."
+        result = PlainTextBlockParser.parse(source)
+        assert "categories" in result.metadata
+        assert isinstance(result.metadata["categories"], list)
+        assert all(isinstance(c, str) for c in result.metadata["categories"])

@@ -122,3 +122,43 @@ class TestParserFixtureContent:
         assert "headings" in metadata
         assert len(metadata["links"]) == 2
         assert metadata["links"] == ["Link1", "Link2"]
+
+    def test_loads_categories_simple_fixture(self):
+        """단순 카테고리 픽스처를 로드한다."""
+        fixture = ParserFixtureLoader.load_by_name("categories_simple")
+        assert fixture.name == "categories_simple"
+        assert fixture.source == "[[Category:Test]]"
+        assert fixture.expected_result.metadata["categories"] == ["Test"]
+
+    def test_loads_categories_multiple_fixture(self):
+        """여러 카테고리 픽스처를 로드한다."""
+        fixture = ParserFixtureLoader.load_by_name("categories_multiple")
+        assert fixture.name == "categories_multiple"
+        assert fixture.expected_result.metadata["categories"] == [
+            "Wiki",
+            "Technology",
+            "Science",
+        ]
+
+    def test_loads_categories_with_heading_fixture(self):
+        """제목과 함께 있는 카테고리 픽스처를 로드한다."""
+        fixture = ParserFixtureLoader.load_by_name("categories_with_heading")
+        assert fixture.name == "categories_with_heading"
+        assert fixture.expected_result.metadata["categories"] == ["Documentation"]
+        assert len(fixture.expected_result.blocks) == 2
+
+    def test_loads_categories_with_content_fixture(self):
+        """콘텐츠와 함께 있는 카테고리 픽스처를 로드한다."""
+        fixture = ParserFixtureLoader.load_by_name("categories_with_content")
+        assert fixture.name == "categories_with_content"
+        assert fixture.expected_result.metadata["categories"] == ["Tutorial"]
+        assert fixture.expected_result.metadata["links"] == ["Link1"]
+
+    def test_loads_categories_with_special_chars_fixture(self):
+        """특수 문자를 포함한 카테고리 픽스처를 로드한다."""
+        fixture = ParserFixtureLoader.load_by_name("categories_with_special_chars")
+        assert fixture.name == "categories_with_special_chars"
+        assert fixture.expected_result.metadata["categories"] == [
+            "Science & Technology",
+            "2024 Events",
+        ]
