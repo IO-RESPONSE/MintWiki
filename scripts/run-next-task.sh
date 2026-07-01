@@ -82,7 +82,7 @@ scripts/qa.sh
 mv "$ACTIVE_TASK" "$DONE_DIR/$TASK_NAME"
 
 git add .
-git commit -m "Complete task ${TASK_NAME%.md}"
+git commit -m "태스크 ${TASK_NAME%.md} 완료"
 
 if git remote get-url origin >/dev/null 2>&1; then
   git push

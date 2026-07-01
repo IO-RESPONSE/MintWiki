@@ -1,75 +1,75 @@
-# Wiki Engine Blueprint
+# MintWiki 엔진 청사진
 
-This repository is the design and execution scaffold for a new wiki engine.
-The target is a modular, lightweight engine inspired by MediaWiki's operating
-architecture and shaped around NamuWiki-style user workflows.
+이 저장소는 새 위키 엔진 **MintWiki**의 설계·실행 스캐폴드입니다.
+목표는 MediaWiki의 운영 아키텍처에서 영감을 받고, 나무위키(NamuWiki) 스타일의
+사용자 워크플로우로 다듬은 모듈러·경량 엔진입니다.
 
-The project is intentionally split into small tasks that can be implemented,
-tested, and committed in short runner cycles.
+프로젝트는 짧은 러너 사이클 안에서 구현·테스트·커밋할 수 있도록
+작은 태스크 단위로 의도적으로 잘게 나뉘어 있습니다.
 
-## Goals
+## 목표
 
-- Build a new wiki engine, not a MediaWiki plugin.
-- Use a modular monolith first, with clean module boundaries.
-- Keep the development environment bootstrappable in about 10 minutes.
-- Split all implementation into small jobs with explicit acceptance criteria.
-- Make every job independently testable by automated QA.
+- MediaWiki 플러그인이 아니라 새 위키 엔진을 만든다.
+- 먼저 모듈러 모놀리스로 시작하되, 모듈 경계를 깨끗하게 유지한다.
+- 개발 환경을 약 10분 안에 부트스트랩할 수 있게 한다.
+- 모든 구현을 명시적 인수기준을 가진 작은 잡(job)으로 나눈다.
+- 각 잡을 자동 QA로 독립 검증할 수 있게 한다.
 
-## Initial Stack
+## 초기 스택
 
-- Backend: Python + FastAPI
-- Database: PostgreSQL
-- Cache: Redis, optional during early local development
-- Search: adapter first, Meilisearch/OpenSearch later
-- Queue: synchronous fallback first, worker backend later
-- Tests: pytest
-- Deployment: Docker Compose first
-- Scheduler: systemd timer calling a runner script
+- 백엔드: Python + FastAPI
+- 데이터베이스: PostgreSQL
+- 캐시: Redis (초기 로컬 개발에서는 선택)
+- 검색: 어댑터 우선, 이후 Meilisearch/OpenSearch
+- 큐: 동기 폴백 우선, 이후 워커 백엔드
+- 테스트: pytest
+- 배포: Docker Compose 우선
+- 스케줄러: 러너 스크립트를 호출하는 systemd 타이머
 
-## Local Environment
+## 로컬 환경
 
-Copy `.env.example` to `.env` before local runs, then adjust the placeholder
-database and Redis URLs for your local services as needed.
+로컬 실행 전 `.env.example`을 `.env`로 복사한 뒤, 로컬 서비스에 맞게
+데이터베이스·Redis URL 플레이스홀더를 조정합니다.
 
-### Bootstrap
+### 부트스트랩
 
-Start the local app and PostgreSQL services with Docker Compose:
+Docker Compose로 로컬 앱과 PostgreSQL 서비스를 기동합니다:
 
 ```bash
 docker compose up --build
 ```
 
-### Testing
+### 테스트
 
-Run the test suite locally:
+로컬에서 테스트 스위트를 실행합니다:
 
 ```bash
 scripts/test.sh
 ```
 
-### QA Before Commit
+### 커밋 전 QA
 
-Run the complete local QA workflow to check your changes:
+변경 사항을 점검하는 전체 로컬 QA 워크플로우를 실행합니다:
 
 ```bash
 scripts/qa.sh
 ```
 
-This runs tests and validates code formatting. QA must pass before committing.
+테스트 실행과 코드 포맷 검증을 수행합니다. 커밋 전에 QA가 통과해야 합니다.
 
-## Repository Layout
+## 저장소 구조
 
 ```text
-docs/              Architecture and module design
-tasks/             10-minute job queue
-src/app/           Application bootstrap and shared config
-src/modules/       Engine modules
-tests/             Cross-module tests
-scripts/           Bootstrap, test, QA, runner helpers
-ops/systemd/       systemd service and timer examples
+docs/              아키텍처 및 모듈 설계
+tasks/             10분 잡 큐
+src/app/           애플리케이션 부트스트랩 및 공용 설정
+src/modules/       엔진 모듈
+tests/             모듈 간 통합 테스트
+scripts/           부트스트랩·테스트·QA·러너 헬퍼
+ops/systemd/       systemd 서비스 및 타이머 예시
 ```
 
-## Current Status
+## 현재 상태
 
-This is the design scaffold. Code modules are placeholders until the first
-implementation tasks are executed.
+설계 스캐폴드 단계입니다. 첫 구현 태스크들이 실행되면서 코드 모듈이
+플레이스홀더에서 실제 구현으로 채워지고 있습니다.

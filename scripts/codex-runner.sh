@@ -34,6 +34,7 @@ Repository rules:
 - Run scripts/test.sh before finishing if possible.
 - Do not implement work listed as Out of Scope.
 - Do not wait for user input.
+- Write all code comments and docstrings in Korean. Keep identifiers (variable, function, class names) in English.
 - Leave a concise final summary.
 PROMPT
 

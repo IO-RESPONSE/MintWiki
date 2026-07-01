@@ -17,6 +17,12 @@ acceptance criteria, out-of-scope items, and QA.
 Complete exactly one task per runner cycle. Do not start the next queued task,
 even if the current task is small or finishes quickly.
 
+## 언어 규칙 (Language)
+
+- 코드 주석과 docstring은 **한글**로 작성한다.
+- 커밋 메시지와 문서(README 등)는 **한글**로 작성한다.
+- 단, 식별자(변수·함수·클래스·모듈명)와 코드 자체는 **영문**을 유지한다.
+
 ## Scope Discipline
 
 Do not implement work listed in a task's Out of Scope section. If an
