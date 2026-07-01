@@ -84,6 +84,5 @@ ops/systemd/       systemd 서비스 및 타이머 예시
 | ✅ 완료 | 24 |
 | ⏳ 대기 | 326 |
 
-- 최근 완료: `0024-add-get-document-api`
-- 갱신: 2026-07-01 18:23 KST
+- 갱신: 2026-07-01 18:29 KST
 <!-- PROGRESS:END -->

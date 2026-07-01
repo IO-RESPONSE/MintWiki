@@ -54,7 +54,6 @@ block = f"""<!-- PROGRESS:START -->
 | ✅ 완료 | {done} |
 | ⏳ 대기 | {queue} |
 {fail_line}
-- 최근 완료: `{last}`
 - 갱신: {ts}
 <!-- PROGRESS:END -->"""
 
