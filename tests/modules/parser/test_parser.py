@@ -556,3 +556,129 @@ class TestPlainTextBlockParserHeadingsNestedLevels:
         assert headings[1]["level"] == 2
         assert headings[2]["level"] == 3
         assert headings[3]["level"] == 2
+
+
+class TestPlainTextBlockParserExternalLinks:
+    """PlainTextBlockParser의 외부 링크 파싱 테스트."""
+
+    def test_parses_single_external_link(self):
+        """단일 외부 링크를 파싱한다."""
+        source = "Visit [https://example.com] for more info."
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" in result.metadata
+        assert len(result.metadata["external_links"]) == 1
+        assert result.metadata["external_links"][0] == "https://example.com"
+
+    def test_parses_multiple_external_links(self):
+        """여러 외부 링크를 파싱한다."""
+        source = "Check [https://site1.com] and [https://site2.com] now."
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" in result.metadata
+        assert len(result.metadata["external_links"]) == 2
+        assert "https://site1.com" in result.metadata["external_links"]
+        assert "https://site2.com" in result.metadata["external_links"]
+
+    def test_external_link_with_label_space_separated(self):
+        """공백으로 구분된 레이블이 있는 외부 링크를 파싱한다."""
+        source = "Visit [https://example.com our site] for details."
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" in result.metadata
+        assert len(result.metadata["external_links"]) == 1
+        assert result.metadata["external_links"][0] == "https://example.com"
+
+    def test_external_link_with_label_pipe_separated(self):
+        """파이프로 구분된 레이블이 있는 외부 링크를 파싱한다."""
+        source = "Visit [https://example.com|our site] for details."
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" in result.metadata
+        assert len(result.metadata["external_links"]) == 1
+        assert result.metadata["external_links"][0] == "https://example.com"
+
+    def test_parses_http_external_links(self):
+        """HTTP 프로토콜 외부 링크를 파싱한다."""
+        source = "See [http://example.com] here."
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" in result.metadata
+        assert len(result.metadata["external_links"]) == 1
+        assert result.metadata["external_links"][0] == "http://example.com"
+
+    def test_parses_ftp_external_links(self):
+        """FTP 프로토콜 외부 링크를 파싱한다."""
+        source = "Download from [ftp://files.example.com]."
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" in result.metadata
+        assert len(result.metadata["external_links"]) == 1
+        assert result.metadata["external_links"][0] == "ftp://files.example.com"
+
+    def test_external_links_with_query_parameters(self):
+        """쿼리 매개변수가 있는 외부 링크를 파싱한다."""
+        source = "Search [https://example.com/search?q=test] now."
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" in result.metadata
+        assert len(result.metadata["external_links"]) == 1
+        assert result.metadata["external_links"][0] == "https://example.com/search?q=test"
+
+    def test_external_links_with_fragment(self):
+        """프래그먼트가 있는 외부 링크를 파싱한다."""
+        source = "Go to [https://example.com/page#section] section."
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" in result.metadata
+        assert len(result.metadata["external_links"]) == 1
+        assert result.metadata["external_links"][0] == "https://example.com/page#section"
+
+    def test_duplicate_external_links_removed(self):
+        """중복 외부 링크는 제거된다."""
+        source = "[https://example.com] and [https://example.com] again."
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" in result.metadata
+        assert len(result.metadata["external_links"]) == 1
+        assert result.metadata["external_links"][0] == "https://example.com"
+
+    def test_external_links_order_preserved(self):
+        """외부 링크의 순서가 유지된다."""
+        source = "[https://alpha.com], [https://beta.com], [https://gamma.com]"
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" in result.metadata
+        assert result.metadata["external_links"] == [
+            "https://alpha.com",
+            "https://beta.com",
+            "https://gamma.com",
+        ]
+
+    def test_mixed_internal_and_external_links(self):
+        """내부 링크와 외부 링크를 섞어서 파싱한다."""
+        source = "See [[InternalLink]] and [https://example.com external] for info."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["links"]) == 1
+        assert "InternalLink" in result.metadata["links"]
+        assert "external_links" in result.metadata
+        assert len(result.metadata["external_links"]) == 1
+        assert result.metadata["external_links"][0] == "https://example.com"
+
+    def test_no_external_links_in_metadata_when_none_found(self):
+        """외부 링크가 없을 때 메타데이터에 포함되지 않는다."""
+        source = "This is plain text."
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" not in result.metadata
+
+    def test_external_links_preserved_in_content(self):
+        """외부 링크는 블록 콘텐츠에 보존된다."""
+        source = "Check [https://example.com our site] now."
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["content"] == "Check [https://example.com our site] now."
+
+    def test_external_links_in_multiple_blocks(self):
+        """여러 블록의 외부 링크를 파싱한다."""
+        source = "First [https://site1.com].\n\nSecond [https://site2.com]."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert "external_links" in result.metadata
+        assert len(result.metadata["external_links"]) == 2
+        assert "https://site1.com" in result.metadata["external_links"]
+        assert "https://site2.com" in result.metadata["external_links"]
+
+    def test_invalid_protocol_not_external_link(self):
+        """유효하지 않은 프로토콜은 외부 링크로 취급하지 않는다."""
+        source = "This [foobar://example.com] is not a valid link."
+        result = PlainTextBlockParser.parse(source)
+        assert "external_links" not in result.metadata or len(result.metadata.get("external_links", [])) == 0

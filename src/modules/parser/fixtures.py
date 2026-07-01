@@ -35,6 +35,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._complex_document(),
             ParserFixtureLoader._escaped_html_text(),
             ParserFixtureLoader._links_with_labels(),
+            ParserFixtureLoader._external_link_simple(),
+            ParserFixtureLoader._external_links_multiple(),
+            ParserFixtureLoader._external_link_with_label(),
         ]
 
     @staticmethod
@@ -237,6 +240,63 @@ class ParserFixtureLoader:
                     "links": ["Document1", "Document2"],
                     "categories": [],
                     "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _external_link_simple() -> ParserFixture:
+        """단순 외부 링크 픽스처."""
+        return ParserFixture(
+            name="external_link_simple",
+            source="Visit [https://example.com] for more info.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "Visit [https://example.com] for more info."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "external_links": ["https://example.com"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _external_links_multiple() -> ParserFixture:
+        """여러 외부 링크 픽스처."""
+        return ParserFixture(
+            name="external_links_multiple",
+            source="Check [https://site1.com] and [https://site2.com] now.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "Check [https://site1.com] and [https://site2.com] now."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "external_links": ["https://site1.com", "https://site2.com"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _external_link_with_label() -> ParserFixture:
+        """레이블이 있는 외부 링크 픽스처."""
+        return ParserFixture(
+            name="external_link_with_label",
+            source="Visit [https://example.com our site] for details.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "Visit [https://example.com our site] for details."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                    "external_links": ["https://example.com"],
                 },
             ),
         )

@@ -18,6 +18,9 @@ class PlainTextBlockParser:
     # 내부 링크 패턴: [[LinkName]] 또는 [[LinkName|Label]]
     INTERNAL_LINK_PATTERN = re.compile(r'\[\[([^\]|]+)(?:\|[^\]]+)?\]\]')
 
+    # 외부 링크 패턴: [URL] 또는 [URL label] 또는 [URL|label]
+    EXTERNAL_LINK_PATTERN = re.compile(r'\[([^\s\]|]+)(?:(?:\s+|[|])[^\]]*)?\]')
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
@@ -161,7 +164,7 @@ class PlainTextBlockParser:
         """
         소스 텍스트와 블록들에서 메타데이터를 추출한다.
 
-        제목, 링크, 카테고리, 리다이렉트를 메타데이터로 추출한다.
+        제목, 링크, 카테고리, 리다이렉트, 외부 링크를 메타데이터로 추출한다.
 
         Args:
             source: 원본 소스 텍스트
@@ -172,6 +175,7 @@ class PlainTextBlockParser:
         """
         headings = []
         links = []
+        external_links = []
         categories = []
         redirects = []
 
@@ -201,16 +205,24 @@ class PlainTextBlockParser:
                 links.extend(extracted_links)
                 categories.extend(extracted_categories)
                 redirects.extend(extracted_redirects)
+                # 문단에서 외부 링크 추출
+                extracted_external_links = PlainTextBlockParser._extract_external_links_from_content(content)
+                external_links.extend(extracted_external_links)
 
         # 중복 제거하되 순서 유지
         links = list(dict.fromkeys(links))
         categories = list(dict.fromkeys(categories))
+        external_links = list(dict.fromkeys(external_links))
 
         metadata = {
             'links': links,
             'categories': categories,
             'headings': headings,
         }
+
+        # external_links가 있으면 추가
+        if external_links:
+            metadata['external_links'] = external_links
 
         # redirects가 있으면 추가
         if redirects:
@@ -251,3 +263,29 @@ class PlainTextBlockParser:
                 links.append(match)
 
         return links, categories, redirects
+
+    @staticmethod
+    def _extract_external_links_from_content(content: str) -> list:
+        """
+        콘텐츠에서 외부 링크를 추출한다.
+
+        외부 링크 형식:
+        - [URL] - URL만 있는 링크
+        - [URL label] - URL과 레이블이 있는 링크 (공백으로 구분)
+        - [URL|label] - URL과 레이블이 있는 링크 (파이프로 구분)
+
+        Args:
+            content: 파싱할 콘텐츠
+
+        Returns:
+            외부 링크 목록
+        """
+        external_links = []
+
+        for match in PlainTextBlockParser.EXTERNAL_LINK_PATTERN.finditer(content):
+            url = match.group(1)
+            # URL이 유효한 외부 링크 형식인지 확인 (http://, https://, ftp:// 등)
+            if url and (url.startswith('http://') or url.startswith('https://') or url.startswith('ftp://')):
+                external_links.append(url)
+
+        return external_links
