@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Wiki Engine Codex task runner every 10 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=10min
+Persistent=true
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=Wiki Engine Codex non-interactive task runner
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/wiki-engine-blueprint
+Environment=WIKI_ENGINE_REPO=/root/wiki-engine-blueprint
+Environment=WIKI_ENGINE_LOCK=/tmp/wiki-engine-runner.lock
+Environment=CODEX_BIN=/root/.nvm/versions/node/v22.22.2/bin/codex
+Environment=CODEX_SANDBOX=workspace-write
+Environment=CODEX_APPROVAL=never
+ExecStart=/root/wiki-engine-blueprint/scripts/run-next-task.sh
+TimeoutStartSec=540
+
