@@ -24,6 +24,9 @@ class PlainTextBlockParser:
     # 굵은 텍스트 패턴: '''text'''
     BOLD_PATTERN = re.compile(r"'''([^']+)'''", re.DOTALL)
 
+    # 이탤릭 텍스트 패턴: ''text''
+    ITALIC_PATTERN = re.compile(r"''([^']+)''", re.DOTALL)
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """

@@ -41,6 +41,9 @@ class ParserFixtureLoader:
             ParserFixtureLoader._bold_simple(),
             ParserFixtureLoader._bold_multiple(),
             ParserFixtureLoader._bold_with_special_chars(),
+            ParserFixtureLoader._italic_simple(),
+            ParserFixtureLoader._italic_multiple(),
+            ParserFixtureLoader._italic_with_special_chars(),
         ]
 
     @staticmethod
@@ -349,6 +352,60 @@ class ParserFixtureLoader:
             expected_result=ParserResult(
                 blocks=[
                     {"type": "paragraph", "content": "This is '''bold & important!''' text."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _italic_simple() -> ParserFixture:
+        """단순 이탤릭 텍스트 픽스처."""
+        return ParserFixture(
+            name="italic_simple",
+            source="This is ''italic text'' in a paragraph.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is ''italic text'' in a paragraph."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _italic_multiple() -> ParserFixture:
+        """여러 개의 이탤릭 텍스트 픽스처."""
+        return ParserFixture(
+            name="italic_multiple",
+            source="This has ''first italic'' and ''second italic'' text.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This has ''first italic'' and ''second italic'' text."},
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _italic_with_special_chars() -> ParserFixture:
+        """특수 문자를 포함한 이탤릭 텍스트 픽스처."""
+        return ParserFixture(
+            name="italic_with_special_chars",
+            source="This is ''italic & emphasized!'' text.",
+            expected_result=ParserResult(
+                blocks=[
+                    {"type": "paragraph", "content": "This is ''italic & emphasized!'' text."},
                 ],
                 metadata={
                     "links": [],

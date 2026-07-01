@@ -772,3 +772,94 @@ class TestPlainTextBlockParserBoldText:
         result = PlainTextBlockParser.parse(source)
         assert len(result.blocks) == 1
         assert result.blocks[0]["content"] == "Text with '''it's bold''' here."
+
+
+class TestPlainTextBlockParserItalicText:
+    """PlainTextBlockParser의 이탤릭 텍스트 파싱 테스트."""
+
+    def test_parses_single_italic_text(self):
+        """단일 이탤릭 텍스트를 파싱한다."""
+        source = "This is ''italic text'' in a paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "This is ''italic text'' in a paragraph."
+
+    def test_parses_italic_text_at_start(self):
+        """문장 시작의 이탤릭 텍스트를 파싱한다."""
+        source = "''Italic'' text here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "''Italic'' text here."
+
+    def test_parses_italic_text_at_end(self):
+        """문장 끝의 이탤릭 텍스트를 파싱한다."""
+        source = "Text is ''italic''."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text is ''italic''."
+
+    def test_parses_multiple_italic_texts(self):
+        """여러 개의 이탤릭 텍스트를 파싱한다."""
+        source = "This has ''first italic'' and ''second italic'' text."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "This has ''first italic'' and ''second italic'' text."
+
+    def test_italic_text_with_special_characters(self):
+        """특수 문자를 포함한 이탤릭 텍스트를 파싱한다."""
+        source = "This is ''italic & emphasized!'' text."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "This is ''italic & emphasized!'' text."
+
+    def test_italic_text_with_numbers(self):
+        """숫자를 포함한 이탤릭 텍스트를 파싱한다."""
+        source = "This is ''italic 123'' text."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "This is ''italic 123'' text."
+
+    def test_italic_text_preserved_in_multiple_blocks(self):
+        """여러 블록에서 이탤릭 텍스트가 보존된다."""
+        source = "First ''italic'' paragraph.\n\nSecond ''italic'' paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert "''italic''" in result.blocks[0]["content"]
+        assert "''italic''" in result.blocks[1]["content"]
+
+    def test_italic_text_with_internal_whitespace(self):
+        """내부 공백을 포함한 이탤릭 텍스트를 파싱한다."""
+        source = "Text with ''multiple words in italic'' here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text with ''multiple words in italic'' here."
+
+    def test_italic_text_adjacent_to_links(self):
+        """링크 옆의 이탤릭 텍스트를 파싱한다."""
+        source = "See ''italic'' and [[Link]] together."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert "''italic''" in result.blocks[0]["content"]
+        assert "[[Link]]" in result.blocks[0]["content"]
+
+    def test_italic_text_does_not_create_escaped_html_flag(self):
+        """이탤릭 텍스트는 이스케이프된 HTML 플래그를 생성하지 않는다."""
+        source = "Text with ''italic'' only."
+        result = PlainTextBlockParser.parse(source)
+        assert "has_escaped_html" not in result.blocks[0]
+
+    def test_italic_text_empty_not_parsed(self):
+        """빈 이탤릭 텍스트는 파싱되지 않는다."""
+        source = "Text with '''' no content."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Text with '''' no content."
+
+    def test_bold_and_italic_together(self):
+        """굵은 텍스트와 이탤릭 텍스트가 함께 있을 때를 파싱한다."""
+        source = "Text with '''bold''' and ''italic'' here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert "'''bold'''" in result.blocks[0]["content"]
+        assert "''italic''" in result.blocks[0]["content"]
