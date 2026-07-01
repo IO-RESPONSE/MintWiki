@@ -273,3 +273,161 @@ class TestPlainTextBlockParserHeadingsLevelOne:
         source = "= Title ="
         result = PlainTextBlockParser.parse(source)
         assert "has_escaped_html" not in result.blocks[0]
+
+
+class TestPlainTextBlockParserHeadingsNestedLevels:
+    """PlainTextBlockParser의 중첩된 제목 수준 파싱 테스트."""
+
+    def test_parses_heading_level_two(self):
+        """제목 수준 2를 파싱한다."""
+        source = "== Section =="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[0]["level"] == 2
+        assert result.blocks[0]["content"] == "Section"
+
+    def test_parses_heading_level_three(self):
+        """제목 수준 3을 파싱한다."""
+        source = "=== Subsection ==="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[0]["level"] == 3
+        assert result.blocks[0]["content"] == "Subsection"
+
+    def test_parses_heading_level_four(self):
+        """제목 수준 4를 파싱한다."""
+        source = "==== Subsubsection ===="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[0]["level"] == 4
+        assert result.blocks[0]["content"] == "Subsubsection"
+
+    def test_parses_heading_level_five(self):
+        """제목 수준 5를 파싱한다."""
+        source = "===== Very Deep ====="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[0]["level"] == 5
+        assert result.blocks[0]["content"] == "Very Deep"
+
+    def test_parses_multiple_heading_levels_in_sequence(self):
+        """여러 수준의 제목을 순서대로 파싱한다."""
+        source = "= Level 1 =\n\n== Level 2 ==\n\n=== Level 3 ==="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert result.blocks[0]["level"] == 1
+        assert result.blocks[1]["level"] == 2
+        assert result.blocks[2]["level"] == 3
+
+    def test_heading_levels_in_metadata(self):
+        """다양한 수준의 제목이 메타데이터에 포함된다."""
+        source = "= Level 1 =\n\n== Level 2 ==\n\n=== Level 3 ==="
+        result = PlainTextBlockParser.parse(source)
+        headings = result.metadata["headings"]
+        assert len(headings) == 3
+        assert headings[0]["level"] == 1
+        assert headings[0]["text"] == "Level 1"
+        assert headings[1]["level"] == 2
+        assert headings[1]["text"] == "Level 2"
+        assert headings[2]["level"] == 3
+        assert headings[2]["text"] == "Level 3"
+
+    def test_nested_headings_with_content(self):
+        """제목 사이에 콘텐츠가 있는 중첩된 제목을 파싱한다."""
+        source = (
+            "= Main =\n"
+            "\n"
+            "Main content.\n"
+            "\n"
+            "== Subsection ==\n"
+            "\n"
+            "Subsection content.\n"
+            "\n"
+            "=== Details ==="
+        )
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 5
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[0]["level"] == 1
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[2]["type"] == "heading"
+        assert result.blocks[2]["level"] == 2
+        assert result.blocks[3]["type"] == "paragraph"
+        assert result.blocks[4]["type"] == "heading"
+        assert result.blocks[4]["level"] == 3
+
+    def test_heading_with_special_chars_multiple_levels(self):
+        """특수 문자를 포함한 여러 수준의 제목을 파싱한다."""
+        source = (
+            "= Main: Chapter 1 & 2 =\n"
+            "\n"
+            "== Section 1.1 (Important) =="
+        )
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["content"] == "Main: Chapter 1 & 2"
+        assert result.blocks[1]["content"] == "Section 1.1 (Important)"
+
+    def test_mismatched_equal_signs_not_heading(self):
+        """등호 기호 개수가 맞지 않으면 제목으로 취급하지 않는다."""
+        source = "= Title =="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+
+    def test_heading_level_extracted_from_equal_count(self):
+        """제목 수준이 등호 기호 개수에서 올바르게 추출된다."""
+        test_cases = [
+            ("= One =", 1),
+            ("== Two ==", 2),
+            ("=== Three ===", 3),
+            ("==== Four ====", 4),
+            ("===== Five =====", 5),
+            ("====== Six ======", 6),
+        ]
+        for source, expected_level in test_cases:
+            result = PlainTextBlockParser.parse(source)
+            assert len(result.blocks) == 1
+            assert result.blocks[0]["level"] == expected_level, f"Failed for {source}"
+
+    def test_heading_level_two_followed_by_content(self):
+        """수준 2 제목 다음에 콘텐츠가 있는 경우를 파싱한다."""
+        source = "== Title ==\n\nContent here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[0]["level"] == 2
+        assert result.blocks[0]["content"] == "Title"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[1]["content"] == "Content here."
+
+    def test_complex_document_with_multiple_levels(self):
+        """여러 수준의 제목을 포함한 복잡한 문서를 파싱한다."""
+        source = (
+            "= Chapter 1 =\n"
+            "\n"
+            "Introduction.\n"
+            "\n"
+            "== Section 1.1 ==\n"
+            "\n"
+            "Content for 1.1.\n"
+            "\n"
+            "=== Subsection 1.1.1 ===\n"
+            "\n"
+            "Deep content.\n"
+            "\n"
+            "== Section 1.2 ==\n"
+            "\n"
+            "Content for 1.2."
+        )
+        result = PlainTextBlockParser.parse(source)
+        headings = result.metadata["headings"]
+        assert len(headings) == 4
+        assert headings[0]["level"] == 1
+        assert headings[1]["level"] == 2
+        assert headings[2]["level"] == 3
+        assert headings[3]["level"] == 2
