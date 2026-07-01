@@ -64,6 +64,35 @@ async def create_document(
     return DocumentResponse(id=document.id, title=document.title)
 
 
+@router.get("/by-title", tags=["documents"])
+async def get_document_by_title(
+    title: str,
+    service: DocumentService = Depends(get_document_service),
+) -> DocumentResponse:
+    """
+    주어진 제목으로 문서를 조회한다.
+
+    제목을 정규화하여 저장소에서 조회한다.
+
+    Args:
+        title: 조회할 문서의 제목
+        service: 문서 서비스
+
+    Returns:
+        조회된 문서의 id와 title
+
+    Raises:
+        HTTPException: 문서를 찾을 수 없을 때 404 반환
+    """
+    document = await service.get_by_title(title)
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="문서를 찾을 수 없습니다",
+        )
+    return DocumentResponse(id=document.id, title=document.title)
+
+
 @router.get("/{document_id}", tags=["documents"])
 async def get_document(
     document_id: str,
