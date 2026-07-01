@@ -11,6 +11,9 @@ class PlainTextBlockParser:
     # HTML 엔티티 패턴: &name; 또는 &#number; 형태
     HTML_ENTITY_PATTERN = re.compile(r'&(?:[a-zA-Z]+|#\d+|#x[0-9a-fA-F]+);')
 
+    # 제목 패턴: = 텍스트 = (수준 1)
+    HEADING_LEVEL_1_PATTERN = re.compile(r'^=\s+(.+?)\s+=$')
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
@@ -56,29 +59,50 @@ class PlainTextBlockParser:
                 # 빈 줄을 만나면 현재 블록 종료
                 if current_block_lines:
                     block_content = '\n'.join(current_block_lines)
-                    block = {
-                        'type': 'paragraph',
-                        'content': block_content,
-                    }
-                    # 이스케이프된 HTML 검사
-                    if PlainTextBlockParser._has_escaped_html(block_content):
-                        block['has_escaped_html'] = True
+                    block = PlainTextBlockParser._create_block(block_content)
                     blocks.append(block)
                     current_block_lines = []
 
         # 마지막 블록 처리
         if current_block_lines:
             block_content = '\n'.join(current_block_lines)
-            block = {
-                'type': 'paragraph',
-                'content': block_content,
-            }
-            # 이스케이프된 HTML 검사
-            if PlainTextBlockParser._has_escaped_html(block_content):
-                block['has_escaped_html'] = True
+            block = PlainTextBlockParser._create_block(block_content)
             blocks.append(block)
 
         return blocks
+
+    @staticmethod
+    def _create_block(content: str) -> Dict[str, Any]:
+        """
+        콘텐츠를 분석하여 적절한 블록을 생성한다.
+
+        Args:
+            content: 블록 콘텐츠
+
+        Returns:
+            블록 딕셔너리
+        """
+        # 단일 줄 블록이 제목 수준 1 패턴과 일치하는지 확인
+        lines = content.split('\n')
+        if len(lines) == 1:
+            heading_match = PlainTextBlockParser.HEADING_LEVEL_1_PATTERN.match(content)
+            if heading_match:
+                heading_text = heading_match.group(1)
+                return {
+                    'type': 'heading',
+                    'level': 1,
+                    'content': heading_text,
+                }
+
+        # 기본값: 문단 블록
+        block = {
+            'type': 'paragraph',
+            'content': content,
+        }
+        # 이스케이프된 HTML 검사
+        if PlainTextBlockParser._has_escaped_html(content):
+            block['has_escaped_html'] = True
+        return block
 
     @staticmethod
     def _has_escaped_html(content: str) -> bool:
@@ -98,8 +122,7 @@ class PlainTextBlockParser:
         """
         블록들에서 메타데이터를 추출한다.
 
-        현재는 평문 텍스트 블록만 처리하므로
-        기본 메타데이터만 반환한다.
+        제목을 메타데이터로 추출한다.
 
         Args:
             blocks: 파싱된 블록들
@@ -107,8 +130,16 @@ class PlainTextBlockParser:
         Returns:
             메타데이터 딕셔너리
         """
+        headings = []
+        for block in blocks:
+            if block.get('type') == 'heading':
+                headings.append({
+                    'level': block['level'],
+                    'text': block['content'],
+                })
+
         return {
             'links': [],
             'categories': [],
-            'headings': [],
+            'headings': headings,
         }

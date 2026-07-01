@@ -177,3 +177,99 @@ class TestPlainTextBlockParserEscapedHtml:
         result = PlainTextBlockParser.parse(source)
         assert len(result.blocks) == 1
         assert result.blocks[0]["has_escaped_html"] is True
+
+
+class TestPlainTextBlockParserHeadingsLevelOne:
+    """PlainTextBlockParser의 제목 수준 1 파싱 테스트."""
+
+    def test_parses_heading_level_one(self):
+        """제목 수준 1을 파싱한다."""
+        source = "= Title ="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[0]["level"] == 1
+        assert result.blocks[0]["content"] == "Title"
+
+    def test_heading_with_extra_spaces(self):
+        """여러 개의 공백이 있는 제목을 파싱한다."""
+        source = "=  Title  ="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[0]["level"] == 1
+        assert result.blocks[0]["content"] == "Title"
+
+    def test_heading_followed_by_paragraph(self):
+        """제목 다음에 문단이 있는 경우를 파싱한다."""
+        source = "= Title =\n\nContent here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[0]["level"] == 1
+        assert result.blocks[0]["content"] == "Title"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[1]["content"] == "Content here."
+
+    def test_multiple_headings_with_paragraphs(self):
+        """여러 제목과 문단을 파싱한다."""
+        source = "= First =\n\nFirst content.\n\n= Second ="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[0]["content"] == "First"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[1]["content"] == "First content."
+        assert result.blocks[2]["type"] == "heading"
+        assert result.blocks[2]["content"] == "Second"
+
+    def test_heading_metadata_extraction(self):
+        """제목 메타데이터를 추출한다."""
+        source = "= Main Title ="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["headings"]) == 1
+        assert result.metadata["headings"][0]["level"] == 1
+        assert result.metadata["headings"][0]["text"] == "Main Title"
+
+    def test_multiple_headings_in_metadata(self):
+        """여러 제목의 메타데이터를 추출한다."""
+        source = "= Title One =\n\nText.\n\n= Title Two ="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["headings"]) == 2
+        assert result.metadata["headings"][0]["text"] == "Title One"
+        assert result.metadata["headings"][1]["text"] == "Title Two"
+
+    def test_heading_with_special_characters(self):
+        """특수 문자가 있는 제목을 파싱한다."""
+        source = "= Title with: Special & Characters! ="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Title with: Special & Characters!"
+
+    def test_heading_with_numbers(self):
+        """숫자가 있는 제목을 파싱한다."""
+        source = "= Chapter 1: Introduction ="
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["content"] == "Chapter 1: Introduction"
+
+    def test_paragraph_not_matching_heading_pattern(self):
+        """제목 패턴과 일치하지 않는 텍스트는 문단으로 취급한다."""
+        source = "= Title with no closing"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "= Title with no closing"
+
+    def test_single_equal_signs_not_heading(self):
+        """한 개의 등호 기호는 제목으로 취급하지 않는다."""
+        source = "=Not a title"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+
+    def test_headings_do_not_have_escaped_html_flag(self):
+        """제목 블록은 이스케이프된 HTML 플래그를 갖지 않는다."""
+        source = "= Title ="
+        result = PlainTextBlockParser.parse(source)
+        assert "has_escaped_html" not in result.blocks[0]
