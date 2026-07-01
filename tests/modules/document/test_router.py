@@ -2,17 +2,12 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import create_app
-
 
 class TestCreateDocument:
     """문서 생성 엔드포인트 테스트."""
 
-    def test_create_document_with_valid_request(self):
+    def test_create_document_with_valid_request(self, client: TestClient):
         """엔드포인트는 유효한 요청으로 문서를 생성한다."""
-        app = create_app()
-        client = TestClient(app)
-
         response = client.post(
             "/api/documents",
             json={"title": "My Document", "source": "Some content"},
@@ -23,11 +18,8 @@ class TestCreateDocument:
         assert "id" in data
         assert data["title"] == "My Document"
 
-    def test_create_document_returns_id_and_title(self):
+    def test_create_document_returns_id_and_title(self, client: TestClient):
         """엔드포인트는 생성된 문서의 id와 title을 반환한다."""
-        app = create_app()
-        client = TestClient(app)
-
         response = client.post(
             "/api/documents",
             json={"title": "Test Title", "source": "Test content"},
@@ -39,11 +31,8 @@ class TestCreateDocument:
         assert len(data["id"]) > 0
         assert data["title"] == "Test Title"
 
-    def test_create_document_with_different_titles(self):
+    def test_create_document_with_different_titles(self, client: TestClient):
         """엔드포인트는 서로 다른 제목의 문서를 생성할 수 있다."""
-        app = create_app()
-        client = TestClient(app)
-
         response1 = client.post(
             "/api/documents",
             json={"title": "First Document", "source": "content1"},
@@ -61,11 +50,8 @@ class TestCreateDocument:
         assert data1["title"] == "First Document"
         assert data2["title"] == "Second Document"
 
-    def test_create_document_with_source_field(self):
+    def test_create_document_with_source_field(self, client: TestClient):
         """엔드포인트는 source 필드를 받을 수 있다."""
-        app = create_app()
-        client = TestClient(app)
-
         response = client.post(
             "/api/documents",
             json={"title": "Document", "source": "Source content"},
@@ -80,11 +66,8 @@ class TestCreateDocument:
 class TestGetDocument:
     """문서 조회 엔드포인트 테스트."""
 
-    def test_get_document_by_id_success(self):
+    def test_get_document_by_id_success(self, client: TestClient):
         """엔드포인트는 id로 문서를 조회할 수 있다."""
-        app = create_app()
-        client = TestClient(app)
-
         # 먼저 문서를 생성한다
         create_response = client.post(
             "/api/documents",
@@ -101,22 +84,16 @@ class TestGetDocument:
         assert data["id"] == doc_id
         assert data["title"] == "My Document"
 
-    def test_get_document_by_id_returns_404_when_not_found(self):
+    def test_get_document_by_id_returns_404_when_not_found(self, client: TestClient):
         """엔드포인트는 존재하지 않는 id를 조회하면 404를 반환한다."""
-        app = create_app()
-        client = TestClient(app)
-
         response = client.get("/api/documents/nonexistent-id")
 
         assert response.status_code == 404
         data = response.json()
         assert "detail" in data
 
-    def test_get_document_returns_correct_fields(self):
+    def test_get_document_returns_correct_fields(self, client: TestClient):
         """엔드포인트는 문서의 id와 title을 반환한다."""
-        app = create_app()
-        client = TestClient(app)
-
         # 문서를 생성한다
         create_response = client.post(
             "/api/documents",
