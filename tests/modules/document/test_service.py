@@ -4,7 +4,7 @@ from modules.document.repository import (
     DuplicateNormalizedTitleError,
     InMemoryDocumentRepository,
 )
-from modules.document.service import DocumentService
+from modules.document.service import DocumentService, CurrentRevisionReadModel
 from modules.document.title import EmptyTitleError
 from modules.revision.repository import InMemoryRevisionRepository
 
@@ -243,3 +243,60 @@ class TestDocumentService:
         assert rev2.document_id == doc2.id
         assert rev1.source == "Content One"
         assert rev2.source == "Content Two"
+
+    def test_get_current_revision_read_model_with_source(self):
+        """서비스는 소스를 포함한 현재 리비전 읽기 모델을 반환할 수 있다."""
+        doc_repo = InMemoryDocumentRepository()
+        rev_repo = InMemoryRevisionRepository()
+        service = DocumentService(doc_repo, rev_repo)
+
+        doc = service.create("My Document", source="Current content")
+
+        read_model = service.get_current_revision_read_model(doc.id)
+
+        assert read_model is not None
+        assert isinstance(read_model, CurrentRevisionReadModel)
+        assert read_model.title == "My Document"
+        assert read_model.document_id == doc.id
+        assert read_model.revision_id == doc.current_revision_id
+        assert read_model.source == "Current content"
+
+    def test_get_current_revision_read_model_without_source(self):
+        """서비스는 소스가 없는 경우 리비전 id와 소스를 None으로 반환한다."""
+        doc_repo = InMemoryDocumentRepository()
+        rev_repo = InMemoryRevisionRepository()
+        service = DocumentService(doc_repo, rev_repo)
+
+        doc = service.create("My Document")
+
+        read_model = service.get_current_revision_read_model(doc.id)
+
+        assert read_model is not None
+        assert read_model.title == "My Document"
+        assert read_model.document_id == doc.id
+        assert read_model.revision_id is None
+        assert read_model.source is None
+
+    def test_get_current_revision_read_model_without_revision_repository(self):
+        """서비스는 리비전 저장소가 없는 경우 리비전 정보를 None으로 반환한다."""
+        doc_repo = InMemoryDocumentRepository()
+        service = DocumentService(doc_repo)
+
+        doc = service.create("My Document")
+
+        read_model = service.get_current_revision_read_model(doc.id)
+
+        assert read_model is not None
+        assert read_model.title == "My Document"
+        assert read_model.document_id == doc.id
+        assert read_model.revision_id is None
+        assert read_model.source is None
+
+    def test_get_current_revision_read_model_nonexistent_document(self):
+        """서비스는 존재하지 않는 문서를 조회하면 None을 반환한다."""
+        doc_repo = InMemoryDocumentRepository()
+        service = DocumentService(doc_repo)
+
+        read_model = service.get_current_revision_read_model("nonexistent-id")
+
+        assert read_model is None

@@ -12,6 +12,35 @@ from modules.revision.repository import RevisionRepository
 from modules.revision.service import RevisionService
 
 
+class CurrentRevisionReadModel:
+    """
+    문서의 현재 리비전 정보를 포함하는 읽기 모델.
+
+    문서의 메타데이터(제목, id)와 현재 리비전의 정보(리비전 id, 소스)를 함께 제공한다.
+    """
+
+    def __init__(
+        self,
+        title: str,
+        document_id: str,
+        revision_id: Optional[str],
+        source: Optional[str],
+    ):
+        """
+        읽기 모델을 생성한다.
+
+        Args:
+            title: 문서의 제목
+            document_id: 문서의 고유 식별자
+            revision_id: 현재 리비전의 id (리비전이 없으면 None)
+            source: 현재 리비전의 소스 (리비전이 없으면 None)
+        """
+        self.title = title
+        self.document_id = document_id
+        self.revision_id = revision_id
+        self.source = source
+
+
 class DocumentService:
     """
     문서 생성 및 관리를 담당하는 서비스.
@@ -105,3 +134,42 @@ class DocumentService:
         """
         normalized = normalize_title(title)
         return self.document_repository.get_by_normalized_title(normalized)
+
+    def get_current_revision_read_model(
+        self, document_id: str
+    ) -> Optional[CurrentRevisionReadModel]:
+        """
+        문서의 현재 리비전 읽기 모델을 조회한다.
+
+        문서 id로 문서를 조회하고, 현재 리비전이 있으면 그 정보를 포함하는
+        읽기 모델을 반환한다. 현재 리비전이 없으면 revision_id와 source는 None이다.
+
+        Args:
+            document_id: 조회할 문서의 고유 식별자
+
+        Returns:
+            현재 리비전 읽기 모델 또는 문서가 없으면 None
+
+        Raises:
+            리비전 저장소가 없거나 현재 리비전 id는 있지만 리비전을 찾을 수 없으면
+            현재 리비전 정보는 None으로 처리한다.
+        """
+        document = self.document_repository.get(document_id)
+        if document is None:
+            return None
+
+        source = None
+        if (
+            document.current_revision_id is not None
+            and self.revision_service is not None
+        ):
+            revision = self.revision_service.get(document.current_revision_id)
+            if revision is not None:
+                source = revision.source
+
+        return CurrentRevisionReadModel(
+            title=document.title,
+            document_id=document.id,
+            revision_id=document.current_revision_id,
+            source=source,
+        )
