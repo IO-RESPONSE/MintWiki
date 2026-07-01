@@ -54,6 +54,9 @@ class PlainTextBlockParser:
     # 코드 블록 종료 패턴: }}}
     CODE_END_PATTERN = re.compile(r'(.*?)\}\}\}(.*)')
 
+    # 테이블 행 패턴: ||cell1||cell2||cell3|| (시작과 끝에 ||)
+    TABLE_ROW_PATTERN = re.compile(r'^\|\|(.+)\|\|$')
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
@@ -91,6 +94,7 @@ class PlainTextBlockParser:
         blocks = []
         current_block_lines = []
         in_list = False
+        in_table = False
         i = 0
 
         while i < len(lines):
@@ -245,6 +249,8 @@ class PlainTextBlockParser:
                 unordered_list_match = PlainTextBlockParser.UNORDERED_LIST_PATTERN.match(line)
                 # 현재 줄이 순서 있는 목록 항목인지 확인
                 ordered_list_match = PlainTextBlockParser.ORDERED_LIST_PATTERN.match(line)
+                # 현재 줄이 테이블 행인지 확인
+                table_row_match = PlainTextBlockParser.TABLE_ROW_PATTERN.match(line)
 
                 if heading_match:
                     # 누적된 블록을 먼저 처리
@@ -312,14 +318,29 @@ class PlainTextBlockParser:
                     # 목록 줄을 현재 블록에 추가
                     current_block_lines.append(line)
                     in_list = True
+                elif table_row_match:
+                    # 현재 비-테이블 블록이 있으면 먼저 처리
+                    if current_block_lines and not in_table:
+                        block_content = '\n'.join(current_block_lines)
+                        # 메타데이터 줄은 스킵
+                        if not PlainTextBlockParser._is_metadata_line(block_content):
+                            block = PlainTextBlockParser._create_block(block_content)
+                            blocks.append(block)
+                        current_block_lines = []
+                        in_list = False
+
+                    # 테이블 행을 현재 블록에 추가
+                    current_block_lines.append(line)
+                    in_table = True
                 else:
-                    # 현재 목록 블록이 있으면 먼저 처리
-                    if current_block_lines and in_list:
+                    # 현재 목록 또는 테이블 블록이 있으면 먼저 처리
+                    if current_block_lines and (in_list or in_table):
                         block_content = '\n'.join(current_block_lines)
                         block = PlainTextBlockParser._create_block(block_content)
                         blocks.append(block)
                         current_block_lines = []
                         in_list = False
+                        in_table = False
 
                     # 일반 줄은 현재 블록에 추가
                     current_block_lines.append(line)
@@ -333,6 +354,7 @@ class PlainTextBlockParser:
                         blocks.append(block)
                     current_block_lines = []
                     in_list = False
+                    in_table = False
 
             i += 1
 
@@ -357,6 +379,10 @@ class PlainTextBlockParser:
         Returns:
             블록 딕셔너리
         """
+        # 테이블 블록인지 확인
+        if PlainTextBlockParser._is_table(content):
+            return PlainTextBlockParser._create_table_block(content)
+
         # 순서 없는 목록 블록인지 확인
         if PlainTextBlockParser._is_unordered_list(content):
             return PlainTextBlockParser._create_unordered_list_block(content)
@@ -709,4 +735,53 @@ class PlainTextBlockParser:
             'type': 'list',
             'list_type': 'ordered',
             'items': nested_items,
+        }
+
+    @staticmethod
+    def _is_table(content: str) -> bool:
+        """
+        콘텐츠가 테이블인지 확인한다.
+
+        Args:
+            content: 검사할 콘텐츠
+
+        Returns:
+            테이블이면 True
+        """
+        lines = content.split('\n')
+        for line in lines:
+            if line.strip() and not PlainTextBlockParser.TABLE_ROW_PATTERN.match(line):
+                # 한 줄이라도 테이블 패턴과 일치하지 않으면 테이블이 아님
+                return False
+        # 최소한 한 개 이상의 테이블 행이 있어야 함
+        return any(PlainTextBlockParser.TABLE_ROW_PATTERN.match(line) for line in lines)
+
+    @staticmethod
+    def _create_table_block(content: str) -> Dict[str, Any]:
+        """
+        테이블 블록을 생성한다.
+
+        Args:
+            content: 테이블 콘텐츠
+
+        Returns:
+            테이블 블록 딕셔너리
+        """
+        lines = content.split('\n')
+        rows = []
+
+        for line in lines:
+            match = PlainTextBlockParser.TABLE_ROW_PATTERN.match(line)
+            if match:
+                # ||로 구분된 셀 추출
+                cells_content = match.group(1)
+                # 빈 셀 처리를 위해 || 기반으로 분할
+                cells = cells_content.split('||')
+                # 빈 셀 제거 (시작/끝의 빈 셀)
+                cells = [cell.strip() for cell in cells if cell.strip()]
+                rows.append({'cells': cells})
+
+        return {
+            'type': 'table',
+            'rows': rows,
         }

@@ -2139,3 +2139,118 @@ class TestPlainTextBlockParserBacklinks:
         assert "backlinks" in result.metadata
         assert isinstance(result.metadata["backlinks"], list)
         assert all(isinstance(b, str) for b in result.metadata["backlinks"])
+
+
+class TestPlainTextBlockParserSimpleTableRows:
+    """PlainTextBlockParser의 간단한 테이블 행 파싱 테스트."""
+
+    def test_parses_single_table_row(self):
+        """단일 테이블 행을 파싱한다."""
+        source = "||cell1||cell2||cell3||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "table"
+        assert len(result.blocks[0]["rows"]) == 1
+        assert result.blocks[0]["rows"][0]["cells"] == ["cell1", "cell2", "cell3"]
+
+    def test_parses_multiple_table_rows(self):
+        """여러 테이블 행을 파싱한다."""
+        source = "||row1cell1||row1cell2||\n||row2cell1||row2cell2||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "table"
+        assert len(result.blocks[0]["rows"]) == 2
+        assert result.blocks[0]["rows"][0]["cells"] == ["row1cell1", "row1cell2"]
+        assert result.blocks[0]["rows"][1]["cells"] == ["row2cell1", "row2cell2"]
+
+    def test_parses_table_with_heading(self):
+        """테이블과 제목을 함께 파싱한다."""
+        source = "= Table Title =\n\n||cell1||cell2||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[1]["type"] == "table"
+
+    def test_parses_table_with_content(self):
+        """테이블과 문단을 함께 파싱한다."""
+        source = "Introductory text.\n\n||data1||data2||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[1]["type"] == "table"
+
+    def test_table_cells_trimmed(self):
+        """테이블 셀의 공백을 제거한다."""
+        source = "||  cell1  ||  cell2  ||"
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["rows"][0]["cells"] == ["cell1", "cell2"]
+
+    def test_table_with_many_cells(self):
+        """많은 셀을 가진 테이블 행을 파싱한다."""
+        source = "||a||b||c||d||e||f||g||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks[0]["rows"][0]["cells"]) == 7
+
+    def test_table_separated_from_paragraph_by_blank_line(self):
+        """빈 줄로 분리된 테이블과 문단을 파싱한다."""
+        source = "First paragraph.\n\n||cell1||cell2||\n||cell3||cell4||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[1]["type"] == "table"
+        assert len(result.blocks[1]["rows"]) == 2
+
+    def test_table_followed_by_paragraph(self):
+        """테이블 뒤의 문단을 파싱한다."""
+        source = "||cell1||cell2||\n\nFollowing paragraph."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "table"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[1]["content"] == "Following paragraph."
+
+    def test_consecutive_table_rows_grouped(self):
+        """연속된 테이블 행을 하나의 블록으로 그룹화한다."""
+        source = "||a||b||\n||c||d||\n||e||f||"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "table"
+        assert len(result.blocks[0]["rows"]) == 3
+
+    def test_table_with_numeric_content(self):
+        """숫자 콘텐츠를 포함한 테이블을 파싱한다."""
+        source = "||1||2||3||\n||10||20||30||"
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["rows"][0]["cells"] == ["1", "2", "3"]
+        assert result.blocks[0]["rows"][1]["cells"] == ["10", "20", "30"]
+
+    def test_table_not_created_from_non_table_content(self):
+        """테이블이 아닌 콘텐츠는 테이블로 파싱되지 않는다."""
+        source = "This is a paragraph with ||pipes||."
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["type"] == "paragraph"
+        assert "table" not in [b["type"] for b in result.blocks]
+
+    def test_table_row_structure_integrity(self):
+        """테이블 행 구조의 무결성을 검증한다."""
+        source = "||cell1||cell2||cell3||"
+        result = PlainTextBlockParser.parse(source)
+        table_block = result.blocks[0]
+        assert "type" in table_block
+        assert "rows" in table_block
+        assert isinstance(table_block["rows"], list)
+        assert all("cells" in row for row in table_block["rows"])
+
+    def test_empty_table_cell_content(self):
+        """빈 테이블 셀을 처리한다."""
+        source = "||cell1||||cell3||"
+        result = PlainTextBlockParser.parse(source)
+        # 빈 셀은 제거되므로 cell1과 cell3만 남음
+        assert result.blocks[0]["rows"][0]["cells"] == ["cell1", "cell3"]
+
+    def test_table_with_special_characters(self):
+        """특수 문자를 포함한 테이블을 파싱한다."""
+        source = "||test&data||info<tag>||value\"||"
+        result = PlainTextBlockParser.parse(source)
+        cells = result.blocks[0]["rows"][0]["cells"]
+        assert "test&data" in cells or any("test" in c for c in cells)

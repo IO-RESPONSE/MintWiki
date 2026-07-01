@@ -91,6 +91,10 @@ class ParserFixtureLoader:
             ParserFixtureLoader._backlinks_with_heading(),
             ParserFixtureLoader._backlinks_with_content(),
             ParserFixtureLoader._backlinks_with_special_chars(),
+            ParserFixtureLoader._table_simple(),
+            ParserFixtureLoader._table_multiple_rows(),
+            ParserFixtureLoader._table_with_heading(),
+            ParserFixtureLoader._table_with_content(),
         ]
 
     @staticmethod
@@ -1406,6 +1410,110 @@ class ParserFixtureLoader:
                     "categories": [],
                     "headings": [],
                     "backlinks": ["Science & Technology", "2024 Events"],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_simple() -> ParserFixture:
+        """간단한 테이블 행 픽스처."""
+        return ParserFixture(
+            name="table_simple",
+            source="||cell1||cell2||cell3||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {'cells': ['cell1', 'cell2', 'cell3']},
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_multiple_rows() -> ParserFixture:
+        """여러 행의 테이블 픽스처."""
+        return ParserFixture(
+            name="table_multiple_rows",
+            source="||cell1||cell2||\n||cell3||cell4||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {'cells': ['cell1', 'cell2']},
+                            {'cells': ['cell3', 'cell4']},
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_with_heading() -> ParserFixture:
+        """제목과 함께 있는 테이블 픽스처."""
+        return ParserFixture(
+            name="table_with_heading",
+            source="= Table Title =\n||row1cell1||row1cell2||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'heading',
+                        'level': 1,
+                        'content': 'Table Title',
+                    },
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {'cells': ['row1cell1', 'row1cell2']},
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [
+                        {'level': 1, 'text': 'Table Title'},
+                    ],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _table_with_content() -> ParserFixture:
+        """문단 텍스트와 함께 있는 테이블 픽스처."""
+        return ParserFixture(
+            name="table_with_content",
+            source="This is a table:\n\n||data1||data2||",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        'type': 'paragraph',
+                        'content': 'This is a table:',
+                    },
+                    {
+                        'type': 'table',
+                        'rows': [
+                            {'cells': ['data1', 'data2']},
+                        ],
+                    }
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
                 },
             ),
         )
