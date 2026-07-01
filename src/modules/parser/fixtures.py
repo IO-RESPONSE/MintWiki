@@ -33,6 +33,7 @@ class ParserFixtureLoader:
             ParserFixtureLoader._multiple_blocks(),
             ParserFixtureLoader._links_and_metadata(),
             ParserFixtureLoader._complex_document(),
+            ParserFixtureLoader._escaped_html_text(),
         ]
 
     @staticmethod
@@ -190,6 +191,33 @@ class ParserFixtureLoader:
                         {"level": 2, "text": "Section 1"},
                         {"level": 2, "text": "Section 2"},
                     ],
+                },
+            ),
+        )
+
+    @staticmethod
+    def _escaped_html_text() -> ParserFixture:
+        """이스케이프된 HTML 텍스트 픽스처."""
+        return ParserFixture(
+            name="escaped_html_text",
+            source="This has &lt;tag&gt; in it.\n\nAlso &amp; and &quot; here.",
+            expected_result=ParserResult(
+                blocks=[
+                    {
+                        "type": "paragraph",
+                        "content": "This has &lt;tag&gt; in it.",
+                        "has_escaped_html": True,
+                    },
+                    {
+                        "type": "paragraph",
+                        "content": "Also &amp; and &quot; here.",
+                        "has_escaped_html": True,
+                    },
+                ],
+                metadata={
+                    "links": [],
+                    "categories": [],
+                    "headings": [],
                 },
             ),
         )

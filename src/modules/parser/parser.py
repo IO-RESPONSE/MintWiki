@@ -1,4 +1,5 @@
 """평문 텍스트 블록 파서."""
+import re
 from typing import List, Dict, Any
 
 from modules.parser.model import ParserResult
@@ -6,6 +7,9 @@ from modules.parser.model import ParserResult
 
 class PlainTextBlockParser:
     """평문 텍스트 블록을 파싱하는 파서."""
+
+    # HTML 엔티티 패턴: &name; 또는 &#number; 형태
+    HTML_ENTITY_PATTERN = re.compile(r'&(?:[a-zA-Z]+|#\d+|#x[0-9a-fA-F]+);')
 
     @staticmethod
     def parse(source: str) -> ParserResult:
@@ -52,21 +56,42 @@ class PlainTextBlockParser:
                 # 빈 줄을 만나면 현재 블록 종료
                 if current_block_lines:
                     block_content = '\n'.join(current_block_lines)
-                    blocks.append({
+                    block = {
                         'type': 'paragraph',
                         'content': block_content,
-                    })
+                    }
+                    # 이스케이프된 HTML 검사
+                    if PlainTextBlockParser._has_escaped_html(block_content):
+                        block['has_escaped_html'] = True
+                    blocks.append(block)
                     current_block_lines = []
 
         # 마지막 블록 처리
         if current_block_lines:
             block_content = '\n'.join(current_block_lines)
-            blocks.append({
+            block = {
                 'type': 'paragraph',
                 'content': block_content,
-            })
+            }
+            # 이스케이프된 HTML 검사
+            if PlainTextBlockParser._has_escaped_html(block_content):
+                block['has_escaped_html'] = True
+            blocks.append(block)
 
         return blocks
+
+    @staticmethod
+    def _has_escaped_html(content: str) -> bool:
+        """
+        콘텐츠에 이스케이프된 HTML 엔티티가 있는지 확인한다.
+
+        Args:
+            content: 검사할 콘텐츠
+
+        Returns:
+            이스케이프된 HTML 엔티티가 있으면 True
+        """
+        return bool(PlainTextBlockParser.HTML_ENTITY_PATTERN.search(content))
 
     @staticmethod
     def _extract_metadata(blocks: List[Dict[str, Any]]) -> Dict[str, Any]:

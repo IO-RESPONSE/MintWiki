@@ -124,3 +124,56 @@ class TestPlainTextBlockParserIntegration:
             assert "content" in block
             assert block["type"] == "paragraph"
             assert isinstance(block["content"], str)
+
+
+class TestPlainTextBlockParserEscapedHtml:
+    """PlainTextBlockParser의 이스케이프된 HTML 처리 테스트."""
+
+    def test_parses_escaped_html_entities(self):
+        """이스케이프된 HTML 엔티티를 포함한 텍스트를 파싱한다."""
+        source = "This has &lt;tag&gt; in it."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "This has &lt;tag&gt; in it."
+        assert result.blocks[0]["has_escaped_html"] is True
+
+    def test_marks_block_with_escaped_html_flag(self):
+        """이스케이프된 HTML을 포함한 블록에 플래그를 설정한다."""
+        source = "Text with &amp; ampersand."
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["has_escaped_html"] is True
+
+    def test_recognizes_common_html_entities(self):
+        """일반적인 HTML 엔티티를 인식한다."""
+        source = "Use &lt; &gt; &amp; &quot; &apos; entities."
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["has_escaped_html"] is True
+
+    def test_recognizes_numeric_html_entities(self):
+        """숫자 HTML 엔티티를 인식한다."""
+        source = "Decimal &#65; and hex &#x41; entities."
+        result = PlainTextBlockParser.parse(source)
+        assert result.blocks[0]["has_escaped_html"] is True
+
+    def test_no_escaped_html_flag_for_plain_text(self):
+        """평문에는 이스케이프된 HTML 플래그를 설정하지 않는다."""
+        source = "This is plain text without any HTML entities."
+        result = PlainTextBlockParser.parse(source)
+        assert "has_escaped_html" not in result.blocks[0]
+
+    def test_multiple_blocks_with_escaped_html(self):
+        """여러 블록 중 일부만 이스케이프된 HTML을 포함할 수 있다."""
+        source = "First block.\n\nSecond with &lt;tag&gt;.\n\nThird plain."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 3
+        assert "has_escaped_html" not in result.blocks[0]
+        assert result.blocks[1]["has_escaped_html"] is True
+        assert "has_escaped_html" not in result.blocks[2]
+
+    def test_escaped_html_in_multiline_block(self):
+        """여러 줄 블록에서 이스케이프된 HTML을 인식한다."""
+        source = "First line\nSecond line with &nbsp; entity\nThird line."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["has_escaped_html"] is True
