@@ -30,6 +30,9 @@ class PlainTextBlockParser:
     # 취소선 텍스트 패턴: ~~text~~ (중첩된 마크 지원)
     STRIKE_PATTERN = re.compile(r"~~(.+?)~~", re.DOTALL)
 
+    # 순서 없는 목록 패턴: * 텍스트 (수준 1), ** 텍스트 (수준 2), 등
+    UNORDERED_LIST_PATTERN = re.compile(r'^(\*+)\s+(.+)$')
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
@@ -66,13 +69,17 @@ class PlainTextBlockParser:
         lines = source.split('\n')
         blocks = []
         current_block_lines = []
+        in_list = False
 
         for line in lines:
             if line.strip():
                 # 현재 줄이 제목인지 확인
                 heading_match = PlainTextBlockParser.HEADING_PATTERN.match(line)
+                # 현재 줄이 순서 없는 목록 항목인지 확인
+                list_match = PlainTextBlockParser.UNORDERED_LIST_PATTERN.match(line)
+
                 if heading_match:
-                    # 누적된 문단 블록을 먼저 처리
+                    # 누적된 블록을 먼저 처리
                     if current_block_lines:
                         block_content = '\n'.join(current_block_lines)
                         # 메타데이터 줄은 스킵 (예: [[Category:...]], [[Redirect:...]])
@@ -80,6 +87,7 @@ class PlainTextBlockParser:
                             block = PlainTextBlockParser._create_block(block_content)
                             blocks.append(block)
                         current_block_lines = []
+                        in_list = False
 
                     # 제목 블록 생성
                     equal_signs = heading_match.group(1)
@@ -91,7 +99,28 @@ class PlainTextBlockParser:
                         'content': heading_text,
                     }
                     blocks.append(heading_block)
+                elif list_match:
+                    # 현재 비-목록 블록이 있으면 먼저 처리
+                    if current_block_lines and not in_list:
+                        block_content = '\n'.join(current_block_lines)
+                        # 메타데이터 줄은 스킵
+                        if not PlainTextBlockParser._is_metadata_line(block_content):
+                            block = PlainTextBlockParser._create_block(block_content)
+                            blocks.append(block)
+                        current_block_lines = []
+
+                    # 목록 줄을 현재 블록에 추가
+                    current_block_lines.append(line)
+                    in_list = True
                 else:
+                    # 현재 목록 블록이 있으면 먼저 처리
+                    if current_block_lines and in_list:
+                        block_content = '\n'.join(current_block_lines)
+                        block = PlainTextBlockParser._create_block(block_content)
+                        blocks.append(block)
+                        current_block_lines = []
+                        in_list = False
+
                     # 일반 줄은 현재 블록에 추가
                     current_block_lines.append(line)
             else:
@@ -103,6 +132,7 @@ class PlainTextBlockParser:
                         block = PlainTextBlockParser._create_block(block_content)
                         blocks.append(block)
                     current_block_lines = []
+                    in_list = False
 
         # 마지막 블록 처리
         if current_block_lines:
@@ -125,6 +155,10 @@ class PlainTextBlockParser:
         Returns:
             블록 딕셔너리
         """
+        # 순서 없는 목록 블록인지 확인
+        if PlainTextBlockParser._is_unordered_list(content):
+            return PlainTextBlockParser._create_unordered_list_block(content)
+
         # 기본값: 문단 블록
         block = {
             'type': 'paragraph',
@@ -298,3 +332,53 @@ class PlainTextBlockParser:
                 external_links.append(url)
 
         return external_links
+
+    @staticmethod
+    def _is_unordered_list(content: str) -> bool:
+        """
+        콘텐츠가 순서 없는 목록인지 확인한다.
+
+        Args:
+            content: 검사할 콘텐츠
+
+        Returns:
+            순서 없는 목록이면 True
+        """
+        lines = content.split('\n')
+        for line in lines:
+            if line.strip() and not PlainTextBlockParser.UNORDERED_LIST_PATTERN.match(line):
+                # 한 줄이라도 목록 패턴과 일치하지 않으면 목록이 아님
+                return False
+        # 최소한 한 개 이상의 목록 줄이 있어야 함
+        return any(PlainTextBlockParser.UNORDERED_LIST_PATTERN.match(line) for line in lines)
+
+    @staticmethod
+    def _create_unordered_list_block(content: str) -> Dict[str, Any]:
+        """
+        순서 없는 목록 블록을 생성한다.
+
+        Args:
+            content: 목록 콘텐츠
+
+        Returns:
+            목록 블록 딕셔너리
+        """
+        lines = content.split('\n')
+        items = []
+
+        for line in lines:
+            match = PlainTextBlockParser.UNORDERED_LIST_PATTERN.match(line)
+            if match:
+                asterisks = match.group(1)
+                text = match.group(2)
+                level = len(asterisks)
+                items.append({
+                    'level': level,
+                    'text': text,
+                })
+
+        return {
+            'type': 'list',
+            'list_type': 'unordered',
+            'items': items,
+        }

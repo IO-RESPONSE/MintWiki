@@ -1041,3 +1041,119 @@ class TestPlainTextBlockParserNestedInlineMarks:
         source = "Text with '''bold ''italic'' text''' only."
         result = PlainTextBlockParser.parse(source)
         assert "has_escaped_html" not in result.blocks[0]
+
+
+class TestPlainTextBlockParserUnorderedLists:
+    """PlainTextBlockParser의 순서 없는 목록 파싱 테스트."""
+
+    def test_parses_single_list_item(self):
+        """단일 목록 항목을 파싱한다."""
+        source = "* Item 1"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "list"
+        assert result.blocks[0]["list_type"] == "unordered"
+        assert len(result.blocks[0]["items"]) == 1
+        assert result.blocks[0]["items"][0]["level"] == 1
+        assert result.blocks[0]["items"][0]["text"] == "Item 1"
+
+    def test_parses_multiple_list_items(self):
+        """여러 목록 항목을 파싱한다."""
+        source = "* Item 1\n* Item 2\n* Item 3"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "list"
+        assert len(result.blocks[0]["items"]) == 3
+        assert result.blocks[0]["items"][0]["text"] == "Item 1"
+        assert result.blocks[0]["items"][1]["text"] == "Item 2"
+        assert result.blocks[0]["items"][2]["text"] == "Item 3"
+
+    def test_parses_nested_list_items(self):
+        """중첩된 목록 항목을 파싱한다."""
+        source = "* Item 1\n** Nested 1.1\n** Nested 1.2\n* Item 2"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "list"
+        assert len(result.blocks[0]["items"]) == 4
+        assert result.blocks[0]["items"][0]["level"] == 1
+        assert result.blocks[0]["items"][1]["level"] == 2
+        assert result.blocks[0]["items"][2]["level"] == 2
+        assert result.blocks[0]["items"][3]["level"] == 1
+
+    def test_list_followed_by_paragraph(self):
+        """목록 다음에 문단이 있는 경우를 파싱한다."""
+        source = "* Item 1\n* Item 2\n\nContent here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "list"
+        assert result.blocks[1]["type"] == "paragraph"
+        assert result.blocks[1]["content"] == "Content here."
+
+    def test_paragraph_followed_by_list(self):
+        """문단 다음에 목록이 있는 경우를 파싱한다."""
+        source = "Content here.\n\n* Item 1\n* Item 2"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[1]["type"] == "list"
+
+    def test_list_with_special_characters(self):
+        """특수 문자를 포함한 목록 항목을 파싱한다."""
+        source = "* Item with & special!\n* Item with 123 numbers"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["items"][0]["text"] == "Item with & special!"
+        assert result.blocks[0]["items"][1]["text"] == "Item with 123 numbers"
+
+    def test_deeply_nested_list(self):
+        """깊게 중첩된 목록을 파싱한다."""
+        source = "* Level 1\n** Level 2\n*** Level 3\n** Back to 2"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        items = result.blocks[0]["items"]
+        assert items[0]["level"] == 1
+        assert items[1]["level"] == 2
+        assert items[2]["level"] == 3
+        assert items[3]["level"] == 2
+
+    def test_list_with_spaces_after_asterisk(self):
+        """별표 뒤에 공백이 있는 목록을 파싱한다."""
+        source = "*  Item with two spaces\n*   Item with three spaces"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["items"][0]["text"] == "Item with two spaces"
+        assert result.blocks[0]["items"][1]["text"] == "Item with three spaces"
+
+    def test_multiple_lists_separated_by_blank_lines(self):
+        """빈 줄로 분리된 여러 목록을 파싱한다."""
+        source = "* List 1 Item 1\n* List 1 Item 2\n\n* List 2 Item 1"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "list"
+        assert result.blocks[1]["type"] == "list"
+        assert len(result.blocks[0]["items"]) == 2
+        assert len(result.blocks[1]["items"]) == 1
+
+    def test_list_with_internal_whitespace(self):
+        """항목 내에 내부 공백을 포함한 목록을 파싱한다."""
+        source = "* Item with multiple words inside\n* Another item with words"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["items"][0]["text"] == "Item with multiple words inside"
+
+    def test_list_metadata_extraction(self):
+        """목록 블록이 메타데이터에 영향을 주지 않는다."""
+        source = "* Item [[Link1]]\n* Item [[Link2]]"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "list"
+        # 목록 내의 링크는 메타데이터로 추출되지 않음 (현재 구현에서)
+        assert len(result.metadata["links"]) == 0
+
+    def test_heading_followed_by_list(self):
+        """제목 다음에 목록이 오는 경우를 파싱한다."""
+        source = "= Title =\n\n* Item 1\n* Item 2"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 2
+        assert result.blocks[0]["type"] == "heading"
+        assert result.blocks[1]["type"] == "list"
