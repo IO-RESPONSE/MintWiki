@@ -92,7 +92,7 @@ class DocumentService:
         document = await self.document_repository.create(document)
 
         if source is not None and self.revision_service is not None:
-            revision = self.revision_service.create(
+            revision = await self.revision_service.create(
                 document_id=document.id,
                 source=source,
                 author_id="",
@@ -163,7 +163,7 @@ class DocumentService:
             document.current_revision_id is not None
             and self.revision_service is not None
         ):
-            revision = self.revision_service.get(document.current_revision_id)
+            revision = await self.revision_service.get(document.current_revision_id)
             if revision is not None:
                 source = revision.source
 

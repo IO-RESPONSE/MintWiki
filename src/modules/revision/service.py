@@ -23,7 +23,7 @@ class RevisionService:
         """
         self.repository = repository
 
-    def create(
+    async def create(
         self,
         document_id: str,
         source: str,
@@ -54,9 +54,9 @@ class RevisionService:
             summary=summary,
             parent_revision_id=parent_revision_id,
         )
-        return self.repository.create(revision)
+        return await self.repository.create(revision)
 
-    def get(self, id: str) -> Optional[Revision]:
+    async def get(self, id: str) -> Optional[Revision]:
         """
         주어진 id로 리비전을 조회한다.
 
@@ -68,9 +68,9 @@ class RevisionService:
         Returns:
             조회된 리비전 또는 없으면 None
         """
-        return self.repository.get(id)
+        return await self.repository.get(id)
 
-    def list_by_document_id(self, document_id: str) -> list[Revision]:
+    async def list_by_document_id(self, document_id: str) -> list[Revision]:
         """
         주어진 문서의 리비전을 생성 순서대로 나열한다.
 
@@ -80,4 +80,4 @@ class RevisionService:
         Returns:
             문서의 리비전 목록 (생성 순서)
         """
-        return self.repository.list_by_document_id(document_id)
+        return await self.repository.list_by_document_id(document_id)

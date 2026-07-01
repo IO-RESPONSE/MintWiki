@@ -206,7 +206,7 @@ class TestDocumentService:
         assert doc.title == "My Document"
         assert doc.current_revision_id is not None
 
-        revision = rev_repo.get(doc.current_revision_id)
+        revision = await rev_repo.get(doc.current_revision_id)
         assert revision is not None
         assert revision.source == "Initial content"
         assert revision.document_id == doc.id
@@ -222,7 +222,7 @@ class TestDocumentService:
         doc = await service.create("My Document")
 
         assert doc.current_revision_id is None
-        revisions = rev_repo.list_by_document_id(doc.id)
+        revisions = await rev_repo.list_by_document_id(doc.id)
         assert len(revisions) == 0
 
     @pytest.mark.asyncio
@@ -245,7 +245,7 @@ class TestDocumentService:
         doc = await service.create("My Document", source="Content here")
 
         assert doc.current_revision_id is not None
-        revision = rev_repo.get(doc.current_revision_id)
+        revision = await rev_repo.get(doc.current_revision_id)
         assert revision.document_id == doc.id
         assert revision.source == "Content here"
 
@@ -262,8 +262,8 @@ class TestDocumentService:
         assert doc1.id != doc2.id
         assert doc1.current_revision_id != doc2.current_revision_id
 
-        rev1 = rev_repo.get(doc1.current_revision_id)
-        rev2 = rev_repo.get(doc2.current_revision_id)
+        rev1 = await rev_repo.get(doc1.current_revision_id)
+        rev2 = await rev_repo.get(doc2.current_revision_id)
 
         assert rev1.document_id == doc1.id
         assert rev2.document_id == doc2.id
