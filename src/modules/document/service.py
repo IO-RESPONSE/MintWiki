@@ -8,8 +8,10 @@ from modules.document.repository import (
     DocumentRepository,
 )
 from modules.document.title import EmptyTitleError, normalize_title
+from modules.revision.model import Revision
 from modules.revision.repository import RevisionRepository
 from modules.revision.service import RevisionService
+from persistence.transaction import DocumentRevisionTransaction
 
 
 class CurrentRevisionReadModel:
@@ -54,6 +56,7 @@ class DocumentService:
         self,
         document_repository: DocumentRepository,
         revision_repository: Optional[RevisionRepository] = None,
+        transaction: Optional[DocumentRevisionTransaction] = None,
     ):
         """
         서비스를 초기화한다.
@@ -61,9 +64,11 @@ class DocumentService:
         Args:
             document_repository: 문서 저장소
             revision_repository: 리비전 저장소 (선택사항)
+            transaction: 트랜잭션 헬퍼 (선택사항)
         """
         self.document_repository = document_repository
         self.revision_repository = revision_repository
+        self.transaction = transaction
         self.revision_service = (
             RevisionService(revision_repository)
             if revision_repository is not None
@@ -76,7 +81,8 @@ class DocumentService:
 
         제목을 정규화하고 저장소에 위임하여 문서를 생성한다.
         소스가 제공되면 첫 리비전도 생성하고 document의 current_revision_id를
-        설정한 후 데이터베이스에 저장한다.
+        설정한 후 데이터베이스에 저장한다. 트랜잭션 헬퍼가 있으면 문서와 리비전을
+        원자적으로 생성한다.
 
         Args:
             title: 문서의 제목
@@ -90,17 +96,38 @@ class DocumentService:
             DuplicateNormalizedTitleError: 정규화된 제목이 중복된 경우
         """
         document = Document(id=str(uuid.uuid4()), title=title)
-        document = await self.document_repository.create(document)
 
-        if source is not None and self.revision_service is not None:
-            revision = await self.revision_service.create(
+        if (
+            source is not None
+            and self.revision_service is not None
+            and self.transaction is not None
+        ):
+            # 트랜잭션을 사용하여 문서와 리비전을 원자적으로 생성
+            revision = Revision(
+                id=str(uuid.uuid4()),
                 document_id=document.id,
                 source=source,
                 author_id="",
                 summary="",
+                parent_revision_id=None,
             )
             document.current_revision_id = revision.id
-            document = await self.document_repository.update(document)
+            document, _ = await self.transaction.create_document_with_revision(
+                document, revision
+            )
+        else:
+            # 트랜잭션 없이 순차적으로 생성
+            document = await self.document_repository.create(document)
+
+            if source is not None and self.revision_service is not None:
+                revision = await self.revision_service.create(
+                    document_id=document.id,
+                    source=source,
+                    author_id="",
+                    summary="",
+                )
+                document.current_revision_id = revision.id
+                document = await self.document_repository.update(document)
 
         return document
 

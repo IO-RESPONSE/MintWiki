@@ -15,6 +15,7 @@ from modules.revision.repository import (
     DatabaseRevisionRepository,
 )
 from persistence.base import Base
+from persistence.transaction import DocumentRevisionTransaction
 
 
 class TestDocumentService:
@@ -533,3 +534,40 @@ class TestDocumentServiceWithDatabase:
         assert retrieved is not None
         assert retrieved.current_revision_id == doc.current_revision_id
         assert retrieved.current_revision_id is not None
+
+    @pytest.mark.asyncio
+    async def test_create_with_transaction_helper(self, async_db_session):
+        """서비스는 트랜잭션 헬퍼를 사용하여 문서와 리비전을 원자적으로 생성할 수 있다."""
+        doc_repo = DatabaseDocumentRepository(async_db_session)
+        rev_repo = DatabaseRevisionRepository(async_db_session)
+        transaction = DocumentRevisionTransaction(async_db_session)
+        service = DocumentService(doc_repo, rev_repo, transaction)
+
+        doc = await service.create("My Document", source="Initial content")
+
+        assert doc.id is not None
+        assert doc.title == "My Document"
+        assert doc.current_revision_id is not None
+
+        revision = await rev_repo.get(doc.current_revision_id)
+        assert revision is not None
+        assert revision.source == "Initial content"
+        assert revision.document_id == doc.id
+
+    @pytest.mark.asyncio
+    async def test_create_with_transaction_helper_persists_both(self, async_db_session):
+        """트랜잭션 헬퍼를 사용하면 문서와 리비전이 모두 저장된다."""
+        doc_repo = DatabaseDocumentRepository(async_db_session)
+        rev_repo = DatabaseRevisionRepository(async_db_session)
+        transaction = DocumentRevisionTransaction(async_db_session)
+        service = DocumentService(doc_repo, rev_repo, transaction)
+
+        doc = await service.create("Test Document", source="Test content")
+
+        retrieved_doc = await service.get(doc.id)
+        retrieved_rev = await rev_repo.get(doc.current_revision_id)
+
+        assert retrieved_doc is not None
+        assert retrieved_doc.current_revision_id == doc.current_revision_id
+        assert retrieved_rev is not None
+        assert retrieved_rev.source == "Test content"
