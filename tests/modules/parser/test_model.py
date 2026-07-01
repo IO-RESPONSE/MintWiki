@@ -1,5 +1,5 @@
 """파서 모델 테스트."""
-from modules.parser.model import ParserResult
+from modules.parser.model import ParserDiagnostic, ParserResult
 
 
 class TestParserResultConstruction:
@@ -59,3 +59,81 @@ class TestParserResultConstruction:
         assert "links" in result.metadata
         assert "redirects" in result.metadata
         assert "transclusions" in result.metadata
+
+
+class TestParserDiagnosticConstruction:
+    """파서 진단 정보 생성 테스트."""
+
+    def test_creates_parser_diagnostic_with_error(self):
+        """오류 진단을 생성한다."""
+        diagnostic = ParserDiagnostic(
+            message="Unexpected token",
+            severity="error",
+            line=1,
+            column=5,
+        )
+        assert diagnostic.message == "Unexpected token"
+        assert diagnostic.severity == "error"
+        assert diagnostic.line == 1
+        assert diagnostic.column == 5
+        assert diagnostic.code is None
+
+    def test_creates_parser_diagnostic_with_warning(self):
+        """경고 진단을 생성한다."""
+        diagnostic = ParserDiagnostic(
+            message="Deprecated syntax",
+            severity="warning",
+            line=10,
+            column=15,
+        )
+        assert diagnostic.message == "Deprecated syntax"
+        assert diagnostic.severity == "warning"
+        assert diagnostic.line == 10
+        assert diagnostic.column == 15
+
+    def test_creates_parser_diagnostic_with_info(self):
+        """정보 진단을 생성한다."""
+        diagnostic = ParserDiagnostic(
+            message="Extra whitespace found",
+            severity="info",
+            line=5,
+            column=8,
+        )
+        assert diagnostic.message == "Extra whitespace found"
+        assert diagnostic.severity == "info"
+        assert diagnostic.line == 5
+        assert diagnostic.column == 8
+
+    def test_creates_parser_diagnostic_with_code(self):
+        """진단 코드를 포함하여 진단을 생성한다."""
+        diagnostic = ParserDiagnostic(
+            message="Unclosed bracket",
+            severity="error",
+            line=3,
+            column=12,
+            code="E001",
+        )
+        assert diagnostic.message == "Unclosed bracket"
+        assert diagnostic.severity == "error"
+        assert diagnostic.line == 3
+        assert diagnostic.column == 12
+        assert diagnostic.code == "E001"
+
+    def test_creates_parser_diagnostic_with_different_codes(self):
+        """다양한 진단 코드로 진단을 생성한다."""
+        error_diagnostic = ParserDiagnostic(
+            message="Syntax error",
+            severity="error",
+            line=1,
+            column=1,
+            code="E002",
+        )
+        warning_diagnostic = ParserDiagnostic(
+            message="Syntax warning",
+            severity="warning",
+            line=1,
+            column=1,
+            code="W001",
+        )
+        assert error_diagnostic.code == "E002"
+        assert warning_diagnostic.code == "W001"

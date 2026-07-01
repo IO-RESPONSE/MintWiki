@@ -1,4 +1,4 @@
 """Parser module package."""
-from modules.parser.model import ParserResult
+from modules.parser.model import ParserDiagnostic, ParserResult
 
-__all__ = ["ParserResult"]
+__all__ = ["ParserDiagnostic", "ParserResult"]
