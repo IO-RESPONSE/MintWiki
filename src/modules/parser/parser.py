@@ -15,6 +15,9 @@ class PlainTextBlockParser:
     # 패턴은 양쪽에 같은 개수의 등호 기호를 요구한다
     HEADING_PATTERN = re.compile(r'^(=+)\s+(.+?)\s+\1$')
 
+    # 내부 링크 패턴: [[LinkName]]
+    INTERNAL_LINK_PATTERN = re.compile(r'\[\[([^\]]+)\]\]')
+
     @staticmethod
     def parse(source: str) -> ParserResult:
         """
@@ -30,7 +33,7 @@ class PlainTextBlockParser:
             파싱 결과 (ParserResult 객체)
         """
         blocks = PlainTextBlockParser._parse_blocks(source)
-        metadata = PlainTextBlockParser._extract_metadata(blocks)
+        metadata = PlainTextBlockParser._extract_metadata(source, blocks)
 
         return ParserResult(blocks=blocks, metadata=metadata)
 
@@ -154,28 +157,97 @@ class PlainTextBlockParser:
         return bool(PlainTextBlockParser.HTML_ENTITY_PATTERN.search(content))
 
     @staticmethod
-    def _extract_metadata(blocks: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _extract_metadata(source: str, blocks: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        블록들에서 메타데이터를 추출한다.
+        소스 텍스트와 블록들에서 메타데이터를 추출한다.
 
-        제목을 메타데이터로 추출한다.
+        제목, 링크, 카테고리, 리다이렉트를 메타데이터로 추출한다.
 
         Args:
+            source: 원본 소스 텍스트
             blocks: 파싱된 블록들
 
         Returns:
             메타데이터 딕셔너리
         """
         headings = []
+        links = []
+        categories = []
+        redirects = []
+
+        # 소스에서 메타데이터 라인 추출
+        lines = source.split('\n')
+        for line in lines:
+            line = line.strip()
+            if line.startswith('[[Category:') and line.endswith(']]'):
+                category_name = line[len('[[Category:'):-2]
+                categories.append(category_name)
+            elif line.startswith('[[Redirect:') and line.endswith(']]'):
+                redirect_target = line[len('[[Redirect:'):-2]
+                redirects.append({'from': '', 'to': redirect_target})
+
+        # 블록에서 메타데이터 추출
         for block in blocks:
             if block.get('type') == 'heading':
                 headings.append({
                     'level': block['level'],
                     'text': block['content'],
                 })
+            elif block.get('type') == 'paragraph':
+                # 문단에서 내부 링크 추출
+                content = block.get('content', '')
+                extracted_links, extracted_categories, extracted_redirects = \
+                    PlainTextBlockParser._extract_links_from_content(content)
+                links.extend(extracted_links)
+                categories.extend(extracted_categories)
+                redirects.extend(extracted_redirects)
 
-        return {
-            'links': [],
-            'categories': [],
+        # 중복 제거하되 순서 유지
+        links = list(dict.fromkeys(links))
+        categories = list(dict.fromkeys(categories))
+
+        metadata = {
+            'links': links,
+            'categories': categories,
             'headings': headings,
         }
+
+        # redirects가 있으면 추가
+        if redirects:
+            metadata['redirects'] = redirects
+
+        return metadata
+
+    @staticmethod
+    def _extract_links_from_content(content: str) -> tuple:
+        """
+        콘텐츠에서 내부 링크, 카테고리, 리다이렉트를 추출한다.
+
+        내부 링크 형식:
+        - [[LinkName]] - 일반 링크
+        - [[Category:Name]] - 카테고리
+        - [[Redirect:Name]] - 리다이렉트
+
+        Args:
+            content: 파싱할 콘텐츠
+
+        Returns:
+            (links, categories, redirects) 튜플
+        """
+        links = []
+        categories = []
+        redirects = []
+
+        matches = PlainTextBlockParser.INTERNAL_LINK_PATTERN.findall(content)
+        for match in matches:
+            if match.startswith('Category:'):
+                category_name = match[len('Category:'):]
+                categories.append(category_name)
+            elif match.startswith('Redirect:'):
+                redirect_target = match[len('Redirect:'):]
+                redirects.append({'from': '', 'to': redirect_target})
+            else:
+                # 일반 링크
+                links.append(match)
+
+        return links, categories, redirects

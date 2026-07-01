@@ -275,6 +275,99 @@ class TestPlainTextBlockParserHeadingsLevelOne:
         assert "has_escaped_html" not in result.blocks[0]
 
 
+class TestPlainTextBlockParserInternalLinks:
+    """PlainTextBlockParser의 내부 링크 파싱 테스트."""
+
+    def test_parses_single_internal_link(self):
+        """단일 내부 링크를 파싱한다."""
+        source = "See [[Document1]] for details."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["links"]) == 1
+        assert result.metadata["links"][0] == "Document1"
+
+    def test_parses_multiple_internal_links(self):
+        """여러 내부 링크를 파싱한다."""
+        source = "See [[Link1]] and [[Link2]] for details."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["links"]) == 2
+        assert "Link1" in result.metadata["links"]
+        assert "Link2" in result.metadata["links"]
+
+    def test_extracts_categories(self):
+        """카테고리를 추출한다."""
+        source = "[[Category:Test]]"
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["categories"]) == 1
+        assert result.metadata["categories"][0] == "Test"
+
+    def test_extracts_multiple_categories(self):
+        """여러 카테고리를 추출한다."""
+        source = "[[Category:Wiki]]\n\nSome content."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["categories"]) == 1
+        assert "Wiki" in result.metadata["categories"]
+
+    def test_extracts_redirects(self):
+        """리다이렉트를 추출한다."""
+        source = "[[Redirect:NewPage]]"
+        result = PlainTextBlockParser.parse(source)
+        assert "redirects" in result.metadata
+        assert len(result.metadata["redirects"]) == 1
+        assert result.metadata["redirects"][0]["to"] == "NewPage"
+
+    def test_internal_links_in_paragraph(self):
+        """문단 안의 내부 링크를 파싱한다."""
+        source = "This paragraph mentions [[Link1]] and [[Link2]]."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.blocks) == 1
+        assert result.blocks[0]["type"] == "paragraph"
+        assert result.blocks[0]["content"] == "This paragraph mentions [[Link1]] and [[Link2]]."
+        assert len(result.metadata["links"]) == 2
+
+    def test_links_with_special_characters(self):
+        """특수 문자를 포함한 링크를 파싱한다."""
+        source = "See [[Special Link Name]] here."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["links"]) == 1
+        assert result.metadata["links"][0] == "Special Link Name"
+
+    def test_duplicate_links_removed(self):
+        """중복 링크는 제거된다."""
+        source = "[[Link1]] and [[Link1]] again."
+        result = PlainTextBlockParser.parse(source)
+        assert len(result.metadata["links"]) == 1
+        assert result.metadata["links"][0] == "Link1"
+
+    def test_links_order_preserved(self):
+        """링크의 순서가 유지된다."""
+        source = "[[Alpha]], [[Beta]], [[Gamma]]"
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["links"] == ["Alpha", "Beta", "Gamma"]
+
+    def test_mixed_links_and_categories(self):
+        """링크와 카테고리가 섞여 있을 때를 파싱한다."""
+        source = "[[Category:Wiki]]\n\nContent with [[Link1]]."
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["categories"] == ["Wiki"]
+        assert result.metadata["links"] == ["Link1"]
+
+    def test_complex_document_with_all_link_types(self):
+        """모든 타입의 링크를 포함한 복잡한 문서를 파싱한다."""
+        source = (
+            "[[Category:Wiki]]\n"
+            "[[Redirect:NewPage]]\n"
+            "\n"
+            "See [[Link1]] and [[Link2]] for details."
+        )
+        result = PlainTextBlockParser.parse(source)
+        assert result.metadata["categories"] == ["Wiki"]
+        assert len(result.metadata["links"]) == 2
+        assert "Link1" in result.metadata["links"]
+        assert "Link2" in result.metadata["links"]
+        assert "redirects" in result.metadata
+        assert result.metadata["redirects"][0]["to"] == "NewPage"
+
+
 class TestPlainTextBlockParserHeadingsNestedLevels:
     """PlainTextBlockParser의 중첩된 제목 수준 파싱 테스트."""
 
