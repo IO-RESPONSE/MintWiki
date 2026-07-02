@@ -84,3 +84,48 @@ test that mounts the router is responsible for setting this). An empty or
 whitespace-only query parameter returns `422`. Results are returned as a
 `SearchResponse` (see `schema.py`) listing each match's `document_id`,
 `title`, and `score`. Indexing HTTP routes are wired up in later tasks.
+
+## External Search Engine Choice
+
+No external search engine has been selected as the production backend yet,
+and none is required to be. `SearchAdapterConfig` (`config.py`) only accepts
+`"in_memory"` today (`ALLOWED_SEARCH_ADAPTER_BACKENDS`); `InMemorySearchAdapter`
+is both the current default and the local fallback that keeps the module
+usable with zero external dependencies.
+
+`MeilisearchSearchAdapter` and `OpenSearchSearchAdapter` exist side by side as
+skeletons (see above) because the module deliberately keeps the choice open
+between them rather than committing early. This follows the "hide the engine"
+principle in [`docs/search-adapter-design.md`](../../../docs/search-adapter-design.md):
+since both engines implement the same `SearchAdapter` interface, callers pay
+no cost for the decision being deferred, and either skeleton can be filled in
+— or dropped — without touching `SearchService`, the router, or any caller.
+
+When the choice is made (a later task, per the initial stack note in the
+top-level [`README.md`](../../../README.md#초기-스택), "adapter first, then
+Meilisearch/OpenSearch"), it should weigh:
+
+- **Operational simplicity**: Meilisearch ships as a single self-contained
+  binary with minimal configuration; OpenSearch requires a JVM-based cluster
+  and more operational overhead.
+- **License**: Meilisearch is MIT-licensed; OpenSearch is Apache 2.0
+  (a fork of Elasticsearch maintained after Elasticsearch's license change).
+- **Relevance and typo tolerance**: Meilisearch has typo-tolerant ranking
+  built in by default; OpenSearch relies on standard BM25 plus optional
+  plugins and analyzers that must be configured explicitly.
+- **CJK/Korean tokenization**: OpenSearch has mature CJK analyzer plugins
+  (e.g. `nori`); Meilisearch's tokenizer is simpler and less tunable for
+  Korean text.
+- **Scale**: OpenSearch is built for large, sharded, multi-node deployments;
+  Meilisearch targets small-to-medium single-node deployments.
+
+Whichever engine is picked, extending `ALLOWED_SEARCH_ADAPTER_BACKENDS` and
+wiring `SearchAdapterConfig` to construct the corresponding adapter is left
+to that later task, as already noted above.
+
+Note this is a separate decision from the longer-term PHP portability path
+described in `docs/search-adapter-design.md`, which targets pure-PHP
+TNTSearch for the eventual PHP/MariaDB reimplementation specifically because
+that target excludes introducing an extra search service. Meilisearch and
+OpenSearch are candidates for this repository's current Python/FastAPI stack
+only; they do not change the PHP migration target.
