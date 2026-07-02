@@ -39,4 +39,18 @@ final class Response
     {
         return $this->body;
     }
+
+    /**
+     * 데이터를 JSON으로 인코딩하고 Content-Type 헤더를 채운 Response를 생성한다
+     * (태스크 0417). 인코딩 실패 시 JsonException을 던진다 — 호출자가 직접
+     * 처리하지 않아도 되도록 JSON_THROW_ON_ERROR를 사용한다.
+     *
+     * @param array<string, string> $headers 기본 Content-Type 헤더에 병합할 추가 헤더
+     */
+    public static function json(mixed $data, int $status = 200, array $headers = []): self
+    {
+        $body = json_encode($data, JSON_THROW_ON_ERROR);
+
+        return new self($status, ['Content-Type' => 'application/json'] + $headers, $body);
+    }
 }
