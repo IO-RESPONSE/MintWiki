@@ -1,5 +1,6 @@
-"""기본 ACL 정책(공개 읽기 허용, 로그인 편집 허용) 테스트."""
+"""기본 ACL 정책(공개 읽기 허용, 익명 편집 거부, 로그인 편집 허용) 테스트."""
 from modules.acl.default_policy import (
+    ANONYMOUS_EDIT_DENY_RULE_ID,
     LOGGED_IN_EDIT_RULE_ID,
     PUBLIC_READ_RULE_ID,
     build_default_namespace_acl_defaults,
@@ -12,22 +13,31 @@ from modules.acl.service import AclService
 
 
 class TestDefaultRules:
-    """default_rules가 공개 읽기 허용 규칙과 로그인 편집 허용 규칙을 포함하는지 확인한다."""
+    """default_rules가 공개 읽기 허용, 익명 편집 거부, 로그인 편집 허용 규칙을 포함하는지 확인한다."""
 
     def test_contains_public_read_allow_rule(self):
         rules = default_rules()
 
-        assert len(rules) == 2
+        assert len(rules) == 3
         rule = rules[0]
         assert rule.id == PUBLIC_READ_RULE_ID
         assert rule.permission is Permission.READ
         assert rule.subject_type is SubjectType.ALL
         assert rule.is_allow() is True
 
-    def test_contains_logged_in_edit_allow_rule(self):
+    def test_contains_anonymous_edit_deny_rule_before_logged_in_edit_rule(self):
         rules = default_rules()
 
         rule = rules[1]
+        assert rule.id == ANONYMOUS_EDIT_DENY_RULE_ID
+        assert rule.permission is Permission.EDIT
+        assert rule.subject_type is SubjectType.ANONYMOUS
+        assert rule.is_allow() is False
+
+    def test_contains_logged_in_edit_allow_rule(self):
+        rules = default_rules()
+
+        rule = rules[2]
         assert rule.id == LOGGED_IN_EDIT_RULE_ID
         assert rule.permission is Permission.EDIT
         assert rule.subject_type is SubjectType.ALL
@@ -37,7 +47,7 @@ class TestDefaultRules:
         first = default_rules()
         first.append(None)
 
-        assert len(default_rules()) == 2
+        assert len(default_rules()) == 3
 
 
 class TestBuildDefaultNamespaceAclDefaults:
@@ -48,18 +58,20 @@ class TestBuildDefaultNamespaceAclDefaults:
 
         rules = defaults.get(DEFAULT_NAMESPACE)
 
-        assert len(rules) == 2
+        assert len(rules) == 3
         assert rules[0].id == PUBLIC_READ_RULE_ID
-        assert rules[1].id == LOGGED_IN_EDIT_RULE_ID
+        assert rules[1].id == ANONYMOUS_EDIT_DENY_RULE_ID
+        assert rules[2].id == LOGGED_IN_EDIT_RULE_ID
 
     def test_applies_to_any_namespace_via_fallback(self):
         defaults = build_default_namespace_acl_defaults()
 
         rules = defaults.get("Talk")
 
-        assert len(rules) == 2
+        assert len(rules) == 3
         assert rules[0].id == PUBLIC_READ_RULE_ID
-        assert rules[1].id == LOGGED_IN_EDIT_RULE_ID
+        assert rules[1].id == ANONYMOUS_EDIT_DENY_RULE_ID
+        assert rules[2].id == LOGGED_IN_EDIT_RULE_ID
 
 
 class TestDefaultPolicyWithAclService:
@@ -98,6 +110,17 @@ class TestDefaultPolicyWithAclService:
 
         assert decision.is_allowed() is True
         assert decision.matched_rule_id == LOGGED_IN_EDIT_RULE_ID
+
+    def test_denies_anonymous_edit_by_default(self):
+        service = AclService(namespace_defaults=build_default_namespace_acl_defaults())
+
+        decision = service.check(
+            permission=Permission.EDIT,
+            subject_type=SubjectType.ANONYMOUS,
+        )
+
+        assert decision.is_denied() is True
+        assert decision.matched_rule_id == ANONYMOUS_EDIT_DENY_RULE_ID
 
     def test_does_not_allow_discuss_by_default(self):
         service = AclService(namespace_defaults=build_default_namespace_acl_defaults())
