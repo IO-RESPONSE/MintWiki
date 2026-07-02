@@ -107,6 +107,17 @@ is returned unchanged. It is not yet wired into `SearchResult`,
 down to the matched context), multi-term highlighting, and morphological
 match support are filled in by later tasks.
 
+`build_search_cache_key` (`cache_key.py`) is a search result cache key
+builder, following the same version-scoped derivation as
+`build_render_cache_key` in `modules/cache/key.py`: it combines a search
+`term`, `limit`, `offset`, and the `SEARCH_INDEX_VERSION` package constant
+(or an explicit `index_version` override) into a deterministic
+`"search:v{index_version}:{sha256 hash}"` string, so any change to the
+query parameters or a bump to the index schema version naturally produces a
+different key. It is not yet wired into `SearchService`, the router, or the
+`cache` module's backends — an actual search result cache is added by a
+later task.
+
 `SearchFixtureLoader` (`fixtures.py`) provides a small set of reusable
 `SearchDocument` fixture documents for adapter/service/reindex tests:
 title-only, title+body, redirect, categorized, and a "full" document with
