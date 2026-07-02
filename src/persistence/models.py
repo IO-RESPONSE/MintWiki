@@ -132,3 +132,21 @@ class RevisionORM(Base):
             summary=revision.summary,
             parent_revision_id=revision.parent_revision_id,
         )
+
+
+class SchemaVersionORM(Base):
+    """
+    배포된 스키마 버전을 나타내는 ORM 모델.
+
+    스키마 버전 테이블을 SQLAlchemy를 통해 매핑한다.
+    현재 배포된 스키마 버전을 추적한다.
+    """
+
+    __tablename__ = "schema_version"
+
+    version = Column(String(255), primary_key=True, nullable=False)
+    applied_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
