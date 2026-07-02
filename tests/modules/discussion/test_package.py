@@ -26,6 +26,7 @@ def test_discussion_package_exports_thread_model():
         "ThreadState",
         "DiscussionRepository",
         "DiscussionThreadNotFoundError",
+        "DiscussionCommentNotFoundError",
         "InMemoryDiscussionRepository",
         "DiscussionService",
     ]
@@ -55,6 +56,7 @@ def test_discussion_package_exports_repository_interface():
 def test_discussion_package_exports_in_memory_repository():
     assert modules.discussion.InMemoryDiscussionRepository is not None
     assert modules.discussion.DiscussionThreadNotFoundError is not None
+    assert modules.discussion.DiscussionCommentNotFoundError is not None
 
 
 def test_discussion_package_exports_service():

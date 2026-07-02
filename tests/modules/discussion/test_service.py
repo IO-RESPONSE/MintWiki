@@ -8,6 +8,7 @@ from modules.discussion.comment import (
     EmptyCommentThreadIdError,
 )
 from modules.discussion.repository import (
+    DiscussionCommentNotFoundError,
     DiscussionThreadNotFoundError,
     InMemoryDiscussionRepository,
 )
@@ -510,3 +511,85 @@ class TestDiscussionServiceComments:
             await service.add_comment(thread_id=thread.id, body="", created_by="user1")
 
         assert await service.list_comments_by_thread_id(thread.id) == []
+
+
+class TestDiscussionServiceHideComment:
+    """토론 서비스의 댓글 숨김 처리 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_hide_comment_marks_comment_as_hidden(self):
+        """서비스는 댓글을 숨김 처리할 수 있다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        comment = await service.add_comment(
+            thread_id=thread.id, body="본문", created_by="user2"
+        )
+
+        hidden = await service.hide_comment(comment.id, actor_id="moderator1")
+
+        assert hidden.id == comment.id
+        assert hidden.is_hidden is True
+        assert hidden.hidden_at is not None
+
+    @pytest.mark.asyncio
+    async def test_hide_comment_delegates_to_repository(self):
+        """서비스는 저장소에 댓글 숨김을 위임한다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        comment = await service.add_comment(
+            thread_id=thread.id, body="본문", created_by="user2"
+        )
+
+        await service.hide_comment(comment.id, actor_id="moderator1")
+
+        retrieved = await repo.get_comment(comment.id)
+        assert retrieved.is_hidden is True
+
+    @pytest.mark.asyncio
+    async def test_hide_nonexistent_comment_raises(self):
+        """서비스는 존재하지 않는 댓글을 숨기려 하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(DiscussionCommentNotFoundError):
+            await service.hide_comment("nonexistent-id", actor_id="moderator1")
+
+    @pytest.mark.asyncio
+    async def test_hide_comment_records_audit_event(self):
+        """서비스는 댓글 숨김 시 감사 이벤트를 남긴다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        comment = await service.add_comment(
+            thread_id=thread.id, body="본문", created_by="user2"
+        )
+
+        await service.hide_comment(comment.id, actor_id="moderator1")
+
+        events = [
+            e for e in service.audit_recorder.events()
+            if e.action is DiscussionAuditAction.COMMENT_HIDDEN
+        ]
+        assert len(events) == 1
+        assert events[0].comment_id == comment.id
+        assert events[0].thread_id == thread.id
+        assert events[0].actor_id == "moderator1"
+
+    @pytest.mark.asyncio
+    async def test_hide_nonexistent_comment_does_not_record_audit_event(self):
+        """서비스는 존재하지 않는 댓글을 숨기려는 시도에 대해 감사 이벤트를 남기지 않는다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(DiscussionCommentNotFoundError):
+            await service.hide_comment("nonexistent-id", actor_id="moderator1")
+
+        assert service.audit_recorder.events() == []

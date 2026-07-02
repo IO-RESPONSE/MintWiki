@@ -5,6 +5,7 @@ import pytest
 
 from modules.discussion.comment import DiscussionComment
 from modules.discussion.repository import (
+    DiscussionCommentNotFoundError,
     DiscussionRepository,
     DiscussionThreadNotFoundError,
     InMemoryDiscussionRepository,
@@ -43,6 +44,14 @@ class TestDiscussionRepositoryInterface:
     def test_list_comments_by_thread_id_method_exists(self):
         """저장소는 list_comments_by_thread_id 메서드를 정의한다."""
         assert hasattr(DiscussionRepository, "list_comments_by_thread_id")
+
+    def test_get_comment_method_exists(self):
+        """저장소는 get_comment 메서드를 정의한다."""
+        assert hasattr(DiscussionRepository, "get_comment")
+
+    def test_update_comment_method_exists(self):
+        """저장소는 update_comment 메서드를 정의한다."""
+        assert hasattr(DiscussionRepository, "update_comment")
 
 
 class TestInMemoryDiscussionRepository:
@@ -288,3 +297,62 @@ class TestInMemoryDiscussionRepository:
 
         thread1_comments = await repo.list_comments_by_thread_id("thread1")
         assert [c.id for c in thread1_comments] == ["comment1", "comment3"]
+
+    @pytest.mark.asyncio
+    async def test_can_get_comment_by_id(self):
+        """인메모리 저장소는 id로 댓글을 조회할 수 있다."""
+        repo = InMemoryDiscussionRepository()
+        comment = DiscussionComment(
+            id="comment1",
+            thread_id="thread1",
+            body="댓글 내용",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        await repo.create_comment(comment)
+
+        result = await repo.get_comment("comment1")
+
+        assert result is not None
+        assert result.id == "comment1"
+
+    @pytest.mark.asyncio
+    async def test_get_comment_returns_none_for_missing_id(self):
+        """인메모리 저장소는 없는 댓글 id를 조회하면 None을 반환한다."""
+        repo = InMemoryDiscussionRepository()
+        result = await repo.get_comment("nonexistent")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_can_update_comment(self):
+        """인메모리 저장소는 댓글을 업데이트할 수 있다."""
+        repo = InMemoryDiscussionRepository()
+        comment = DiscussionComment(
+            id="comment1",
+            thread_id="thread1",
+            body="댓글 내용",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        await repo.create_comment(comment)
+        comment.hide(datetime(2026, 1, 2, 0, 0, 0))
+
+        result = await repo.update_comment(comment)
+
+        assert result.is_hidden is True
+        fetched = await repo.get_comment("comment1")
+        assert fetched.is_hidden is True
+
+    @pytest.mark.asyncio
+    async def test_update_comment_raises_for_missing_comment(self):
+        """인메모리 저장소는 없는 댓글을 업데이트하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        comment = DiscussionComment(
+            id="nonexistent",
+            thread_id="thread1",
+            body="댓글 내용",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        with pytest.raises(DiscussionCommentNotFoundError):
+            await repo.update_comment(comment)

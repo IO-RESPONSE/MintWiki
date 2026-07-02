@@ -14,6 +14,7 @@ from modules.discussion.comment import (
     EmptyCommentThreadIdError,
 )
 from modules.discussion.repository import (
+    DiscussionCommentNotFoundError,
     DiscussionRepository,
     DiscussionThreadNotFoundError,
     InMemoryDiscussionRepository,
@@ -47,6 +48,7 @@ __all__ = [
     "ThreadState",
     "DiscussionRepository",
     "DiscussionThreadNotFoundError",
+    "DiscussionCommentNotFoundError",
     "InMemoryDiscussionRepository",
     "DiscussionService",
 ]

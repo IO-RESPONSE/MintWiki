@@ -5,7 +5,11 @@ from typing import Optional
 
 from modules.discussion.audit_recorder import DiscussionAuditRecorder
 from modules.discussion.comment import DiscussionComment
-from modules.discussion.repository import DiscussionRepository, DiscussionThreadNotFoundError
+from modules.discussion.repository import (
+    DiscussionCommentNotFoundError,
+    DiscussionRepository,
+    DiscussionThreadNotFoundError,
+)
 from modules.discussion.thread import DiscussionThread
 
 
@@ -14,9 +18,8 @@ class DiscussionService:
     토론 스레드 및 댓글 생성과 조회를 담당하는 서비스.
 
     스레드/댓글 생성 시 id와 생성 시각을 부여하고 저장소에 위임한다.
-    스레드 생성 시에는 audit_recorder를 통해 감사 이벤트도 함께 남긴다.
-    스레드 상태 전환, 댓글 관련 감사 기록 등의 세부 동작은 이후 태스크에서
-    채워지므로, 이 서비스는 그 외 생성과 조회만 제공하는 골격이다.
+    스레드 생성과 댓글 숨김 시에는 audit_recorder를 통해 감사 이벤트도
+    함께 남긴다.
     """
 
     def __init__(
@@ -179,3 +182,27 @@ class DiscussionService:
             스레드의 댓글 목록 (생성 순서)
         """
         return await self.repository.list_comments_by_thread_id(thread_id)
+
+    async def hide_comment(
+        self, comment_id: str, actor_id: Optional[str] = None
+    ) -> DiscussionComment:
+        """
+        댓글을 숨김 처리하고 감사 이벤트를 남긴다.
+
+        Args:
+            comment_id: 숨길 댓글의 id
+            actor_id: 댓글을 숨긴 사용자(주로 모더레이터)의 id (선택사항)
+
+        Returns:
+            숨김 처리된 댓글
+
+        Raises:
+            DiscussionCommentNotFoundError: 댓글이 없는 경우
+        """
+        comment = await self.repository.get_comment(comment_id)
+        if comment is None:
+            raise DiscussionCommentNotFoundError(f"댓글 id '{comment_id}'를 찾을 수 없습니다")
+        comment.hide(datetime.now(timezone.utc))
+        hidden = await self.repository.update_comment(comment)
+        self.audit_recorder.record_comment_hidden(hidden, actor_id=actor_id)
+        return hidden

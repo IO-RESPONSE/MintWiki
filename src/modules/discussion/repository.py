@@ -12,6 +12,12 @@ class DiscussionThreadNotFoundError(Exception):
     pass
 
 
+class DiscussionCommentNotFoundError(Exception):
+    """토론 댓글을 찾을 수 없을 때 발생."""
+
+    pass
+
+
 class DiscussionRepository(ABC):
     """
     토론 저장소의 인터페이스.
@@ -105,6 +111,35 @@ class DiscussionRepository(ABC):
 
         Returns:
             스레드의 댓글 목록 (생성 순서)
+        """
+        pass
+
+    @abstractmethod
+    async def get_comment(self, id: str) -> Optional[DiscussionComment]:
+        """
+        주어진 id로 댓글을 조회한다.
+
+        Args:
+            id: 조회할 댓글의 고유 식별자
+
+        Returns:
+            조회된 댓글 또는 없으면 None
+        """
+        pass
+
+    @abstractmethod
+    async def update_comment(self, comment: DiscussionComment) -> DiscussionComment:
+        """
+        기존 댓글을 업데이트한다.
+
+        Args:
+            comment: 업데이트할 댓글
+
+        Returns:
+            업데이트된 댓글
+
+        Raises:
+            DiscussionCommentNotFoundError: 댓글이 없는 경우
         """
         pass
 
@@ -207,3 +242,33 @@ class InMemoryDiscussionRepository(DiscussionRepository):
         """
         comment_ids = self.thread_comments.get(thread_id, [])
         return [self.comments[cid] for cid in comment_ids]
+
+    async def get_comment(self, id: str) -> Optional[DiscussionComment]:
+        """
+        주어진 id로 댓글을 조회한다.
+
+        Args:
+            id: 조회할 댓글의 고유 식별자
+
+        Returns:
+            조회된 댓글 또는 없으면 None
+        """
+        return self.comments.get(id)
+
+    async def update_comment(self, comment: DiscussionComment) -> DiscussionComment:
+        """
+        기존 댓글을 업데이트한다.
+
+        Args:
+            comment: 업데이트할 댓글
+
+        Returns:
+            업데이트된 댓글
+
+        Raises:
+            DiscussionCommentNotFoundError: 댓글이 없는 경우
+        """
+        if comment.id not in self.comments:
+            raise DiscussionCommentNotFoundError(f"댓글 id '{comment.id}'를 찾을 수 없습니다")
+        self.comments[comment.id] = comment
+        return comment
