@@ -8,11 +8,13 @@ from modules.acl.default_policy import (
 )
 from modules.acl.document_acl import DocumentAcl, EmptyDocumentIdError
 from modules.acl.document_policy import (
+    DOCUMENT_ADMIN_RESTRICTION_RULE_ID,
     DOCUMENT_DELETE_RESTRICTION_RULE_ID,
     DOCUMENT_DISCUSS_RESTRICTION_RULE_ID,
     DOCUMENT_EDIT_RESTRICTION_RULE_ID,
     DOCUMENT_MOVE_RESTRICTION_RULE_ID,
     DOCUMENT_READ_RESTRICTION_RULE_ID,
+    restrict_document_admin,
     restrict_document_delete,
     restrict_document_discuss,
     restrict_document_edit,
@@ -57,4 +59,6 @@ __all__ = [
     "restrict_document_move",
     "DOCUMENT_DELETE_RESTRICTION_RULE_ID",
     "restrict_document_delete",
+    "DOCUMENT_ADMIN_RESTRICTION_RULE_ID",
+    "restrict_document_admin",
 ]

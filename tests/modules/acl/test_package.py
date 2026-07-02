@@ -41,6 +41,8 @@ def test_acl_package_exports_rule():
         "restrict_document_move",
         "DOCUMENT_DELETE_RESTRICTION_RULE_ID",
         "restrict_document_delete",
+        "DOCUMENT_ADMIN_RESTRICTION_RULE_ID",
+        "restrict_document_admin",
     ]
     assert modules.acl.Rule is Rule
 
@@ -184,3 +186,19 @@ def test_acl_package_exports_document_delete_restriction():
         is DOCUMENT_DELETE_RESTRICTION_RULE_ID
     )
     assert modules.acl.restrict_document_delete is restrict_document_delete
+
+
+def test_acl_package_exports_document_admin_restriction():
+    # 0166에서 문서 단위 관리자 권한 제한 정책이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.document_policy import (
+        DOCUMENT_ADMIN_RESTRICTION_RULE_ID,
+        restrict_document_admin,
+    )
+
+    assert "DOCUMENT_ADMIN_RESTRICTION_RULE_ID" in modules.acl.__all__
+    assert "restrict_document_admin" in modules.acl.__all__
+    assert (
+        modules.acl.DOCUMENT_ADMIN_RESTRICTION_RULE_ID
+        is DOCUMENT_ADMIN_RESTRICTION_RULE_ID
+    )
+    assert modules.acl.restrict_document_admin is restrict_document_admin

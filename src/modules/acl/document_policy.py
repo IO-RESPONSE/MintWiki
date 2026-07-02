@@ -1,4 +1,4 @@
-"""문서 단위 읽기/편집/토론/이동/삭제 제한 정책 정의."""
+"""문서 단위 읽기/편집/토론/이동/삭제/관리자 제한 정책 정의."""
 from typing import Optional
 
 from modules.acl.document_acl import DocumentAcl
@@ -10,6 +10,7 @@ DOCUMENT_READ_RESTRICTION_RULE_ID = "document-read-restricted"
 DOCUMENT_DISCUSS_RESTRICTION_RULE_ID = "document-discuss-restricted"
 DOCUMENT_MOVE_RESTRICTION_RULE_ID = "document-move-restricted"
 DOCUMENT_DELETE_RESTRICTION_RULE_ID = "document-delete-restricted"
+DOCUMENT_ADMIN_RESTRICTION_RULE_ID = "document-admin-restricted"
 
 
 def restrict_document_edit(
@@ -166,6 +167,39 @@ def restrict_document_delete(
         id=DOCUMENT_DELETE_RESTRICTION_RULE_ID,
         subject_type=subject_type,
         permission=Permission.DELETE,
+        effect=Effect.ALLOW,
+        subject_id=subject_id,
+    )
+    return DocumentAcl(document_id=document_id, rules=[rule])
+
+
+def restrict_document_admin(
+    document_id: str,
+    subject_type: SubjectType,
+    subject_id: Optional[str] = None,
+) -> DocumentAcl:
+    """
+    지정한 대상만 관리자 권한을 허용하도록 제한된 문서 ACL을 생성한다.
+
+    문서 ACL에는 지정한 대상에 대한 관리자 허용 규칙 하나만 등록된다. 다른
+    대상은 이 문서 ACL 안에서 일치하는 규칙이 없으므로 AclService에 의해
+    기본적으로 관리자 권한이 거부된다. 기본 정책(default_policy)에는
+    관리자 권한에 대한 규칙이 없어 문서 ACL이 없는 문서는 누구도 관리자
+    권한을 가질 수 없으므로, 이 함수는 특정 대상에게 관리자 권한을
+    부여하는 유일한 수단이다.
+
+    Args:
+        document_id: 관리자 권한을 제한할 문서의 고유 식별자
+        subject_type: 관리자 권한이 허용되는 대상의 종류
+        subject_id: 대상이 사용자 또는 그룹일 때의 id (선택사항)
+
+    Returns:
+        관리자 허용 규칙 하나만 담긴 DocumentAcl
+    """
+    rule = Rule(
+        id=DOCUMENT_ADMIN_RESTRICTION_RULE_ID,
+        subject_type=subject_type,
+        permission=Permission.ADMIN,
         effect=Effect.ALLOW,
         subject_id=subject_id,
     )
