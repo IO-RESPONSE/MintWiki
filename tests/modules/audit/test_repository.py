@@ -3,7 +3,10 @@ from datetime import datetime
 
 import pytest
 
-from modules.audit.model import AuditEvent
+from modules.audit.model import (
+    AuditEvent,
+    DuplicateAuditEventIdError,
+)
 from modules.audit.repository import (
     AuditRepository,
     InMemoryAuditRepository,
@@ -219,8 +222,8 @@ class TestInMemoryAuditRepository:
         assert result.actor_id == "admin-1"
 
     @pytest.mark.asyncio
-    async def test_create_with_same_id_overwrites_existing_event(self):
-        """인메모리 저장소는 동일한 id로 생성 시 기존 이벤트를 덮어쓴다."""
+    async def test_raises_on_duplicate_event_id(self):
+        """인메모리 저장소는 동일한 id로 생성 시 DuplicateAuditEventIdError를 발생시킨다."""
         repo = InMemoryAuditRepository()
         event1 = AuditEvent(
             id="event-1",
@@ -237,11 +240,8 @@ class TestInMemoryAuditRepository:
             occurred_at=datetime(2026, 1, 1, 1, 0, 0),
         )
         await repo.create(event1)
-        await repo.create(event2)
-
-        result = await repo.get("event-1")
-        assert result.event_type == "admin"
-        assert result.action == "updated"
+        with pytest.raises(DuplicateAuditEventIdError):
+            await repo.create(event2)
 
     @pytest.mark.asyncio
     async def test_event_ordering_in_get_by_resource_id(self):
@@ -274,3 +274,134 @@ class TestInMemoryAuditRepository:
 
         results = await repo.get_by_resource_id("doc-1")
         assert [e.id for e in results] == ["event-1", "event-2", "event-3"]
+
+
+class TestAppendOnlyBehavior:
+    """감사 저장소의 append-only 동작을 테스트한다."""
+
+    @pytest.mark.asyncio
+    async def test_append_only_prevents_duplicate_ids_across_resources(self):
+        """동일한 id는 다른 리소스에도 허용되지 않는다."""
+        repo = InMemoryAuditRepository()
+        event1 = AuditEvent(
+            id="event-1",
+            event_type="document",
+            action="created",
+            resource_id="doc-1",
+            occurred_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        event2 = AuditEvent(
+            id="event-1",
+            event_type="admin",
+            action="created",
+            resource_id="rule-1",
+            occurred_at=datetime(2026, 1, 1, 1, 0, 0),
+        )
+        await repo.create(event1)
+        with pytest.raises(DuplicateAuditEventIdError):
+            await repo.create(event2)
+
+    @pytest.mark.asyncio
+    async def test_append_only_maintains_event_count_after_duplicate_attempt(self):
+        """중복 id 생성 시도 후에도 이벤트 개수는 변하지 않는다."""
+        repo = InMemoryAuditRepository()
+        event1 = AuditEvent(
+            id="event-1",
+            event_type="document",
+            action="created",
+            resource_id="doc-1",
+            occurred_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        event2 = AuditEvent(
+            id="event-1",
+            event_type="admin",
+            action="updated",
+            resource_id="doc-1",
+            occurred_at=datetime(2026, 1, 1, 1, 0, 0),
+        )
+        await repo.create(event1)
+        initial_count = len(await repo.list_all())
+
+        try:
+            await repo.create(event2)
+        except DuplicateAuditEventIdError:
+            pass
+
+        final_count = len(await repo.list_all())
+        assert initial_count == final_count == 1
+
+    @pytest.mark.asyncio
+    async def test_append_only_preserves_original_event_on_duplicate_attempt(self):
+        """중복 id 생성 시도 후에도 원본 이벤트는 변하지 않는다."""
+        repo = InMemoryAuditRepository()
+        event1 = AuditEvent(
+            id="event-1",
+            event_type="document",
+            action="created",
+            resource_id="doc-1",
+            occurred_at=datetime(2026, 1, 1, 0, 0, 0),
+            actor_id="user-1",
+        )
+        event2 = AuditEvent(
+            id="event-1",
+            event_type="admin",
+            action="updated",
+            resource_id="doc-1",
+            occurred_at=datetime(2026, 1, 1, 1, 0, 0),
+            actor_id="admin-1",
+        )
+        await repo.create(event1)
+
+        try:
+            await repo.create(event2)
+        except DuplicateAuditEventIdError:
+            pass
+
+        result = await repo.get("event-1")
+        assert result.event_type == "document"
+        assert result.action == "created"
+        assert result.actor_id == "user-1"
+
+    @pytest.mark.asyncio
+    async def test_append_only_multiple_sequential_creates_maintains_order(self):
+        """여러 순차적 이벤트 생성이 순서를 유지한다."""
+        repo = InMemoryAuditRepository()
+        event_ids = []
+        for i in range(10):
+            event = AuditEvent(
+                id=f"event-{i}",
+                event_type="document",
+                action="created",
+                resource_id="doc-1",
+                occurred_at=datetime(2026, 1, 1, i, 0, 0),
+            )
+            await repo.create(event)
+            event_ids.append(event.id)
+
+        results = await repo.get_by_resource_id("doc-1")
+        assert [e.id for e in results] == event_ids
+
+    @pytest.mark.asyncio
+    async def test_append_only_error_message_includes_id(self):
+        """중복 id 에러 메시지가 해당 id를 포함한다."""
+        repo = InMemoryAuditRepository()
+        event1 = AuditEvent(
+            id="duplicate-event-123",
+            event_type="document",
+            action="created",
+            resource_id="doc-1",
+            occurred_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        event2 = AuditEvent(
+            id="duplicate-event-123",
+            event_type="admin",
+            action="updated",
+            resource_id="doc-1",
+            occurred_at=datetime(2026, 1, 1, 1, 0, 0),
+        )
+        await repo.create(event1)
+
+        with pytest.raises(DuplicateAuditEventIdError) as exc_info:
+            await repo.create(event2)
+
+        assert "duplicate-event-123" in str(exc_info.value)

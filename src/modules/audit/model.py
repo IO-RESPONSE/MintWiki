@@ -27,6 +27,12 @@ class MissingResourceIdError(Exception):
     pass
 
 
+class DuplicateAuditEventIdError(Exception):
+    """동일한 id의 감사 이벤트가 이미 존재할 때 발생."""
+
+    pass
+
+
 class AuditEvent:
     """
     감사 이벤트를 나타내는 도메인 모델.
@@ -87,4 +93,5 @@ __all__ = [
     "MissingEventTypeError",
     "MissingActionError",
     "MissingResourceIdError",
+    "DuplicateAuditEventIdError",
 ]

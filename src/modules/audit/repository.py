@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from modules.audit.model import AuditEvent
+from modules.audit.model import AuditEvent, DuplicateAuditEventIdError
 
 
 class AuditRepository(ABC):
@@ -84,12 +84,23 @@ class InMemoryAuditRepository(AuditRepository):
         """
         새로운 감사 이벤트를 저장소에 저장한다.
 
+        감사 저장소는 append-only이므로 동일한 id의 이벤트가 이미 존재하면
+        DuplicateAuditEventIdError를 발생시킨다.
+
         Args:
             event: 저장할 감사 이벤트
 
         Returns:
             저장된 감사 이벤트
+
+        Raises:
+            DuplicateAuditEventIdError: 동일한 id의 이벤트가 이미 존재하는 경우
         """
+        if event.id in self.events:
+            raise DuplicateAuditEventIdError(
+                f"id '{event.id}'인 감사 이벤트가 이미 존재합니다"
+            )
+
         self.events[event.id] = event
 
         if event.resource_id not in self.resource_id_index:

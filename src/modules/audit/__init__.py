@@ -1,6 +1,7 @@
 """Audit module package."""
 from modules.audit.model import (
     AuditEvent,
+    DuplicateAuditEventIdError,
     EmptyAuditEventIdError,
     MissingActionError,
     MissingEventTypeError,
@@ -13,6 +14,7 @@ from modules.audit.repository import (
 
 __all__ = [
     "AuditEvent",
+    "DuplicateAuditEventIdError",
     "EmptyAuditEventIdError",
     "MissingEventTypeError",
     "MissingActionError",
