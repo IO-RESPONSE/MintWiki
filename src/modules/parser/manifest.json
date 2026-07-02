@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "module": "parser",
+  "summary": "Owns NamuMark-like source syntax tokenization and parse output construction.",
+  "port": {
+    "source_path": "src/modules/parser",
+    "target_namespace": "MintWiki\\Parser",
+    "status": "not_started"
+  },
+  "service": {
+    "path": "src/modules/parser/parser.py",
+    "public_methods": [
+      "parse"
+    ]
+  },
+  "repository": {
+    "port_path": "src/modules/parser/parser.py",
+    "interface": "PlainTextBlockParser"
+  },
+  "fixtures": {
+    "path": "tests/modules/parser/fixtures",
+    "format": "json"
+  },
+  "contract_notes": [
+    "parser 는 docs/modules.md 에 따라 데이터베이스를 직접 읽지 않는 database-free 순수 로직 모듈이므로 별도의 저장소 포트(ABC)를 갖지 않는다. repository 필드는 이 모듈의 유일한 외부 진입 계약인 PlainTextBlockParser.parse 를 가리키며, 영속성 어댑터를 의미하지 않는다.",
+    "parse(source: str) -> ParserResult 가 고정된 입력/출력 계약이다. 입력은 원본 source 문자열이며, 출력은 blocks(AST 유사 블록 목록)와 metadata(links/categories/headings 등 추출 정보)로 구성된 ParserResult 이다. blocks 의 각 항목은 최소 'type' 키를 가진 dict 이며, 필드 구성은 modules/parser/model.py 와 modules/parser/README.md 의 지원 블록 목록을 따른다.",
+    "revision 은 docs/modules.md 의 의존 규칙에 따라 parser 를 테스트나 검증 헬퍼에서만 호출할 수 있으며, 저장 경로(storage path)에서는 호출하지 않는다. render 는 parser 를 렌더링 경로에서 호출할 수 있다.",
+    "정규식 문법은 Python re 와 PHP PCRE 가 다를 수 있으므로, PHP 전환 시 tests/modules/parser/test_fixtures.py 의 입력/기대출력 픽스처로 두 언어의 파싱 결과가 같은지 반드시 검증한다.",
+    "fixtures 디렉터리(tests/modules/parser/fixtures)는 아직 채워지지 않았으며, 공용 JSON fixture 변환은 태스크 0370 에서 진행한다. 현재 픽스처는 tests/modules/parser/fixtures.py(ParserFixtureLoader) 에 Python 객체로 존재한다.",
+    "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
+  ]
+}
