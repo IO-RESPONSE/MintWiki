@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "description": "&, 따옴표, 홑따옴표를 포함한 텍스트를 이스케이프한다.",
+  "input": {
+    "text": "A & B < C > D \"quote\" 'apostrophe'"
+  },
+  "expected": {
+    "html": "A &amp; B &lt; C &gt; D &quot;quote&quot; &#x27;apostrophe&#x27;"
+  },
+  "errors": []
+}

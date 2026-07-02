@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "description": "javascript: 스킴은 안전하지 않으므로 None 을 반환한다.",
+  "input": {
+    "url": "javascript:alert('xss')"
+  },
+  "expected": {
+    "url": null
+  },
+  "errors": []
+}

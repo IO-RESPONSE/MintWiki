@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "description": "제목 렌더링 시 공백이 포함된 텍스트로부터 id 속성을 생성한다.",
+  "input": {
+    "level": 2,
+    "content": "Hello World"
+  },
+  "expected": {
+    "html": "<h2 id=\"hello-world\">Hello World</h2>"
+  },
+  "errors": []
+}

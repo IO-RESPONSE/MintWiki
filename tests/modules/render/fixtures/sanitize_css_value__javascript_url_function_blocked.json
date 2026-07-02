@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "description": "url() 함수 안에 javascript: 스킴이 있으면 None 을 반환한다.",
+  "input": {
+    "value": "background: url(javascript:alert(1))"
+  },
+  "expected": {
+    "value": null
+  },
+  "errors": []
+}

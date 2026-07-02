@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "description": "슬러그 정규식([^a-z0-9-])이 한글을 제거하므로 영문/숫자만 남는다(PHP 이식 시 유니코드 처리 차이가 가장 먼저 드러나는 지점).",
+  "input": {
+    "text": "한글 제목 Test 123!"
+  },
+  "expected": {
+    "id": "test-123"
+  },
+  "errors": []
+}

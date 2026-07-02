@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "description": "위험한 키워드가 없는 CSS 선언은 그대로 반환한다.",
+  "input": {
+    "value": "color: red; font-weight: bold;"
+  },
+  "expected": {
+    "value": "color: red; font-weight: bold;"
+  },
+  "errors": []
+}
