@@ -22,6 +22,9 @@ def test_admin_package_exports():
         "AdminProtectionService",
         "AdminReport",
         "EmptyAdminReportIdError",
+        "AdminReportRepository",
+        "DuplicateAdminReportIdError",
+        "InMemoryAdminReportRepository",
     ]
     assert modules.admin.__all__ == expected_exports
     for name in modules.admin.__all__:

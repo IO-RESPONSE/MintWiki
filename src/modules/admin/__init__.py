@@ -17,6 +17,11 @@ from modules.admin.report import (
     AdminReport,
     EmptyAdminReportIdError,
 )
+from modules.admin.report_repository import (
+    AdminReportRepository,
+    DuplicateAdminReportIdError,
+    InMemoryAdminReportRepository,
+)
 
 __all__ = [
     "AdminBlockAuditAction",
@@ -31,4 +36,7 @@ __all__ = [
     "AdminProtectionService",
     "AdminReport",
     "EmptyAdminReportIdError",
+    "AdminReportRepository",
+    "DuplicateAdminReportIdError",
+    "InMemoryAdminReportRepository",
 ]
