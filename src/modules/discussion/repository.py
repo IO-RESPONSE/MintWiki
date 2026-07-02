@@ -57,15 +57,19 @@ class DiscussionRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_threads_by_document_id(self, document_id: str) -> list[DiscussionThread]:
+    async def list_threads_by_document_id(
+        self, document_id: str, limit: Optional[int] = None, offset: int = 0
+    ) -> list[DiscussionThread]:
         """
         주어진 문서의 토론 스레드를 생성 순서대로 나열한다.
 
         Args:
             document_id: 조회할 문서의 고유 식별자
+            limit: 반환할 최대 개수 (선택사항, 생략하면 제한 없음)
+            offset: 건너뛸 개수 (기본값 0)
 
         Returns:
-            문서의 토론 스레드 목록 (생성 순서)
+            문서의 토론 스레드 목록 (생성 순서, limit/offset 적용됨)
         """
         pass
 
@@ -102,15 +106,19 @@ class DiscussionRepository(ABC):
         pass
 
     @abstractmethod
-    async def list_comments_by_thread_id(self, thread_id: str) -> list[DiscussionComment]:
+    async def list_comments_by_thread_id(
+        self, thread_id: str, limit: Optional[int] = None, offset: int = 0
+    ) -> list[DiscussionComment]:
         """
         주어진 스레드의 댓글을 생성 순서대로 나열한다.
 
         Args:
             thread_id: 조회할 스레드의 고유 식별자
+            limit: 반환할 최대 개수 (선택사항, 생략하면 제한 없음)
+            offset: 건너뛸 개수 (기본값 0)
 
         Returns:
-            스레드의 댓글 목록 (생성 순서)
+            스레드의 댓글 목록 (생성 순서, limit/offset 적용됨)
         """
         pass
 
@@ -185,18 +193,23 @@ class InMemoryDiscussionRepository(DiscussionRepository):
         """
         return self.threads.get(id)
 
-    async def list_threads_by_document_id(self, document_id: str) -> list[DiscussionThread]:
+    async def list_threads_by_document_id(
+        self, document_id: str, limit: Optional[int] = None, offset: int = 0
+    ) -> list[DiscussionThread]:
         """
         주어진 문서의 토론 스레드를 생성 순서대로 나열한다.
 
         Args:
             document_id: 조회할 문서의 고유 식별자
+            limit: 반환할 최대 개수 (선택사항, 생략하면 제한 없음)
+            offset: 건너뛸 개수 (기본값 0)
 
         Returns:
-            문서의 토론 스레드 목록 (생성 순서)
+            문서의 토론 스레드 목록 (생성 순서, limit/offset 적용됨)
         """
         thread_ids = self.document_threads.get(document_id, [])
-        return [self.threads[tid] for tid in thread_ids]
+        sliced_ids = thread_ids[offset:] if limit is None else thread_ids[offset : offset + limit]
+        return [self.threads[tid] for tid in sliced_ids]
 
     async def update_thread(self, thread: DiscussionThread) -> DiscussionThread:
         """
@@ -230,18 +243,25 @@ class InMemoryDiscussionRepository(DiscussionRepository):
         self.thread_comments.setdefault(comment.thread_id, []).append(comment.id)
         return comment
 
-    async def list_comments_by_thread_id(self, thread_id: str) -> list[DiscussionComment]:
+    async def list_comments_by_thread_id(
+        self, thread_id: str, limit: Optional[int] = None, offset: int = 0
+    ) -> list[DiscussionComment]:
         """
         주어진 스레드의 댓글을 생성 순서대로 나열한다.
 
         Args:
             thread_id: 조회할 스레드의 고유 식별자
+            limit: 반환할 최대 개수 (선택사항, 생략하면 제한 없음)
+            offset: 건너뛸 개수 (기본값 0)
 
         Returns:
-            스레드의 댓글 목록 (생성 순서)
+            스레드의 댓글 목록 (생성 순서, limit/offset 적용됨)
         """
         comment_ids = self.thread_comments.get(thread_id, [])
-        return [self.comments[cid] for cid in comment_ids]
+        sliced_ids = (
+            comment_ids[offset:] if limit is None else comment_ids[offset : offset + limit]
+        )
+        return [self.comments[cid] for cid in sliced_ids]
 
     async def get_comment(self, id: str) -> Optional[DiscussionComment]:
         """

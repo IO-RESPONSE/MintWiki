@@ -235,6 +235,63 @@ class TestInMemoryDiscussionRepository:
         assert doc2_threads[0].id == "thread2"
 
     @pytest.mark.asyncio
+    async def test_list_threads_by_document_id_applies_limit(self):
+        """인메모리 저장소는 limit을 지정하면 그만큼만 스레드를 반환한다."""
+        repo = InMemoryDiscussionRepository()
+        for i in range(3):
+            await repo.create_thread(
+                DiscussionThread(
+                    id=f"thread{i}",
+                    document_id="doc1",
+                    title=f"제목{i}",
+                    created_by="user1",
+                    created_at=datetime(2026, 1, i + 1, 0, 0, 0),
+                )
+            )
+
+        result = await repo.list_threads_by_document_id("doc1", limit=2)
+
+        assert [t.id for t in result] == ["thread0", "thread1"]
+
+    @pytest.mark.asyncio
+    async def test_list_threads_by_document_id_applies_offset(self):
+        """인메모리 저장소는 offset을 지정하면 그만큼 건너뛰고 스레드를 반환한다."""
+        repo = InMemoryDiscussionRepository()
+        for i in range(3):
+            await repo.create_thread(
+                DiscussionThread(
+                    id=f"thread{i}",
+                    document_id="doc1",
+                    title=f"제목{i}",
+                    created_by="user1",
+                    created_at=datetime(2026, 1, i + 1, 0, 0, 0),
+                )
+            )
+
+        result = await repo.list_threads_by_document_id("doc1", offset=1)
+
+        assert [t.id for t in result] == ["thread1", "thread2"]
+
+    @pytest.mark.asyncio
+    async def test_list_threads_by_document_id_applies_limit_and_offset_together(self):
+        """인메모리 저장소는 limit과 offset을 함께 적용해 스레드를 반환한다."""
+        repo = InMemoryDiscussionRepository()
+        for i in range(5):
+            await repo.create_thread(
+                DiscussionThread(
+                    id=f"thread{i}",
+                    document_id="doc1",
+                    title=f"제목{i}",
+                    created_by="user1",
+                    created_at=datetime(2026, 1, i + 1, 0, 0, 0),
+                )
+            )
+
+        result = await repo.list_threads_by_document_id("doc1", limit=2, offset=2)
+
+        assert [t.id for t in result] == ["thread2", "thread3"]
+
+    @pytest.mark.asyncio
     async def test_list_threads_by_document_id_ignores_interleaved_other_documents(self):
         """인메모리 저장소는 다른 문서의 스레드가 섞여 생성되어도 대상 문서의 스레드만 생성 순서대로 나열한다."""
         repo = InMemoryDiscussionRepository()
@@ -297,6 +354,25 @@ class TestInMemoryDiscussionRepository:
 
         thread1_comments = await repo.list_comments_by_thread_id("thread1")
         assert [c.id for c in thread1_comments] == ["comment1", "comment3"]
+
+    @pytest.mark.asyncio
+    async def test_list_comments_by_thread_id_applies_limit_and_offset(self):
+        """인메모리 저장소는 limit과 offset을 함께 적용해 댓글을 반환한다."""
+        repo = InMemoryDiscussionRepository()
+        for i in range(5):
+            await repo.create_comment(
+                DiscussionComment(
+                    id=f"comment{i}",
+                    thread_id="thread1",
+                    body=f"댓글{i}",
+                    created_by="user1",
+                    created_at=datetime(2026, 1, i + 1, 0, 0, 0),
+                )
+            )
+
+        result = await repo.list_comments_by_thread_id("thread1", limit=2, offset=1)
+
+        assert [c.id for c in result] == ["comment1", "comment2"]
 
     @pytest.mark.asyncio
     async def test_can_get_comment_by_id(self):

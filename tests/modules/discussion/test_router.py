@@ -150,6 +150,38 @@ class TestListThreads:
 
         assert response.status_code == 422
 
+    def test_list_threads_applies_limit_and_offset(self, client: TestClient):
+        """엔드포인트는 limit과 offset 쿼리 파라미터로 스레드 목록을 제한한다."""
+        for i in range(3):
+            client.post(
+                "/threads",
+                json={"document_id": "doc1", "title": f"제목{i}", "created_by": "user1"},
+            )
+
+        response = client.get(
+            "/threads", params={"document_id": "doc1", "limit": 1, "offset": 1}
+        )
+
+        assert response.status_code == 200
+        titles = [thread["title"] for thread in response.json()["threads"]]
+        assert titles == ["제목1"]
+
+    def test_list_threads_with_invalid_limit_returns_422(self, client: TestClient):
+        """엔드포인트는 0 이하의 limit으로 요청하면 422를 반환한다."""
+        response = client.get(
+            "/threads", params={"document_id": "doc1", "limit": 0}
+        )
+
+        assert response.status_code == 422
+
+    def test_list_threads_with_negative_offset_returns_422(self, client: TestClient):
+        """엔드포인트는 음수 offset으로 요청하면 422를 반환한다."""
+        response = client.get(
+            "/threads", params={"document_id": "doc1", "offset": -1}
+        )
+
+        assert response.status_code == 422
+
 
 class TestCloseThread:
     """스레드 닫기 엔드포인트 테스트."""
@@ -263,6 +295,34 @@ class TestListComments:
 
         assert response.status_code == 200
         assert response.json()["comments"] == []
+
+    def test_list_comments_applies_limit_and_offset(self, client: TestClient):
+        """엔드포인트는 limit과 offset 쿼리 파라미터로 댓글 목록을 제한한다."""
+        for i in range(3):
+            client.post(
+                "/threads/thread1/comments",
+                json={"body": f"댓글{i}", "created_by": "user1"},
+            )
+
+        response = client.get(
+            "/threads/thread1/comments", params={"limit": 1, "offset": 1}
+        )
+
+        assert response.status_code == 200
+        bodies = [comment["body"] for comment in response.json()["comments"]]
+        assert bodies == ["댓글1"]
+
+    def test_list_comments_with_invalid_limit_returns_422(self, client: TestClient):
+        """엔드포인트는 0 이하의 limit으로 요청하면 422를 반환한다."""
+        response = client.get("/threads/thread1/comments", params={"limit": 0})
+
+        assert response.status_code == 422
+
+    def test_list_comments_with_negative_offset_returns_422(self, client: TestClient):
+        """엔드포인트는 음수 offset으로 요청하면 422를 반환한다."""
+        response = client.get("/threads/thread1/comments", params={"offset": -1})
+
+        assert response.status_code == 422
 
 
 class TestCloseThreadIdempotency:

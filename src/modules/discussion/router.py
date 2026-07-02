@@ -1,7 +1,7 @@
 """Discussion 모듈의 HTTP 어댑터: 토론 라우터와 권한 의존성 골격."""
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from modules.acl.permission import Permission
 from modules.acl.router import require_permission
@@ -91,6 +91,8 @@ async def create_thread(
 @router.get("/threads", tags=["discussion"])
 async def list_threads(
     document_id: str,
+    limit: Optional[int] = Query(default=None, ge=1),
+    offset: int = Query(default=0, ge=0),
     service: DiscussionService = Depends(get_discussion_service),
 ) -> ListThreadsResponse:
     """
@@ -98,12 +100,16 @@ async def list_threads(
 
     Args:
         document_id: 조회할 문서의 id (쿼리 파라미터)
+        limit: 반환할 최대 개수 (쿼리 파라미터, 선택사항)
+        offset: 건너뛸 개수 (쿼리 파라미터, 기본값 0)
         service: 토론 서비스
 
     Returns:
-        문서의 토론 스레드 목록 (생성 순서)
+        문서의 토론 스레드 목록 (생성 순서, limit/offset 적용됨)
     """
-    threads = await service.list_threads_by_document_id(document_id)
+    threads = await service.list_threads_by_document_id(
+        document_id, limit=limit, offset=offset
+    )
     return ListThreadsResponse(
         threads=[
             ThreadResponse(
@@ -203,6 +209,8 @@ async def add_comment(
 @router.get("/threads/{thread_id}/comments", tags=["discussion"])
 async def list_comments(
     thread_id: str,
+    limit: Optional[int] = Query(default=None, ge=1),
+    offset: int = Query(default=0, ge=0),
     service: DiscussionService = Depends(get_discussion_service),
 ) -> ListCommentsResponse:
     """
@@ -210,12 +218,16 @@ async def list_comments(
 
     Args:
         thread_id: 조회할 스레드의 id (경로 파라미터)
+        limit: 반환할 최대 개수 (쿼리 파라미터, 선택사항)
+        offset: 건너뛸 개수 (쿼리 파라미터, 기본값 0)
         service: 토론 서비스
 
     Returns:
-        스레드의 댓글 목록 (생성 순서)
+        스레드의 댓글 목록 (생성 순서, limit/offset 적용됨)
     """
-    comments = await service.list_comments_by_thread_id(thread_id)
+    comments = await service.list_comments_by_thread_id(
+        thread_id, limit=limit, offset=offset
+    )
     return ListCommentsResponse(
         comments=[
             CommentResponse(

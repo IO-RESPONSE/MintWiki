@@ -76,18 +76,22 @@ class DiscussionService:
         return await self.repository.get_thread(id)
 
     async def list_threads_by_document_id(
-        self, document_id: str
+        self, document_id: str, limit: Optional[int] = None, offset: int = 0
     ) -> list[DiscussionThread]:
         """
         주어진 문서의 토론 스레드를 생성 순서대로 나열한다.
 
         Args:
             document_id: 조회할 문서의 고유 식별자
+            limit: 반환할 최대 개수 (선택사항, 생략하면 제한 없음)
+            offset: 건너뛸 개수 (기본값 0)
 
         Returns:
-            문서의 토론 스레드 목록 (생성 순서)
+            문서의 토론 스레드 목록 (생성 순서, limit/offset 적용됨)
         """
-        return await self.repository.list_threads_by_document_id(document_id)
+        return await self.repository.list_threads_by_document_id(
+            document_id, limit=limit, offset=offset
+        )
 
     async def close_thread(self, thread_id: str) -> DiscussionThread:
         """
@@ -170,18 +174,22 @@ class DiscussionService:
         return await self.repository.create_comment(comment)
 
     async def list_comments_by_thread_id(
-        self, thread_id: str
+        self, thread_id: str, limit: Optional[int] = None, offset: int = 0
     ) -> list[DiscussionComment]:
         """
         주어진 스레드의 댓글을 생성 순서대로 나열한다.
 
         Args:
             thread_id: 조회할 스레드의 고유 식별자
+            limit: 반환할 최대 개수 (선택사항, 생략하면 제한 없음)
+            offset: 건너뛸 개수 (기본값 0)
 
         Returns:
-            스레드의 댓글 목록 (생성 순서)
+            스레드의 댓글 목록 (생성 순서, limit/offset 적용됨)
         """
-        return await self.repository.list_comments_by_thread_id(thread_id)
+        return await self.repository.list_comments_by_thread_id(
+            thread_id, limit=limit, offset=offset
+        )
 
     async def hide_comment(
         self, comment_id: str, actor_id: Optional[str] = None

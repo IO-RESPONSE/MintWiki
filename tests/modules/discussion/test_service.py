@@ -115,6 +115,21 @@ class TestDiscussionServiceThreads:
         assert result[1].id == thread2.id
 
     @pytest.mark.asyncio
+    async def test_list_threads_by_document_id_applies_limit_and_offset(self):
+        """서비스는 limit과 offset을 저장소에 그대로 전달해 스레드 목록을 제한할 수 있다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        for i in range(3):
+            await service.create_thread(
+                document_id="doc1", title=f"제목{i}", created_by="user1"
+            )
+
+        result = await service.list_threads_by_document_id("doc1", limit=1, offset=1)
+
+        assert len(result) == 1
+        assert result[0].title == "제목1"
+
+    @pytest.mark.asyncio
     async def test_list_threads_for_nonexistent_document(self):
         """서비스는 없는 문서의 스레드를 조회하면 빈 목록을 반환한다."""
         repo = InMemoryDiscussionRepository()
@@ -475,6 +490,24 @@ class TestDiscussionServiceComments:
         assert len(result) == 2
         assert result[0].id == comment1.id
         assert result[1].id == comment2.id
+
+    @pytest.mark.asyncio
+    async def test_list_comments_by_thread_id_applies_limit_and_offset(self):
+        """서비스는 limit과 offset을 저장소에 그대로 전달해 댓글 목록을 제한할 수 있다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        for i in range(3):
+            await service.add_comment(
+                thread_id=thread.id, body=f"댓글{i}", created_by="user1"
+            )
+
+        result = await service.list_comments_by_thread_id(thread.id, limit=1, offset=1)
+
+        assert len(result) == 1
+        assert result[0].body == "댓글1"
 
     @pytest.mark.asyncio
     async def test_list_comments_for_nonexistent_thread(self):
