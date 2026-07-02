@@ -204,8 +204,11 @@ class DbAdapter(ABC):
   SQL 금지와 쿼리 빌더 사용 규칙을 확정한다.
 - **0452, 0453**: document/revision 저장소가 이 계약을 만족하는지
   portability 테스트로 검증한다.
-- **0454-0458**: user/ACL/discussion/audit/jobs 각 모듈의 저장소
-  portability 계획에서 이 계약을 참조한다.
+- **0454**([user-portable-repository-plan.md](user-portable-repository-plan.md)):
+  user 모듈(세션/차단/그룹) 저장소 portability 계획에서 이 계약을
+  참조한다.
+- **0455-0458**: ACL/discussion/audit/jobs 각 모듈의 저장소 portability
+  계획에서 이 계약을 참조한다.
 - **0472**: DB driver capability model — 어댑터가 드라이버별로 다르게
   노출할 수 있는 기능 차이(예: `RETURNING` 지원 여부)를 다룬다.
 - **0473**: repository 트랜잭션 정책 — 2절 commit/rollback의 정확한 시점과
