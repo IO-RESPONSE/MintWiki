@@ -6,15 +6,16 @@ from modules.acl.permission import Permission
 from modules.acl.rule import Effect, Rule, SubjectType
 
 PUBLIC_READ_RULE_ID = "default-public-read-allow"
+LOGGED_IN_EDIT_RULE_ID = "default-logged-in-edit-allow"
 
 
 def default_rules() -> List[Rule]:
     """
     모든 네임스페이스에 기본으로 적용할 ACL 규칙 목록을 반환한다.
 
-    현재는 익명 사용자를 포함한 누구나 문서를 읽을 수 있도록 허용하는
-    규칙만 포함한다. 다른 권한(edit, discuss 등)에 대한 기본 규칙은
-    이후 태스크에서 추가된다.
+    익명 사용자를 포함한 누구나 문서를 읽을 수 있도록 허용하는 규칙과,
+    로그인한 사용자가 문서를 편집할 수 있도록 허용하는 규칙을 포함한다.
+    익명 사용자의 편집을 별도로 거부하는 규칙은 이후 태스크에서 추가된다.
     """
     return [
         Rule(
@@ -22,7 +23,13 @@ def default_rules() -> List[Rule]:
             subject_type=SubjectType.ALL,
             permission=Permission.READ,
             effect=Effect.ALLOW,
-        )
+        ),
+        Rule(
+            id=LOGGED_IN_EDIT_RULE_ID,
+            subject_type=SubjectType.ALL,
+            permission=Permission.EDIT,
+            effect=Effect.ALLOW,
+        ),
     ]
 
 

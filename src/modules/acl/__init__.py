@@ -1,6 +1,7 @@
 """ACL module package."""
 from modules.acl.decision import Decision
 from modules.acl.default_policy import (
+    LOGGED_IN_EDIT_RULE_ID,
     PUBLIC_READ_RULE_ID,
     build_default_namespace_acl_defaults,
     default_rules,
@@ -33,4 +34,5 @@ __all__ = [
     "PUBLIC_READ_RULE_ID",
     "default_rules",
     "build_default_namespace_acl_defaults",
+    "LOGGED_IN_EDIT_RULE_ID",
 ]

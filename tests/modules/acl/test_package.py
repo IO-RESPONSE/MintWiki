@@ -30,6 +30,7 @@ def test_acl_package_exports_rule():
         "PUBLIC_READ_RULE_ID",
         "default_rules",
         "build_default_namespace_acl_defaults",
+        "LOGGED_IN_EDIT_RULE_ID",
     ]
     assert modules.acl.Rule is Rule
 
@@ -85,3 +86,11 @@ def test_acl_package_exports_default_policy():
         modules.acl.build_default_namespace_acl_defaults
         is build_default_namespace_acl_defaults
     )
+
+
+def test_acl_package_exports_logged_in_edit_rule_id():
+    # 0159에서 로그인 편집 허용 기본 정책이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.default_policy import LOGGED_IN_EDIT_RULE_ID
+
+    assert "LOGGED_IN_EDIT_RULE_ID" in modules.acl.__all__
+    assert modules.acl.LOGGED_IN_EDIT_RULE_ID is LOGGED_IN_EDIT_RULE_ID
