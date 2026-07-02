@@ -7,7 +7,8 @@ skeleton added by Phase B: PHP Runtime Skeleton, 0391-0440
 
 - `src/` — application and module source, namespaced under `MintWiki\`
   (`docs/php-namespace-mapping.md`).
-- `public/` — web server document root; the front controller lands in 0394.
+- `public/` — web server document root; the front controller skeleton
+  (0394) is the first entry (`public/index.php`).
 - `tests/` — PHP test suite; the autoload smoke test (0393) is the first
   entry (`tests/AutoloadSmokeTest.php`).
 
