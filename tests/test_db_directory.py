@@ -411,6 +411,57 @@ def test_db_schema_audit_event_sql_separates_dialect_differences_in_comments():
     assert "SERIAL" not in create_table_stmt
 
 
+def test_db_schema_job_sql_exists():
+    """0468이 추가한 job.sql이 존재하는지 확인한다."""
+    job_sql = _db_dir() / "schema" / "job.sql"
+    assert job_sql.exists(), "db/schema/job.sql should exist"
+
+
+def test_db_schema_job_sql_matches_plan_spec():
+    """job.sql이 계획 문서 §3과 같은 컬럼·제약을 갖는지 확인한다."""
+    content = (_db_dir() / "schema" / "job.sql").read_text()
+
+    assert "CREATE TABLE job" in content
+    assert "id VARCHAR(255) NOT NULL" in content
+    assert "job_type VARCHAR(255) NOT NULL" in content
+    assert "payload TEXT NULL" in content
+    assert "status VARCHAR(20) NOT NULL" in content
+    assert "attempts INTEGER NOT NULL DEFAULT 0" in content
+    assert "max_attempts INTEGER NOT NULL" in content
+    assert "available_at TIMESTAMP NOT NULL" in content
+    assert "last_error TEXT NULL" in content
+    assert "created_at TIMESTAMP NOT NULL" in content
+    assert "updated_at TIMESTAMP NOT NULL" in content
+    assert "CONSTRAINT pk_job PRIMARY KEY (id)" in content
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    # job은 다른 도메인 테이블을 참조하는 컬럼이 없어 FK가 없다(계획 문서 §3).
+    assert "FOREIGN KEY" not in create_table_stmt
+    # Job 도메인 모델이 아직 없어 status에 CHECK 제약을 걸지 않는다(계획 문서 §4).
+    assert "CHECK" not in create_table_stmt
+
+
+def test_db_schema_job_sql_documents_sync_and_queued_status():
+    """태스크 노트("sync/queued 상태를 둔다")대로 두 상태가 문서화되는지 확인한다."""
+    content = (_db_dir() / "schema" / "job.sql").read_text()
+
+    assert "sync" in content
+    assert "queued" in content
+
+
+def test_db_schema_job_sql_separates_dialect_differences_in_comments():
+    """PostgreSQL/MariaDB 차이가 주석으로 분리되어 있는지 확인한다(0461과 동일 패턴)."""
+    content = (_db_dir() / "schema" / "job.sql").read_text()
+
+    assert "PostgreSQL" in content
+    assert "MariaDB" in content
+    # 실제 CREATE TABLE 문에는 방언 전용 문법이 섞이지 않는다.
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    assert "WITH TIME ZONE" not in create_table_stmt
+    assert "COLLATE" not in create_table_stmt
+    assert "AUTO_INCREMENT" not in create_table_stmt
+    assert "SERIAL" not in create_table_stmt
+
+
 def test_db_readme_confirms_migration_history_table():
     """README가 checklist §6이 보류한 적용 이력 테이블 이름/방식을 확정하는지 확인한다."""
     content = (_db_dir() / "README.md").read_text()

@@ -147,9 +147,28 @@
   (계획 문서 §5). 인덱스는 계획 문서 §7이 아직 확립된 조회 패턴이 없다고
   판단해 이 태스크에서는 추가하지 않는다.
 
+## 0468이 채우는 것
+
+- `job.sql`: `src/modules/jobs/README.md`가 나열한 책임(job interface,
+  sync runner, queued backend adapter, retry metadata, dead-letter
+  handling)과 [Jobs Portable Repository Plan
+  §3](../../docs/jobs-portable-repository-plan.md#3-job아직-존재하지-않는-도메인-모델--job-테이블)이
+  확정한 컬럼(`id`, `job_type`, `payload`, `status`, `attempts`,
+  `max_attempts`, `available_at`, `last_error`, `created_at`,
+  `updated_at`)을 옮기는 portable `CREATE TABLE` 문. 테이블 이름은
+  `jobs_job`처럼 접두어를 겹치지 않고 `document`/`revision`과 같은 패턴을
+  따라 `job` 단수형이다(계획 문서 §2). `status`는 태스크 노트가 명시한
+  대로 `sync`/`queued`를 포함해 `running`/`succeeded`/`failed`/
+  `dead_letter`까지 값 후보를 열어 두고, `Job` 도메인 모델이 아직 없어
+  `CHECK` 제약은 걸지 않는다(계획 문서 §4). sync/queued 두 실행 모델을
+  위한 테이블을 나누지 않고 이 컬럼 하나로 흡수한다. dead-letter도 별도
+  테이블 없이 `status` 전이로 표현한다(계획 문서 §5). FK는 두지 않는다 —
+  다른 도메인 테이블을 참조하는 컬럼이 없다(계획 문서 §3). 인덱스는
+  계획 문서 §8이 아직 확립된 조회 패턴이 없다고 판단해 `audit_event.sql`과
+  동일하게 이 태스크에서는 추가하지 않는다.
+
 ## 이후 채워질 파일
 
-- **0468**: jobs 테이블.
 - **0469**: 이 디렉터리 전체에 대한 SQL feature 금지 목록 자동 검사(lint
   테스트).
 - **0493**: PHP 웹호스팅 installer가 참조할 별도의 schema version 테이블.
