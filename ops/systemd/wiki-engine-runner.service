@@ -11,7 +11,7 @@ Environment=WIKI_ENGINE_LOCK=/tmp/wiki-engine-runner.lock
 Environment=HOME=/root
 Environment=WIKI_ENGINE_AGENT=claude
 Environment=CLAUDE_BIN=/root/.local/bin/claude
-Environment=CLAUDE_MODEL=claude-haiku-4-5-20251001
+Environment=CLAUDE_MODEL=sonnet
 Environment=CLAUDE_PERMISSION_MODE=acceptEdits
 Environment=CLAUDE_OUTPUT_FORMAT=json
 Environment=CODEX_BIN=/root/.nvm/versions/node/v22.22.2/bin/codex
