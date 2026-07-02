@@ -24,6 +24,30 @@ class SucceedingHandler(JobHandler):
         return JobResult.ok(data={"handled": payload.job_type})
 
 
+class SucceedingWithoutDataHandler(JobHandler):
+    @property
+    def job_type(self) -> str:
+        return "sample.job"
+
+    def handle(self, payload: JobPayload) -> JobResult:
+        return JobResult.ok()
+
+
+class PayloadRecordingHandler(JobHandler):
+    """run()이 핸들러에 전달한 페이로드를 그대로 기록해 검증할 수 있게 한다."""
+
+    def __init__(self):
+        self.received_payload = None
+
+    @property
+    def job_type(self) -> str:
+        return "sample.job"
+
+    def handle(self, payload: JobPayload) -> JobResult:
+        self.received_payload = payload
+        return JobResult.ok()
+
+
 class FailingHandler(JobHandler):
     @property
     def job_type(self) -> str:
@@ -53,6 +77,23 @@ class TestSyncJobRunnerSuccess:
         assert outcome.status == JobStatus.SUCCEEDED
         assert outcome.result.success is True
         assert outcome.result.data == {"handled": "sample.job"}
+
+    def test_run_returns_succeeded_status_when_result_has_no_data(self):
+        """data 없이 성공한 JobResult도 SUCCEEDED 상태로 그대로 전달된다."""
+        outcome = SyncJobRunner().run(SucceedingWithoutDataHandler(), SamplePayload())
+
+        assert outcome.status == JobStatus.SUCCEEDED
+        assert outcome.result.success is True
+        assert outcome.result.data is None
+
+    def test_run_passes_given_payload_to_handler(self):
+        """run()에 전달한 페이로드 인스턴스가 그대로 handle()에 전달된다."""
+        handler = PayloadRecordingHandler()
+        payload = SamplePayload()
+
+        SyncJobRunner().run(handler, payload)
+
+        assert handler.received_payload is payload
 
 
 class TestSyncJobRunnerFailure:
