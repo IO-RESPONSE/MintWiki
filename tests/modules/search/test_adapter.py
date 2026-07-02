@@ -102,3 +102,12 @@ class TestSearchAdapterInterface:
         results = await adapter.search(SearchQuery(term="Nonexistent"))
 
         assert results == []
+
+    @pytest.mark.asyncio
+    async def test_concrete_implementation_returns_empty_list_when_index_is_empty(self):
+        """구체적인 구현은 색인된 문서가 없으면 빈 목록을 반환한다."""
+        adapter = ConcreteSearchAdapter()
+
+        results = await adapter.search(SearchQuery(term="Anything"))
+
+        assert results == []
