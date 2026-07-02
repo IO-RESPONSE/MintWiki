@@ -5,6 +5,7 @@ from modules.acl.audit_event import (
     EmptyAclAuditEventIdError,
     MissingRuleIdError,
 )
+from modules.acl.audit_recorder import AclAuditRecorder
 from modules.acl.decision import Decision
 from modules.acl.default_policy import (
     LOGGED_IN_EDIT_RULE_ID,
@@ -71,4 +72,5 @@ __all__ = [
     "AclAuditEvent",
     "EmptyAclAuditEventIdError",
     "MissingRuleIdError",
+    "AclAuditRecorder",
 ]

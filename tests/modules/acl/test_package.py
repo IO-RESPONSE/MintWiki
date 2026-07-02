@@ -47,6 +47,7 @@ def test_acl_package_exports_rule():
         "AclAuditEvent",
         "EmptyAclAuditEventIdError",
         "MissingRuleIdError",
+        "AclAuditRecorder",
     ]
     assert modules.acl.Rule is Rule
 
@@ -225,3 +226,11 @@ def test_acl_package_exports_audit_event():
     assert modules.acl.AclAuditEvent is AclAuditEvent
     assert modules.acl.EmptyAclAuditEventIdError is EmptyAclAuditEventIdError
     assert modules.acl.MissingRuleIdError is MissingRuleIdError
+
+
+def test_acl_package_exports_audit_recorder():
+    # 0172에서 AclAuditRecorder 서비스가 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.audit_recorder import AclAuditRecorder
+
+    assert "AclAuditRecorder" in modules.acl.__all__
+    assert modules.acl.AclAuditRecorder is AclAuditRecorder

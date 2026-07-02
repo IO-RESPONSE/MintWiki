@@ -62,6 +62,35 @@ class TestDocumentAclAddRule:
         assert acl.rules() == [first, second]
 
 
+class TestDocumentAclRemoveRule:
+    """remove_rule 메서드로 규칙을 제거할 수 있는지 확인한다."""
+
+    def test_removes_rule_by_id(self):
+        rule = _rule("rule-1")
+        acl = DocumentAcl(document_id="doc-1", rules=[rule])
+
+        acl.remove_rule("rule-1")
+
+        assert acl.rules() == []
+
+    def test_removes_only_matching_rule(self):
+        first = _rule("rule-1")
+        second = _rule("rule-2", effect=Effect.DENY)
+        acl = DocumentAcl(document_id="doc-1", rules=[first, second])
+
+        acl.remove_rule("rule-1")
+
+        assert acl.rules() == [second]
+
+    def test_does_nothing_when_rule_id_not_found(self):
+        rule = _rule("rule-1")
+        acl = DocumentAcl(document_id="doc-1", rules=[rule])
+
+        acl.remove_rule("missing-rule")
+
+        assert acl.rules() == [rule]
+
+
 class TestDocumentAclRulesIsolation:
     """rules() 메서드가 내부 목록의 복사본을 반환하는지 확인한다."""
 

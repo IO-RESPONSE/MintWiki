@@ -40,6 +40,10 @@ class DocumentAcl:
         """문서에 규칙을 추가한다."""
         self._rules.append(rule)
 
+    def remove_rule(self, rule_id: str) -> None:
+        """문서에서 주어진 id의 규칙을 제거한다. 없으면 아무 동작도 하지 않는다."""
+        self._rules = [rule for rule in self._rules if rule.id != rule_id]
+
     def rules(self) -> List[Rule]:
         """문서에 등록된 규칙 목록을 반환한다."""
         return list(self._rules)
