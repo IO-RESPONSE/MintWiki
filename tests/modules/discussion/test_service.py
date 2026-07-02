@@ -3,6 +3,11 @@ import pytest
 
 from modules.discussion.repository import InMemoryDiscussionRepository
 from modules.discussion.service import DiscussionService
+from modules.discussion.thread import (
+    EmptyThreadCreatedByError,
+    EmptyThreadDocumentIdError,
+    EmptyThreadTitleError,
+)
 
 
 class TestDiscussionServiceThreads:
@@ -108,6 +113,44 @@ class TestDiscussionServiceThreads:
         result = await service.list_threads_by_document_id("nonexistent")
 
         assert result == []
+
+    @pytest.mark.asyncio
+    async def test_create_thread_raises_on_empty_document_id(self):
+        """서비스는 빈 문서 id로 생성하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(EmptyThreadDocumentIdError):
+            await service.create_thread(document_id="", title="제목", created_by="user1")
+
+    @pytest.mark.asyncio
+    async def test_create_thread_raises_on_empty_title(self):
+        """서비스는 빈 제목으로 생성하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(EmptyThreadTitleError):
+            await service.create_thread(document_id="doc1", title="", created_by="user1")
+
+    @pytest.mark.asyncio
+    async def test_create_thread_raises_on_empty_created_by(self):
+        """서비스는 빈 작성자 id로 생성하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(EmptyThreadCreatedByError):
+            await service.create_thread(document_id="doc1", title="제목", created_by="")
+
+    @pytest.mark.asyncio
+    async def test_create_thread_does_not_persist_on_validation_error(self):
+        """서비스는 검증에 실패한 스레드를 저장소에 남기지 않는다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(EmptyThreadTitleError):
+            await service.create_thread(document_id="doc1", title="", created_by="user1")
+
+        assert await service.list_threads_by_document_id("doc1") == []
 
 
 class TestDiscussionServiceComments:
