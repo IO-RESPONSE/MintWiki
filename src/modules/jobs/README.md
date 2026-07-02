@@ -32,3 +32,12 @@ with a `SearchAdapter` and, on `handle()`, converts the payload to a
 `index()`, wrapped in `asyncio.run` for the same synchronous-contract reason
 as `CachePurgeJobHandler`. It returns `JobResult.fail(...)` if given a
 payload that isn't an `IndexDocumentJobPayload`.
+
+`BacklinkRefreshJobPayload` (`backlink_refresh_payload.py`) is a `JobPayload`
+subclass for a background backlink index refresh job: it exposes `job_type`
+as `BACKLINK_REFRESH_JOB_TYPE` (`"backlink.refresh"`). It carries
+`page_name`, the document whose links changed and whose targets' backlink
+entries need recomputing. `page_name` is required and cannot be
+empty/whitespace-only, raising `InvalidBacklinkRefreshJobPayloadError`
+otherwise. The handler that performs the actual backlink index update is
+added in a later task; this payload only defines the data contract.
