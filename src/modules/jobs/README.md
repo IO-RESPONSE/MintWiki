@@ -65,3 +65,14 @@ type and returns `JobResult.ok(data={"category_name": payload.category_name})`.
 It returns `JobResult.fail(...)` if given a payload that isn't a
 `CategoryRefreshJobPayload`. The real category index update logic replaces
 this placeholder in a later task once a categories module exists.
+
+`RecentChangesJobPayload` (`recent_changes_payload.py`) is a `JobPayload`
+subclass for a background job that records an edit into the recent changes
+list: it exposes `job_type` as `RECENT_CHANGES_JOB_TYPE`
+(`"recent_changes.record"`). It carries `page_name` (the document that was
+edited), `author_id` (who made the edit), `occurred_at` (when the edit
+happened), and an optional `summary` (defaulting to `""`). `page_name` is
+required and cannot be empty/whitespace-only, and `occurred_at` is required,
+raising `InvalidRecentChangesJobPayloadError` otherwise. The handler that
+actually records the entry is added in a later task; this payload only
+defines the data contract.
