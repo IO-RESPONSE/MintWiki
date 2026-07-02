@@ -233,3 +233,59 @@ against the referenced test when a result looks wrong.
   threads, hidden/mixed-visibility comments) reproduce each of the above
   states with matching audit events, for use as canned QA scenarios.
   (`test_fixtures.py`)
+
+## Discussion Migration Planning Note
+
+`DiscussionRepository` (`repository.py`) only has one implementation today,
+`InMemoryDiscussionRepository` — there is no Alembic migration for
+discussion data yet, unlike `document`/`revision`
+(`migrations/versions/0002_add_document_table.py`,
+`migrations/versions/0003_add_revision_table.py`). This note plans the
+future migration; it does not add a migration or a DB-backed repository —
+that is later work, tracked as its own task(s) when it is scheduled.
+
+### Tables implied by the current domain models
+
+Two tables would mirror `DiscussionThread` (`thread.py`) and
+`DiscussionComment` (`comment.py`), following the same column style as the
+`document`/`revision` migrations (`String(255)` ids, `server_default=sa.func.now()`
+timestamps):
+
+- `discussion_thread`: `id` (PK, `String(255)`), `document_id`
+  (`String(255)`, `nullable=False` — no FK to `document.id` is asserted
+  here since that constraint choice belongs to the migration task itself),
+  `title` (`String(500)`), `created_by` (`String(255)`), `status`
+  (`String(50)`, default `"open"`), `created_at`, `closed_at`
+  (`nullable=True`), `paused_at` (`nullable=True`). `status` stores the
+  same three string values as `ThreadState` (`state.py`), but as noted
+  above `ThreadState` is not wired into `thread.py` today, so a migration
+  should decide up front whether to add a DB-level `CHECK`/enum constraint
+  or keep `status` a free string to match current (unvalidated) behavior.
+- `discussion_comment`: `id` (PK, `String(255)`), `thread_id`
+  (`String(255)`, `nullable=False`), `body` (`Text`), `created_by`
+  (`String(255)`), `created_at`, `is_hidden` (`Boolean`, default `False`),
+  `hidden_at` (`nullable=True`).
+
+### Audit log table
+
+`DiscussionAuditEvent` (`audit_event.py`) is currently only ever
+constructed in-process by `DiscussionAuditRecorder` (`audit_recorder.py`);
+neither is persisted anywhere. A `discussion_audit_event` table would need
+`id` (PK), `action` (`String`, one of `DiscussionAuditAction`'s values),
+`thread_id`, `occurred_at`, and nullable `comment_id`/`actor_id` — matching
+`DiscussionAuditEvent.__init__` (`audit_event.py`) field-for-field. As
+section "5. Audit coverage of transitions is partial" above notes, close/
+reopen/pause do not currently produce events at all, so a migration alone
+would not make the audit trail complete — the recorder gaps would need to
+be closed first (or accepted as a known limitation) for the table to be
+meaningful.
+
+### Sequencing relative to existing gaps
+
+Because `hide_comment()` and `reopen_thread()`/`pause_thread()` are not
+reachable over HTTP yet (see the state-machine and moderation sections
+above), and `ThreadState` is not enforced, a DB migration for this module
+should not be scheduled before those gaps are explicitly resolved or
+consciously deferred — otherwise the persisted schema would encode
+behavior (e.g. a `status` column) that the application layer does not yet
+guarantee is consistent.
