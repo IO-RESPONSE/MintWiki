@@ -33,7 +33,23 @@ if git remote get-url origin >/dev/null 2>&1; then
   git pull --ff-only
 fi
 
-TASK_PATH="$(find "$QUEUE_DIR" -maxdepth 1 -type f -name '*.md' | sort | head -n 1 || true)"
+TASK_PATH="$(
+  find "$QUEUE_DIR" -maxdepth 1 -type f -name '*.md' | sort | while IFS= read -r candidate; do
+    task_file="$(basename "$candidate")"
+    task_number="${task_file%%-*}"
+    case "$task_number" in
+      ''|*[!0-9]*) continue ;;
+    esac
+    if [ -n "${WIKI_ENGINE_TASK_MIN:-}" ] && [ "$task_number" -lt "$WIKI_ENGINE_TASK_MIN" ]; then
+      continue
+    fi
+    if [ -n "${WIKI_ENGINE_TASK_MAX:-}" ] && [ "$task_number" -gt "$WIKI_ENGINE_TASK_MAX" ]; then
+      continue
+    fi
+    printf '%s\n' "$candidate"
+    break
+  done
+)"
 if [ -z "$TASK_PATH" ]; then
   echo "No queued task."
   exit 0
