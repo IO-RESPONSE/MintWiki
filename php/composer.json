@@ -9,7 +9,10 @@
     "autoload": {
         "psr-4": {
             "MintWiki\\": "src/"
-        }
+        },
+        "classmap": [
+            "src/Modules/"
+        ]
     },
     "minimum-stability": "stable",
     "prefer-stable": true

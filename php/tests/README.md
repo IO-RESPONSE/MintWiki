@@ -27,6 +27,13 @@ PHP test suite.
   method+path replaces the previous handler without affecting other
   routes. Run it with `php tests/Http/RouteRegistrationTest.php` from
   `php/` after `composer install`.
+- `Modules/Document/DocumentTest.php` (0400) — confirms
+  `MintWiki\Document\Document` returns the `id`, `title`, and
+  `currentRevisionId` passed to its constructor (with `currentRevisionId`
+  defaulting to `null`), and that `normalizedTitle` mirrors `title` until
+  the real normalizer lands in 0401. Run it with
+  `php tests/Modules/Document/DocumentTest.php` from `php/` after
+  `composer install`.
 
 Fixture runners (0406, 0407, ...) are added by later Phase B tasks and
 must likewise run without any network dependency
