@@ -61,7 +61,7 @@ Repository가 SQLAlchemy 세부사항(예외 타입, flush/commit 순서 등)을
   [0472 DB driver capability model](php-db-ui-micro-job-prompts-0351-0670.md)이
   다룬다.
 - ad hoc 문자열 SQL 금지와 쿼리 빌더 사용 규칙 —
-  [0451 portable query builder policy](php-db-ui-micro-job-prompts-0351-0670.md)가
+  [0451 portable query builder policy](portable-query-builder-policy.md)가
   다룬다.
 
 ## 계약이 다루는 것
@@ -89,7 +89,7 @@ Repository가 SQLAlchemy 세부사항(예외 타입, flush/commit 순서 등)을
 Repository가 어댑터에게 기대할 수 있는 것은 아래 다섯 가지뿐이다. 구체
 메서드 이름·시그니처·문(statement) 표현 방식은
 [0450](php-db-ui-micro-job-prompts-0351-0670.md)(Python skeleton)과
-[0451](php-db-ui-micro-job-prompts-0351-0670.md)(쿼리 빌더 정책)이 정한다 —
+[0451](portable-query-builder-policy.md)(쿼리 빌더 정책)이 정한다 —
 이 문서는 "이 다섯 가지 동작이 존재해야 한다"만 고정한다.
 
 ```python
@@ -199,8 +199,9 @@ class DbAdapter(ABC):
 
 - **0450**: 이 계약(1~4절)을 실제 Python 클래스 골격으로 옮긴다. ORM 동작
   확장은 하지 않는다.
-- **0451**: 2절이 statement의 구체 표현을 열어 둔 지점을 이어받아, ad hoc
-  문자열 SQL 금지와 쿼리 빌더 사용 규칙을 확정한다.
+- **0451**([portable-query-builder-policy.md](portable-query-builder-policy.md)):
+  2절이 statement의 구체 표현을 열어 둔 지점을 이어받아, ad hoc 문자열
+  SQL 금지와 쿼리 빌더 사용 규칙을 확정한다.
 - **0452, 0453**: document/revision 저장소가 이 계약을 만족하는지
   portability 테스트로 검증한다.
 - **0454-0458**: user/ACL/discussion/audit/jobs 각 모듈의 저장소
