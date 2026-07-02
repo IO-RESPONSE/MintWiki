@@ -1,6 +1,7 @@
 """User module package."""
 from modules.user.anonymous import AnonymousIdentity
 from modules.user.block import Block, EmptyBlockIdError, EmptyBlockUserIdError
+from modules.user.block_check_service import BlockCheckService
 from modules.user.block_repository import BlockRepository
 from modules.user.group import EmptyGroupNameError, Group
 from modules.user.ip_identity import InvalidIpAddressError, IpIdentity
@@ -19,6 +20,7 @@ __all__ = [
     "Block",
     "EmptyBlockIdError",
     "EmptyBlockUserIdError",
+    "BlockCheckService",
     "Group",
     "EmptyGroupNameError",
     "UserRepository",
