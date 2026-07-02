@@ -32,6 +32,7 @@ def test_discussion_package_exports_thread_model():
         "DiscussionRecentActivity",
         "EmptyRecentActivityIdError",
         "MissingRecentActivityThreadIdError",
+        "DiscussionRecentActivityService",
     ]
     assert modules.discussion.DiscussionThread is not None
     assert modules.discussion.EmptyThreadIdError is not None
@@ -81,3 +82,7 @@ def test_discussion_package_exports_recent_activity_model():
     assert modules.discussion.DiscussionRecentActivity is not None
     assert modules.discussion.EmptyRecentActivityIdError is not None
     assert modules.discussion.MissingRecentActivityThreadIdError is not None
+
+
+def test_discussion_package_exports_recent_activity_service():
+    assert modules.discussion.DiscussionRecentActivityService is not None
