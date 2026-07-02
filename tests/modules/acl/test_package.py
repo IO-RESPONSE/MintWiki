@@ -25,6 +25,7 @@ def test_acl_package_exports_rule():
         "DEFAULT_NAMESPACE",
         "DocumentAcl",
         "EmptyDocumentIdError",
+        "Decision",
     ]
     assert modules.acl.Rule is Rule
 
@@ -45,3 +46,11 @@ def test_acl_package_exports_document_acl():
     assert "EmptyDocumentIdError" in modules.acl.__all__
     assert modules.acl.DocumentAcl is DocumentAcl
     assert modules.acl.EmptyDocumentIdError is EmptyDocumentIdError
+
+
+def test_acl_package_exports_decision():
+    # 0156에서 Decision 모델이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.decision import Decision
+
+    assert "Decision" in modules.acl.__all__
+    assert modules.acl.Decision is Decision

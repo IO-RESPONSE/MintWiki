@@ -1,4 +1,5 @@
 """ACL module package."""
+from modules.acl.decision import Decision
 from modules.acl.document_acl import DocumentAcl, EmptyDocumentIdError
 from modules.acl.namespace_defaults import DEFAULT_NAMESPACE, NamespaceAclDefaults
 from modules.acl.permission import Permission
@@ -21,4 +22,5 @@ __all__ = [
     "DEFAULT_NAMESPACE",
     "DocumentAcl",
     "EmptyDocumentIdError",
+    "Decision",
 ]
