@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Column, DateTime, String, Text
+from sqlalchemy import Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.sql import func
 
 from persistence.base import Base
@@ -80,7 +80,11 @@ class RevisionORM(Base):
     __tablename__ = "revision"
 
     id = Column(String(255), primary_key=True, nullable=False)
-    document_id = Column(String(255), nullable=False)
+    document_id = Column(
+        String(255),
+        ForeignKey("document.id", name="fk_revision_document_id"),
+        nullable=False,
+    )
     source = Column(Text, nullable=False)
     author_id = Column(String(255), nullable=False)
     summary = Column(String(500), nullable=False)
