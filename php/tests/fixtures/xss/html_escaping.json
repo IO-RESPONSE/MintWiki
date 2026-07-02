@@ -1,0 +1,30 @@
+{
+  "description": "서버 렌더링 HTML 문맥에서 자주 쓰이는 XSS payload와, MintWiki\\Ui\\Escaper가 htmlspecialchars(ENT_QUOTES | ENT_SUBSTITUTE, UTF-8)로 만들어야 하는 안전한 이스케이프 결과.",
+  "cases": [
+    {
+      "name": "script_tag_injection",
+      "input": "<script>alert('xss')</script>",
+      "expected_html": "&lt;script&gt;alert(&#039;xss&#039;)&lt;/script&gt;"
+    },
+    {
+      "name": "attribute_breakout_img_onerror",
+      "input": "\"><img src=x onerror=alert(1)>",
+      "expected_html": "&quot;&gt;&lt;img src=x onerror=alert(1)&gt;"
+    },
+    {
+      "name": "single_quote_event_handler",
+      "input": "' onmouseover='alert(1)",
+      "expected_html": "&#039; onmouseover=&#039;alert(1)"
+    },
+    {
+      "name": "svg_onload",
+      "input": "<svg/onload=alert(1)>",
+      "expected_html": "&lt;svg/onload=alert(1)&gt;"
+    },
+    {
+      "name": "ampersand_and_angle_brackets",
+      "input": "Tom & Jerry <tag>",
+      "expected_html": "Tom &amp; Jerry &lt;tag&gt;"
+    }
+  ]
+}
