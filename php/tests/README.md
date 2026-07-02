@@ -184,6 +184,18 @@ PHP test suite.
   `php tests/Modules/Cache/BackendTest.php` from `php/` after
   `composer install`.
 
+- `Modules/Jobs/RunnerTest.php` (0412) — confirms `MintWiki\Jobs\Runner`
+  is an interface implementable with the `enqueue`/`runSync`/`getStatus`
+  contract (via an anonymous sync-fallback implementation), that
+  `runSync()` executes a job directly without going through `enqueue()`,
+  that `enqueue()` returns a non-empty, unique job id per call, and that
+  `getStatus()` returns `null` for an unknown job id and otherwise
+  returns the result `enqueue()` already produced synchronously (the
+  shared hosting fallback: no worker needed). No concrete `Runner`
+  implementation (sync or queued) ships in this task — that lands in a
+  later task. Run it with `php tests/Modules/Jobs/RunnerTest.php` from
+  `php/` after `composer install`.
+
 Further fixture runners (...) are added by later Phase B tasks and must
 likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
