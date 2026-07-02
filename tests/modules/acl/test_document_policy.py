@@ -1,15 +1,17 @@
-"""문서 단위 편집/읽기/토론/이동 제한 정책(restrict_document_edit, restrict_document_read,
-restrict_document_discuss, restrict_document_move) 테스트."""
+"""문서 단위 편집/읽기/토론/이동/삭제 제한 정책(restrict_document_edit, restrict_document_read,
+restrict_document_discuss, restrict_document_move, restrict_document_delete) 테스트."""
 from modules.acl.default_policy import (
     LOGGED_IN_EDIT_RULE_ID,
     PUBLIC_READ_RULE_ID,
     build_default_namespace_acl_defaults,
 )
 from modules.acl.document_policy import (
+    DOCUMENT_DELETE_RESTRICTION_RULE_ID,
     DOCUMENT_DISCUSS_RESTRICTION_RULE_ID,
     DOCUMENT_EDIT_RESTRICTION_RULE_ID,
     DOCUMENT_MOVE_RESTRICTION_RULE_ID,
     DOCUMENT_READ_RESTRICTION_RULE_ID,
+    restrict_document_delete,
     restrict_document_discuss,
     restrict_document_edit,
     restrict_document_move,
@@ -387,6 +389,93 @@ class TestRestrictDocumentMoveWithAclService:
 
         decision = service.check(
             permission=Permission.MOVE,
+            subject_type=SubjectType.USER,
+            subject_id="user-1",
+        )
+
+        assert decision.is_denied() is True
+
+
+class TestRestrictDocumentDelete:
+    """restrict_document_delete가 지정한 대상에게만 삭제 규칙을 부여하는지 확인한다."""
+
+    def test_returns_document_acl_with_single_delete_rule(self):
+        acl = restrict_document_delete(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="deleters",
+        )
+
+        assert acl.document_id == "doc-1"
+        rules = acl.rules()
+        assert len(rules) == 1
+        rule = rules[0]
+        assert rule.id == DOCUMENT_DELETE_RESTRICTION_RULE_ID
+        assert rule.permission is Permission.DELETE
+        assert rule.subject_type is SubjectType.GROUP
+        assert rule.subject_id == "deleters"
+        assert rule.is_allow() is True
+
+
+class TestRestrictDocumentDeleteWithAclService:
+    """제한된 문서 ACL이 AclService 검사에서 실제로 삭제를 제한하는지 확인한다."""
+
+    def test_allows_the_designated_group_to_delete(self):
+        service = AclService()
+        acl = restrict_document_delete(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="deleters",
+        )
+
+        decision = service.check(
+            permission=Permission.DELETE,
+            subject_type=SubjectType.GROUP,
+            subject_id="deleters",
+            document_acl=acl,
+        )
+
+        assert decision.is_allowed() is True
+        assert decision.matched_rule_id == DOCUMENT_DELETE_RESTRICTION_RULE_ID
+
+    def test_denies_a_different_group_from_deleting(self):
+        service = AclService()
+        acl = restrict_document_delete(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="deleters",
+        )
+
+        decision = service.check(
+            permission=Permission.DELETE,
+            subject_type=SubjectType.GROUP,
+            subject_id="visitors",
+            document_acl=acl,
+        )
+
+        assert decision.is_denied() is True
+
+    def test_denies_anonymous_users_from_deleting(self):
+        service = AclService()
+        acl = restrict_document_delete(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="deleters",
+        )
+
+        decision = service.check(
+            permission=Permission.DELETE,
+            subject_type=SubjectType.ANONYMOUS,
+            document_acl=acl,
+        )
+
+        assert decision.is_denied() is True
+
+    def test_delete_is_denied_by_default_without_document_acl(self):
+        service = AclService(namespace_defaults=build_default_namespace_acl_defaults())
+
+        decision = service.check(
+            permission=Permission.DELETE,
             subject_type=SubjectType.USER,
             subject_id="user-1",
         )
