@@ -12,7 +12,9 @@ On this branch only the persistence skeleton has landed so far:
   DSN for either PostgreSQL (`pgsql`) or MariaDB (`mysql`) from a shared
   config value object. See `docs/db-adapter-contract.md` and
   `docs/postgresql-dsn-compatibility.md` for the field-level contract this
-  follows.
+  follows. `MintWiki\Persistence\PdoTransaction` (0485) wraps an injected
+  `PDO` connection with only the `begin`/`commit`/`rollback` transaction
+  contract from `docs/db-adapter-contract.md` §2.
 - `tests/Persistence/` — smoke tests for the classes above, run directly
   with the `php` CLI (no phpunit).
 
