@@ -277,6 +277,100 @@ def test_db_schema_acl_namespace_rule_sql_separates_dialect_differences_in_comme
     assert "SERIAL" not in create_table_stmt
 
 
+def test_db_schema_discussion_thread_sql_exists():
+    """0466이 추가한 discussion_thread.sql이 존재하는지 확인한다."""
+    discussion_thread_sql = _db_dir() / "schema" / "discussion_thread.sql"
+    assert discussion_thread_sql.exists(), (
+        "db/schema/discussion_thread.sql should exist"
+    )
+
+
+def test_db_schema_discussion_thread_sql_matches_plan_spec():
+    """discussion_thread.sql이 DiscussionThread와 계획 문서 §3과 같은 컬럼·제약을 갖는지 확인한다."""
+    content = (_db_dir() / "schema" / "discussion_thread.sql").read_text()
+
+    assert "CREATE TABLE discussion_thread" in content
+    assert "id VARCHAR(255) NOT NULL" in content
+    assert "document_id VARCHAR(255) NOT NULL" in content
+    assert "title VARCHAR(500) NOT NULL" in content
+    assert "created_by VARCHAR(255) NOT NULL" in content
+    assert "status VARCHAR(20) NOT NULL DEFAULT 'open'" in content
+    assert "created_at TIMESTAMP NOT NULL" in content
+    assert "closed_at TIMESTAMP NULL" in content
+    assert "paused_at TIMESTAMP NULL" in content
+    assert "CONSTRAINT pk_discussion_thread PRIMARY KEY (id)" in content
+    assert (
+        "CONSTRAINT fk_discussion_thread_document_id FOREIGN KEY (document_id) "
+        "REFERENCES document (id)" in content
+    )
+    assert (
+        "CREATE INDEX ix_discussion_thread_document_id_created_at_id" in content
+    )
+    assert "ON discussion_thread (document_id, created_at, id)" in content
+    # status는 도메인 계층이 아직 ThreadState를 검증하지 않아 CHECK 제약을 걸지 않는다.
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    assert "CHECK" not in create_table_stmt
+
+
+def test_db_schema_discussion_thread_sql_separates_dialect_differences_in_comments():
+    """PostgreSQL/MariaDB 차이가 주석으로 분리되어 있는지 확인한다(0461과 동일 패턴)."""
+    content = (_db_dir() / "schema" / "discussion_thread.sql").read_text()
+
+    assert "PostgreSQL" in content
+    assert "MariaDB" in content
+    # 실제 CREATE TABLE 문에는 방언 전용 문법이 섞이지 않는다.
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    assert "WITH TIME ZONE" not in create_table_stmt
+    assert "COLLATE" not in create_table_stmt
+    assert "AUTO_INCREMENT" not in create_table_stmt
+    assert "SERIAL" not in create_table_stmt
+
+
+def test_db_schema_discussion_comment_sql_exists():
+    """0466이 추가한 discussion_comment.sql이 존재하는지 확인한다."""
+    discussion_comment_sql = _db_dir() / "schema" / "discussion_comment.sql"
+    assert discussion_comment_sql.exists(), (
+        "db/schema/discussion_comment.sql should exist"
+    )
+
+
+def test_db_schema_discussion_comment_sql_matches_plan_spec():
+    """discussion_comment.sql이 DiscussionComment와 계획 문서 §4와 같은 컬럼·제약을 갖는지 확인한다."""
+    content = (_db_dir() / "schema" / "discussion_comment.sql").read_text()
+
+    assert "CREATE TABLE discussion_comment" in content
+    assert "id VARCHAR(255) NOT NULL" in content
+    assert "thread_id VARCHAR(255) NOT NULL" in content
+    assert "body TEXT NOT NULL" in content
+    assert "created_by VARCHAR(255) NOT NULL" in content
+    assert "is_hidden BOOLEAN NOT NULL DEFAULT FALSE" in content
+    assert "created_at TIMESTAMP NOT NULL" in content
+    assert "hidden_at TIMESTAMP NULL" in content
+    assert "CONSTRAINT pk_discussion_comment PRIMARY KEY (id)" in content
+    assert (
+        "CONSTRAINT fk_discussion_comment_thread_id FOREIGN KEY (thread_id) "
+        "REFERENCES discussion_thread (id)" in content
+    )
+    assert (
+        "CREATE INDEX ix_discussion_comment_thread_id_created_at_id" in content
+    )
+    assert "ON discussion_comment (thread_id, created_at, id)" in content
+
+
+def test_db_schema_discussion_comment_sql_separates_dialect_differences_in_comments():
+    """PostgreSQL/MariaDB 차이가 주석으로 분리되어 있는지 확인한다(0461과 동일 패턴)."""
+    content = (_db_dir() / "schema" / "discussion_comment.sql").read_text()
+
+    assert "PostgreSQL" in content
+    assert "MariaDB" in content
+    # 실제 CREATE TABLE 문에는 방언 전용 문법이 섞이지 않는다.
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    assert "WITH TIME ZONE" not in create_table_stmt
+    assert "COLLATE" not in create_table_stmt
+    assert "AUTO_INCREMENT" not in create_table_stmt
+    assert "SERIAL" not in create_table_stmt
+
+
 def test_db_readme_confirms_migration_history_table():
     """README가 checklist §6이 보류한 적용 이력 테이블 이름/방식을 확정하는지 확인한다."""
     content = (_db_dir() / "README.md").read_text()

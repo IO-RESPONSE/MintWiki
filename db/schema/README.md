@@ -104,9 +104,36 @@
   sort_order)`(`uq_acl_namespace_rule_namespace_sort_order`)로 같은
   네임스페이스 안 순번 중복을 막는다.
 
+## 0466이 채우는 것
+
+- `discussion_thread.sql`: `src/modules/discussion/thread.py`의
+  `DiscussionThread`, `state.py`의 `ThreadState`와 [Discussion Portable
+  Repository Plan
+  §3](../../docs/discussion-portable-repository-plan.md#3-discussionthread--discussion_thread-테이블)이
+  확정한 컬럼(`id`, `document_id`, `title`, `created_by`, `status`,
+  `created_at`, `closed_at`, `paused_at`)을 옮기는 portable `CREATE TABLE`
+  문. `document_id`는 `document.sql`(0461)이 만든 `document` 테이블을
+  참조하는 `fk_discussion_thread_document_id` FK를 갖는다. `status`는
+  `ThreadState`가 도메인 계층에서 아직 검증되지 않아 계획 문서 §6이 확정한
+  대로 `CHECK` 제약 없이 `VARCHAR(20)` 자유 문자열로 둔다.
+- `discussion_comment.sql`: `comment.py`의 `DiscussionComment`와 [Discussion
+  Portable Repository Plan
+  §4](../../docs/discussion-portable-repository-plan.md#4-discussioncomment--discussion_comment-테이블)가
+  확정한 컬럼(`id`, `thread_id`, `body`, `created_by`, `is_hidden`,
+  `created_at`, `hidden_at`)을 옮기는 portable `CREATE TABLE` 문.
+  `thread_id`는 `discussion_thread.sql`(같은 태스크)이 만든
+  `discussion_thread` 테이블을 참조하는 `fk_discussion_comment_thread_id`
+  FK를 갖는다.
+- 두 파일 모두 계획 문서 §5가 확정한 페이지네이션 결정성 요구에 따라
+  `(정렬 대상 FK 컬럼, created_at, id)` 복합 `CREATE INDEX` 문을 별도로
+  둔다 — [ANSI SQL Persistence Policy](../../docs/ansi-sql-persistence-policy.md)가
+  금지하는 것은 부분 인덱스(`WHERE` 절 포함)뿐이고 일반 `CREATE INDEX`는
+  두 DB 모두의 표준 기능이라 이 디렉터리의 다른 파일들과 달리 `CREATE
+  TABLE` 외의 문을 추가로 포함한다.
+
 ## 이후 채워질 파일
 
-- **0466~0468**: discussion, audit, jobs 테이블.
+- **0467~0468**: audit, jobs 테이블.
 - **0469**: 이 디렉터리 전체에 대한 SQL feature 금지 목록 자동 검사(lint
   테스트).
 - **0493**: PHP 웹호스팅 installer가 참조할 별도의 schema version 테이블.
