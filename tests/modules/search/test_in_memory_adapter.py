@@ -409,6 +409,34 @@ class TestInMemorySearchAdapterPagination:
 
         assert len(results) == 2
 
+    @pytest.mark.asyncio
+    async def test_limit_larger_than_remaining_results_returns_only_remaining(self):
+        """offset 이후 남은 결과보다 limit이 크면 남은 결과만 반환한다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(SearchDocument(document_id="doc1", title="Apple Pie"))
+        await adapter.index(SearchDocument(document_id="doc2", title="Apple Juice"))
+        await adapter.index(SearchDocument(document_id="doc3", title="Apple Sauce"))
+
+        results = await adapter.search(SearchQuery(term="Apple", limit=10, offset=2))
+
+        assert len(results) == 1
+
+    @pytest.mark.asyncio
+    async def test_paginating_through_all_pages_reconstructs_full_result_set(self):
+        """limit으로 나눈 페이지를 모두 이어붙이면 전체 결과와 같아지고 중복/누락이 없다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(SearchDocument(document_id="doc1", title="Apple Pie"))
+        await adapter.index(SearchDocument(document_id="doc2", title="Apple Juice"))
+        await adapter.index(SearchDocument(document_id="doc3", title="Apple Sauce"))
+
+        all_results = await adapter.search(SearchQuery(term="Apple"))
+        page1 = await adapter.search(SearchQuery(term="Apple", limit=2, offset=0))
+        page2 = await adapter.search(SearchQuery(term="Apple", limit=2, offset=2))
+
+        paginated_ids = [r.document.document_id for r in page1 + page2]
+        assert paginated_ids == [r.document.document_id for r in all_results]
+        assert len(set(paginated_ids)) == len(paginated_ids)
+
 
 class TestInMemorySearchAdapterRedirectSearch:
     """리다이렉트 대상으로 검색되는 동작 테스트."""

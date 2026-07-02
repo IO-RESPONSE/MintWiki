@@ -161,6 +161,35 @@ class TestSearchServiceSearch:
 
         assert len(results) == 1
 
+    @pytest.mark.asyncio
+    async def test_search_applies_limit_only_from_query(self):
+        """offset 없이 limit만 지정해도 어댑터에 전달되어 결과 개수가 제한된다."""
+        adapter = InMemorySearchAdapter()
+        service = SearchService(adapter)
+        await service.index_document(
+            SearchDocument(document_id="doc1", title="Apple Pie")
+        )
+        await service.index_document(
+            SearchDocument(document_id="doc2", title="Apple Juice")
+        )
+
+        results = await service.search(SearchQuery(term="Apple", limit=1))
+
+        assert len(results) == 1
+
+    @pytest.mark.asyncio
+    async def test_search_offset_beyond_result_count_returns_empty_list(self):
+        """offset이 일치하는 결과 개수보다 크면 빈 목록을 반환한다."""
+        adapter = InMemorySearchAdapter()
+        service = SearchService(adapter)
+        await service.index_document(
+            SearchDocument(document_id="doc1", title="Apple Pie")
+        )
+
+        results = await service.search(SearchQuery(term="Apple", offset=5))
+
+        assert results == []
+
 
 class TestSearchServiceRankingPlaceholder:
     """관련도 순위가 아직 구현되지 않은 placeholder 점수 동작 테스트."""
