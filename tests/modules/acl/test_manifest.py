@@ -122,5 +122,5 @@ class TestAclManifestDecisionContract:
         assert isinstance(decision, Decision)
         assert decision.permission is Permission.READ
         assert decision.allowed is False
-        assert decision.reason == "no matching rule"
+        assert decision.reason == "acl.no_matching_rule"
         assert decision.matched_rule_id is None

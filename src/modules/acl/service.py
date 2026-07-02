@@ -7,6 +7,12 @@ from modules.acl.namespace_defaults import DEFAULT_NAMESPACE, NamespaceAclDefaul
 from modules.acl.permission import Permission
 from modules.acl.rule import Rule, SubjectType
 
+# Decision.reason 에 쓰이는 안정적인 code. docs/portable-exception-code-policy.md
+# 가 예외에 대해 정한 <module>.<reason> 형식을 그대로 따른다 — 예외는 아니지만
+# PHP 포트가 자유 문장이 아니라 이 code 값으로 결과를 비교할 수 있어야 한다.
+REASON_MATCHED_RULE = "acl.matched_rule"
+REASON_NO_MATCHING_RULE = "acl.no_matching_rule"
+
 
 class AclService:
     """
@@ -51,7 +57,11 @@ class AclService:
             namespace: 문서가 속한 네임스페이스 (기본값 DEFAULT_NAMESPACE)
 
         Returns:
-            검사 결과를 담은 Decision. 일치하는 규칙이 없으면 거부(deny)로 판단한다.
+            검사 결과를 담은 Decision. 일치하는 규칙이 없으면 거부(deny)로
+            판단하며, 이때 reason 은 REASON_NO_MATCHING_RULE
+            ("acl.no_matching_rule") 이다. 규칙이 일치하면 reason 은
+            REASON_MATCHED_RULE ("acl.matched_rule") 이고, 어떤 규칙인지는
+            matched_rule_id 로 알 수 있다.
         """
         for rule in self._resolve_rules(document_acl, namespace):
             if rule.permission is not permission:
@@ -61,14 +71,14 @@ class AclService:
             return Decision(
                 permission=permission,
                 allowed=rule.is_allow(),
-                reason=f"matched rule {rule.id}",
+                reason=REASON_MATCHED_RULE,
                 matched_rule_id=rule.id,
             )
 
         return Decision(
             permission=permission,
             allowed=False,
-            reason="no matching rule",
+            reason=REASON_NO_MATCHING_RULE,
         )
 
     def _resolve_rules(

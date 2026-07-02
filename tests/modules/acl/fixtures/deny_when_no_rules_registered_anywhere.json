@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "description": "문서 ACL도 없고 네임스페이스 기본 규칙도 등록되지 않은 완전한 골격 상태에서는 acl.no_matching_rule 로 거부한다.",
+  "input": {
+    "permission": "read",
+    "subject_type": "all",
+    "subject_id": null,
+    "namespace": "*",
+    "document_acl": null
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "acl.no_matching_rule",
+    "matched_rule_id": null
+  },
+  "errors": []
+}

@@ -18,8 +18,8 @@ operations must call this module explicitly.
   rules are used and namespace defaults are **not** consulted at all — even if
   none of the document's rules match the requested permission/subject. A
   document ACL that only restricts `EDIT` still causes `READ` checks on that
-  document to fall through to "no matching rule" (default deny), not to the
-  namespace's `READ` rule.
+  document to fall through to `reason="acl.no_matching_rule"` (default deny),
+  not to the namespace's `READ` rule.
 - Otherwise (no `DocumentAcl`, or one with an empty rule list), the
   `NamespaceAclDefaults` registered for the request's `namespace` are used. If
   no defaults were registered for that namespace, an empty list is used.
@@ -39,7 +39,9 @@ both are true:
   matches only an anonymous request.
 
 The **first** rule that matches both determines the `Decision` (its `effect`
-becomes `allowed`, its `id` becomes `matched_rule_id`). There is no
+becomes `allowed`, its `id` becomes `matched_rule_id`, and `reason` is set to
+the stable code `"acl.matched_rule"` — see `service.py::REASON_MATCHED_RULE`).
+There is no
 "deny-overrides" or "most-specific-wins" logic — a broad `ALL` deny rule
 placed before a narrow `USER` allow rule still wins, and vice versa. Callers
 that assemble rule lists (e.g. `default_policy.py`) are responsible for
@@ -50,10 +52,15 @@ ordering more specific exceptions before the general rules they override. See
 ### 3. No match anywhere: deny by default
 
 If nothing in the resolved rule list matches, `check()` returns a denied
-`Decision` with `matched_rule_id=None` and `reason="no matching rule"`. This
-is the fail-closed default for unregistered namespaces and for document ACLs
-that don't cover the requested permission. See
-`test_service.py::TestAclServiceWithoutRules`.
+`Decision` with `matched_rule_id=None` and `reason="acl.no_matching_rule"`
+(`service.py::REASON_NO_MATCHING_RULE`). This is the fail-closed default for
+unregistered namespaces and for document ACLs that don't cover the requested
+permission. See `test_service.py::TestAclServiceWithoutRules`.
+
+`reason` is always one of these two stable codes, never a free-text message —
+`tests/modules/acl/fixtures/` pins both as cross-language fixtures (see
+`docs/cross-language-fixture-schema.md`) so a PHP port can compare results by
+code instead of message string.
 
 ### 4. What `AclService.check()` deliberately does *not* evaluate
 

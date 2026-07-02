@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "description": "문서 ACL은 있지만 요청한 권한을 다루는 규칙이 없으면 네임스페이스 기본값을 참조하지 않고 바로 acl.no_matching_rule 로 거부한다.",
+  "input": {
+    "permission": "read",
+    "subject_type": "user",
+    "subject_id": "user-1",
+    "namespace": "*",
+    "document_acl": {
+      "document_id": "fixture-doc",
+      "rules": [
+        {
+          "id": "all-edit-allow",
+          "subject_type": "all",
+          "subject_id": null,
+          "permission": "edit",
+          "effect": "allow"
+        }
+      ]
+    }
+  },
+  "expected": {
+    "allowed": false,
+    "reason": "acl.no_matching_rule",
+    "matched_rule_id": null
+  },
+  "errors": []
+}
