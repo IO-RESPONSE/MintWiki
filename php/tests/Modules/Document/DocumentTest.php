@@ -17,6 +17,7 @@ if (!is_file($autoloadFile)) {
 require $autoloadFile;
 
 use MintWiki\Document\Document;
+use MintWiki\Document\EmptyTitleError;
 
 $failures = [];
 
@@ -45,6 +46,22 @@ if ($withRevision->id() !== 'doc-2') {
 }
 if ($withRevision->title() !== 'Another Title') {
     $failures[] = 'title()이 생성자에 전달한 값을 반환하지 않았다.';
+}
+
+$withMessyTitle = new Document('doc-3', '  Messy   Title  ');
+
+if ($withMessyTitle->title() !== '  Messy   Title  ') {
+    $failures[] = 'title()은 정규화 없이 원본 값을 그대로 반환해야 한다.';
+}
+if ($withMessyTitle->normalizedTitle() !== 'Messy Title') {
+    $failures[] = 'normalizedTitle()이 공백 트림/축소를 수행하지 않았다.';
+}
+
+try {
+    new Document('doc-4', '   ');
+    $failures[] = '공백만 있는 title은 EmptyTitleError를 던져야 한다.';
+} catch (EmptyTitleError $error) {
+    // 정상 경로 — 아무 것도 하지 않는다.
 }
 
 if ($failures !== []) {

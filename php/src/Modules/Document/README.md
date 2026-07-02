@@ -10,8 +10,13 @@ manifest 는 `src/modules/document/manifest.json` 이다.
 
 ## 클래스
 
-- `Document.php` (0400) — Python `Document`(`src/modules/document/model.py`)와
+- `Document.php` (0400, 0401) — Python `Document`(`src/modules/document/model.py`)와
   필드를 맞춘 불변 value object. `id`/`title`/`normalizedTitle`/
-  `currentRevisionId` 네 필드를 두되, `normalizedTitle`은 현재 `title`을
-  그대로 복사하는 임시 동작이다 — 실제 정규화 규칙은 0401(PHP 제목
-  정규화기 추가)에서 연결된다.
+  `currentRevisionId` 네 필드를 두며, `normalizedTitle`은 `Title::normalize()`
+  가 계산한다.
+- `Title.php` (0401) — Python `normalize_title`(`src/modules/document/title.py`)
+  과 동작을 맞춘 제목 정규화 유틸리티. 주변 공백을 제거하고 내부 공백을
+  단일 공백으로 축소하며, 결과가 빈 문자열이면 `EmptyTitleError`를 던진다.
+- `EmptyTitleError.php` (0401) — Python `EmptyTitleError`와 안정적인 error
+  code(`docs/portable-exception-code-policy.md`)를 맞춘 예외.
+  `EmptyTitleError::CODE`가 `document.empty_title`을 노출한다.

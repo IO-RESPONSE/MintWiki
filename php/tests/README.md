@@ -27,12 +27,20 @@ PHP test suite.
   method+path replaces the previous handler without affecting other
   routes. Run it with `php tests/Http/RouteRegistrationTest.php` from
   `php/` after `composer install`.
-- `Modules/Document/DocumentTest.php` (0400) — confirms
+- `Modules/Document/DocumentTest.php` (0400, 0401) — confirms
   `MintWiki\Document\Document` returns the `id`, `title`, and
   `currentRevisionId` passed to its constructor (with `currentRevisionId`
-  defaulting to `null`), and that `normalizedTitle` mirrors `title` until
-  the real normalizer lands in 0401. Run it with
+  defaulting to `null`), that `normalizedTitle` is trimmed/collapsed via
+  `Title::normalize()`, and that a whitespace-only title raises
+  `EmptyTitleError`. Run it with
   `php tests/Modules/Document/DocumentTest.php` from `php/` after
+  `composer install`.
+- `Modules/Document/TitleTest.php` (0401) — confirms
+  `MintWiki\Document\Title::normalize()` trims/collapses whitespace and
+  rejects empty/whitespace-only titles with `EmptyTitleError`
+  (`EmptyTitleError::CODE === 'document.empty_title'`), using the same
+  scenarios as `tests/modules/document/fixtures/`. Run it with
+  `php tests/Modules/Document/TitleTest.php` from `php/` after
   `composer install`.
 
 Fixture runners (0406, 0407, ...) are added by later Phase B tasks and
