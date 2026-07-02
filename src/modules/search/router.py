@@ -1,4 +1,4 @@
-"""검색 모듈의 HTTP 어댑터: 제목 검색 API."""
+"""검색 모듈의 HTTP 어댑터: 제목 검색 API, 본문 검색 API."""
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -47,6 +47,49 @@ async def search_by_title(
     """
     try:
         query = SearchQuery(term=title, limit=limit, offset=offset)
+    except EmptySearchQueryTermError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
+
+    results = await service.search(query)
+    return SearchResponse(
+        results=[
+            SearchResultResponse(
+                document_id=result.document.document_id,
+                title=result.document.title,
+                score=result.score,
+            )
+            for result in results
+        ]
+    )
+
+
+@router.get("/body", tags=["search"])
+async def search_by_body(
+    body: str = Query(...),
+    limit: Optional[int] = Query(default=None, ge=1),
+    offset: int = Query(default=0, ge=0),
+    service: SearchService = Depends(get_search_service),
+) -> SearchResponse:
+    """
+    본문 검색 질의어로 문서를 검색한다.
+
+    Args:
+        body: 검색 질의어 (쿼리 파라미터)
+        limit: 반환할 최대 결과 개수 (쿼리 파라미터, 선택사항)
+        offset: 건너뛸 결과 개수 (쿼리 파라미터, 기본값 0)
+        service: 검색 서비스
+
+    Returns:
+        질의어와 관련된 검색 결과 목록
+
+    Raises:
+        HTTPException: 질의어가 비어있는 경우 422 반환
+    """
+    try:
+        query = SearchQuery(term=body, limit=limit, offset=offset)
     except EmptySearchQueryTermError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

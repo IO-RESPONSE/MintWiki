@@ -29,10 +29,11 @@ depend on: it wraps a `SearchAdapter` and delegates `index_document()`,
 `SearchDocument`s and ranking query results are filled in by later tasks.
 
 `router` (`router.py`) is an `APIRouter`, not yet registered in `main.py`.
-It exposes `GET /title`, which reads a required `title` query parameter plus
-optional `limit`/`offset` pagination parameters, builds a `SearchQuery`, and
-delegates to a `SearchService` pulled from `request.app.state.search_service`
-(the app or test that mounts the router is responsible for setting this).
-An empty or whitespace-only `title` returns `422`. Results are returned as a
+It exposes `GET /title` and `GET /body`, each reading a required query
+parameter (`title` or `body`, respectively) plus optional `limit`/`offset`
+pagination parameters, building a `SearchQuery`, and delegating to a
+`SearchService` pulled from `request.app.state.search_service` (the app or
+test that mounts the router is responsible for setting this). An empty or
+whitespace-only query parameter returns `422`. Results are returned as a
 `SearchResponse` (see `schema.py`) listing each match's `document_id`,
 `title`, and `score`. Indexing HTTP routes are wired up in later tasks.

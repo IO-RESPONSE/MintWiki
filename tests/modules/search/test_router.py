@@ -17,7 +17,7 @@ class TestSearchRouterSkeleton:
 
 
 class TestSearchRouteRegistration:
-    """search 라우터에 제목 검색 라우트가 등록되어 있는지 확인한다."""
+    """search 라우터에 제목/본문 검색 라우트가 등록되어 있는지 확인한다."""
 
     def _registered_routes(self):
         return {
@@ -29,9 +29,12 @@ class TestSearchRouteRegistration:
     def test_search_by_title_route_is_registered(self):
         assert ("/title", "GET") in self._registered_routes()
 
+    def test_search_by_body_route_is_registered(self):
+        assert ("/body", "GET") in self._registered_routes()
+
     def test_no_unexpected_routes_are_registered(self):
         """의도하지 않은 라우트가 실수로 추가되지 않았는지 확인한다."""
-        assert self._registered_routes() == {("/title", "GET")}
+        assert self._registered_routes() == {("/title", "GET"), ("/body", "GET")}
 
 
 @pytest.fixture
@@ -157,5 +160,115 @@ class TestSearchByTitle:
     def test_search_by_title_with_negative_offset_returns_422(self, client: TestClient):
         """엔드포인트는 음수 offset으로 요청하면 422를 반환한다."""
         response = client.get("/title", params={"title": "Apple", "offset": -1})
+
+        assert response.status_code == 422
+
+
+class TestSearchByBody:
+    """본문 검색 엔드포인트 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_search_by_body_returns_matching_document(
+        self, app: FastAPI, client: TestClient
+    ):
+        """엔드포인트는 본문에 질의어가 포함된 문서를 반환한다."""
+        await app.state.search_service.index_document(
+            SearchDocument(document_id="doc1", title="Doc One", body="Hello World")
+        )
+
+        response = client.get("/body", params={"body": "Hello"})
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["results"]) == 1
+        assert data["results"][0]["document_id"] == "doc1"
+        assert data["results"][0]["title"] == "Doc One"
+        assert data["results"][0]["score"] == 1.0
+
+    @pytest.mark.asyncio
+    async def test_search_by_body_returns_empty_list_when_no_match(
+        self, app: FastAPI, client: TestClient
+    ):
+        """엔드포인트는 일치하는 문서가 없으면 빈 목록을 반환한다."""
+        await app.state.search_service.index_document(
+            SearchDocument(document_id="doc1", title="Doc One", body="Hello World")
+        )
+
+        response = client.get("/body", params={"body": "Nonexistent"})
+
+        assert response.status_code == 200
+        assert response.json()["results"] == []
+
+    @pytest.mark.asyncio
+    async def test_search_by_body_returns_all_matching_documents(
+        self, app: FastAPI, client: TestClient
+    ):
+        """엔드포인트는 질의어에 일치하는 여러 문서를 모두 반환한다."""
+        await app.state.search_service.index_document(
+            SearchDocument(document_id="doc1", title="Doc One", body="Apple Pie")
+        )
+        await app.state.search_service.index_document(
+            SearchDocument(document_id="doc2", title="Doc Two", body="Apple Juice")
+        )
+        await app.state.search_service.index_document(
+            SearchDocument(document_id="doc3", title="Doc Three", body="Banana Bread")
+        )
+
+        response = client.get("/body", params={"body": "Apple"})
+
+        assert response.status_code == 200
+        result_ids = {result["document_id"] for result in response.json()["results"]}
+        assert result_ids == {"doc1", "doc2"}
+
+    def test_search_by_body_without_body_param_returns_422(self, client: TestClient):
+        """엔드포인트는 body 쿼리 파라미터 없이 요청하면 422를 반환한다."""
+        response = client.get("/body")
+
+        assert response.status_code == 422
+
+    def test_search_by_body_with_empty_body_returns_422(self, client: TestClient):
+        """엔드포인트는 빈 질의어로 요청하면 422를 반환한다."""
+        response = client.get("/body", params={"body": ""})
+
+        assert response.status_code == 422
+        assert "detail" in response.json()
+
+    def test_search_by_body_with_whitespace_only_body_returns_422(
+        self, client: TestClient
+    ):
+        """엔드포인트는 공백만 있는 질의어로 요청하면 422를 반환한다."""
+        response = client.get("/body", params={"body": "   "})
+
+        assert response.status_code == 422
+        assert "detail" in response.json()
+
+    @pytest.mark.asyncio
+    async def test_search_by_body_applies_limit_and_offset(
+        self, app: FastAPI, client: TestClient
+    ):
+        """엔드포인트는 limit과 offset 쿼리 파라미터로 결과를 제한한다."""
+        for i in range(3):
+            await app.state.search_service.index_document(
+                SearchDocument(
+                    document_id=f"doc{i}", title=f"Doc {i}", body=f"Apple {i}"
+                )
+            )
+
+        response = client.get(
+            "/body", params={"body": "Apple", "limit": 1, "offset": 1}
+        )
+
+        assert response.status_code == 200
+        assert len(response.json()["results"]) == 1
+
+    def test_search_by_body_with_invalid_limit_returns_422(self, client: TestClient):
+        """엔드포인트는 0 이하의 limit으로 요청하면 422를 반환한다."""
+        response = client.get("/body", params={"body": "Apple", "limit": 0})
+
+        assert response.status_code == 422
+
+    def test_search_by_body_with_negative_offset_returns_422(self, client: TestClient):
+        """엔드포인트는 음수 offset으로 요청하면 422를 반환한다."""
+        response = client.get("/body", params={"body": "Apple", "offset": -1})
 
         assert response.status_code == 422
