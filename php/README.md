@@ -34,6 +34,11 @@ See `docs/php-static-analysis-plan.md` for the plan (tool choice and
 adoption triggers) around introducing PHPStan or Psalm — no static
 analysis tool is installed yet.
 
+See `docs/php-runtime-docker-note.md` for how to run the `php/` tests in
+a Docker container when the `php` CLI is not installed locally — that
+note is local-test convenience only and does not change the shared
+hosting deployment target.
+
 Contract manifests, fixtures, and policies that this tree must eventually
 satisfy live under `src/modules/*/manifest.json` and `docs/` — see
 `docs/php-replacement-strategy.md` for the readiness gate each module must
