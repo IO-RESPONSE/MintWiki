@@ -207,6 +207,16 @@ PHP test suite.
   `php tests/Modules/Audit/AuditEventTest.php` from `php/` after
   `composer install`.
 
+- `Modules/Admin/ServiceTest.php` (0414) — confirms `MintWiki\Admin\Service`
+  exposes the six placeholder methods (`blockUser`/`unblockUser`/
+  `protectPage`/`unprotectPage`/`submitReport`/`resolveReport`) matching
+  `src/modules/admin/manifest.json`'s `service.public_methods`, and that
+  calling any of them throws `\LogicException` — the Python admin
+  implementation does not exist yet (tasks 0345-0350 are still queued),
+  so this task only reserves the method names. Run it with
+  `php tests/Modules/Admin/ServiceTest.php` from `php/` after
+  `composer install`.
+
 Further fixture runners (...) are added by later Phase B tasks and must
 likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
