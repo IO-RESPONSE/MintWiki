@@ -25,6 +25,14 @@ interface shape only. Its constructor stores connection settings (`host`,
 actual Meilisearch client integration and wiring through
 `SearchAdapterConfig` are filled in by later tasks.
 
+`OpenSearchSearchAdapter` (`opensearch_adapter.py`) is a skeleton for an
+external OpenSearch-backed adapter: it implements the `SearchAdapter`
+interface shape only. Its constructor stores connection settings (`host`,
+`index_name`, optional `api_key`) for a future OpenSearch client, but
+`index()`, `search()`, and `delete()` all raise `NotImplementedError`. The
+actual OpenSearch client integration and wiring through
+`SearchAdapterConfig` are filled in by later tasks.
+
 `SearchQuery` (`query.py`) carries the search term plus pagination
 parameters: `limit` (max results to return, `None` means no limit) and
 `offset` (results to skip, defaults to `0`). `limit` below `1` raises

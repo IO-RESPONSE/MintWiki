@@ -17,8 +17,9 @@ class TestSearchPackageExports:
         모델(SearchQuery, 페이지네이션 파라미터 포함), 검색 결과 모델
         (SearchResult), 검색 어댑터 인터페이스(SearchAdapter), 메모리
         기반 검색 어댑터 구현(InMemorySearchAdapter), Meilisearch 검색
-        어댑터 골격(MeilisearchSearchAdapter), 어댑터로 위임하는 검색
-        서비스 골격(SearchService), 문서 색인 작업 페이로드
+        어댑터 골격(MeilisearchSearchAdapter), OpenSearch 검색 어댑터
+        골격(OpenSearchSearchAdapter), 어댑터로 위임하는 검색 서비스
+        골격(SearchService), 문서 색인 작업 페이로드
         (IndexDocumentJobPayload), 사용할 검색 어댑터 구현을 고르는 설정
         (SearchAdapterConfig), 그리고 그 오류 타입들만 export한다.
         """
@@ -35,6 +36,7 @@ class TestSearchPackageExports:
             "SearchAdapter",
             "InMemorySearchAdapter",
             "MeilisearchSearchAdapter",
+            "OpenSearchSearchAdapter",
             "SearchService",
             "IndexDocumentJobPayload",
             "SearchAdapterConfig",
