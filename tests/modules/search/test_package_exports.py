@@ -21,7 +21,8 @@ class TestSearchPackageExports:
         골격(OpenSearchSearchAdapter), 어댑터로 위임하는 검색 서비스
         골격(SearchService), 문서 색인 작업 페이로드
         (IndexDocumentJobPayload), 사용할 검색 어댑터 구현을 고르는 설정
-        (SearchAdapterConfig), 그리고 그 오류 타입들만 export한다.
+        (SearchAdapterConfig), 한국어 텍스트 정규화 자리표시자
+        (normalize_korean_text), 그리고 그 오류 타입들만 export한다.
         """
         assert search.__all__ == [
             "SearchDocument",
@@ -41,6 +42,7 @@ class TestSearchPackageExports:
             "IndexDocumentJobPayload",
             "SearchAdapterConfig",
             "InvalidSearchAdapterBackendError",
+            "normalize_korean_text",
         ]
         for name in search.__all__:
             assert hasattr(search, name)

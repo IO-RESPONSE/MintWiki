@@ -75,6 +75,14 @@ raises `InvalidSearchAdapterBackendError`. `meilisearch`/`opensearch`
 backends are added, along with the wiring that reads this config to build
 the adapter, in later tasks.
 
+`normalize_korean_text` (`normalization.py`) is a Korean text normalization
+placeholder: it currently only applies Unicode NFC normalization, composing
+decomposed Hangul jamo (initial/medial/final consonants entered as separate
+characters) into precomposed syllables so comparisons are consistent across
+adapters. It is not yet wired into `InMemorySearchAdapter` or any other
+adapter. Real Korean-specific normalization (josa/eomi stripping, initial
+consonant (초성) search support, etc.) is filled in by later tasks.
+
 `router` (`router.py`) is an `APIRouter`, not yet registered in `main.py`.
 It exposes `GET /title` and `GET /body`, each reading a required query
 parameter (`title` or `body`, respectively) plus optional `limit`/`offset`

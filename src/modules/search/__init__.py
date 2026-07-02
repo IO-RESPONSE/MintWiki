@@ -21,6 +21,7 @@ from modules.search.opensearch_adapter import OpenSearchSearchAdapter
 from modules.search.service import SearchService
 from modules.search.job_payload import IndexDocumentJobPayload
 from modules.search.config import SearchAdapterConfig, InvalidSearchAdapterBackendError
+from modules.search.normalization import normalize_korean_text
 
 __all__ = [
     "SearchDocument",
@@ -40,4 +41,5 @@ __all__ = [
     "IndexDocumentJobPayload",
     "SearchAdapterConfig",
     "InvalidSearchAdapterBackendError",
+    "normalize_korean_text",
 ]
