@@ -13,8 +13,9 @@ class TestJobsPackageExports:
         """__all__ 에 선언된 이름이 실제 모듈 속성으로 존재한다.
 
         잡 상태, 핸들러, 실행기 등 나머지 계약은 후속 태스크에서
-        추가되므로, 현재는 공통 페이로드 기반 클래스만 검증한다.
+        추가되므로, 현재는 공통 페이로드 기반 클래스와 결과 값
+        객체만 검증한다.
         """
-        assert jobs.__all__ == ["JobPayload"]
+        assert jobs.__all__ == ["JobPayload", "JobResult", "InvalidJobResultError"]
         for name in jobs.__all__:
             assert hasattr(jobs, name)
