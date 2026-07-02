@@ -247,6 +247,18 @@ PHP test suite.
   lands in 0616. Run it with `php tests/App/ConfigLoaderTest.php` from
   `php/` after `composer install`.
 
+- `Support/FixtureLoader.php` / `Support/FixtureLoaderTest.php` (0425) —
+  `FixtureLoader` reads the cross-language JSON fixtures under the
+  repository root's `tests/modules/<module>/fixtures/` and
+  `tests/fixtures/` (`docs/fixture-directory-convention.md`) with
+  `json_decode`, providing `moduleFixtureDir()`/`sharedFixtureDir()`/
+  `listFixtures()`/`loadFixture()` for reuse by future module parity
+  tests (`docs/php-parity-test-plan.md`'s 0426+ plan). It does not
+  replace `Modules/Parser/FixtureRunner.php` or `Modules/Render/
+  FixtureRunner.php`, which predate this task and keep their own
+  loading logic. Run it with `php tests/Support/FixtureLoaderTest.php`
+  from `php/` after `composer install`.
+
 Further fixture runners (...) are added by later Phase B tasks and must
 likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
