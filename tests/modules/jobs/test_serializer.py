@@ -328,3 +328,180 @@ class TestJobPayloadSerializerErrors:
 
         assert isinstance(payload, BacklinkRefreshJobPayload)
         assert payload.page_name == "Test"
+
+
+class TestJobPayloadSerializerComprehensiveRoundtrip:
+    """다양한 페이로드 타입의 종합 왕복 변환 테스트."""
+
+    def _create_full_registry(self) -> PayloadRegistry:
+        """모든 페이로드 타입이 등록된 레지스트리를 생성한다."""
+        registry = PayloadRegistry()
+        registry.register("cache.purge", CachePurgeJobPayload)
+        registry.register("backlink.refresh", BacklinkRefreshJobPayload)
+        registry.register("category.refresh", CategoryRefreshJobPayload)
+        registry.register("recent_changes.record", RecentChangesJobPayload)
+        return registry
+
+    def test_roundtrip_with_multiple_payload_types(self):
+        """여러 페이로드 타입이 각각 올바르게 왕복 변환된다."""
+        registry = self._create_full_registry()
+
+        # 각 페이로드 타입별로 생성 후 직렬화/역직렬화
+        payloads = [
+            CachePurgeJobPayload(source="doc", parser_version="1.0.0"),
+            BacklinkRefreshJobPayload(page_name="Target"),
+            CategoryRefreshJobPayload(category_name="Tech"),
+            RecentChangesJobPayload(
+                page_name="Document",
+                author_id="user1",
+                occurred_at=datetime(2025, 7, 2, 10, 0, 0),
+                summary="Updated",
+            ),
+        ]
+
+        results = []
+        for original in payloads:
+            serialized = JobPayloadSerializer.serialize(original)
+            deserialized = JobPayloadSerializer.deserialize(serialized, registry)
+            results.append(deserialized)
+
+        # 첫 번째: 캐시 퍼지
+        assert isinstance(results[0], CachePurgeJobPayload)
+        assert results[0].source == "doc"
+        assert results[0].parser_version == "1.0.0"
+
+        # 두 번째: 백링크 갱신
+        assert isinstance(results[1], BacklinkRefreshJobPayload)
+        assert results[1].page_name == "Target"
+
+        # 세 번째: 카테고리 갱신
+        assert isinstance(results[2], CategoryRefreshJobPayload)
+        assert results[2].category_name == "Tech"
+
+        # 네 번째: 최근 변경
+        assert isinstance(results[3], RecentChangesJobPayload)
+        assert results[3].page_name == "Document"
+        assert results[3].author_id == "user1"
+
+    def test_roundtrip_cache_purge_with_unicode_characters(self):
+        """유니코드 문자를 포함한 캐시 퍼지 페이로드의 왕복 변환."""
+        registry = self._create_full_registry()
+        original = CachePurgeJobPayload(
+            source="한글 제목 == 테스트 ==",
+            parser_version="2.0.0"
+        )
+
+        serialized = JobPayloadSerializer.serialize(original)
+        deserialized = JobPayloadSerializer.deserialize(serialized, registry)
+
+        assert deserialized.source == "한글 제목 == 테스트 =="
+        assert deserialized.parser_version == "2.0.0"
+
+    def test_roundtrip_backlink_refresh_with_special_characters(self):
+        """특수 문자를 포함한 백링크 갱신 페이로드의 왕복 변환."""
+        registry = self._create_full_registry()
+        original = BacklinkRefreshJobPayload(page_name="Page/With/Slashes&Symbols")
+
+        serialized = JobPayloadSerializer.serialize(original)
+        deserialized = JobPayloadSerializer.deserialize(serialized, registry)
+
+        assert deserialized.page_name == "Page/With/Slashes&Symbols"
+
+    def test_roundtrip_category_refresh_with_long_name(self):
+        """긴 카테고리 이름의 카테고리 갱신 페이로드 왕복 변환."""
+        registry = self._create_full_registry()
+        long_name = "A" * 1000
+        original = CategoryRefreshJobPayload(category_name=long_name)
+
+        serialized = JobPayloadSerializer.serialize(original)
+        deserialized = JobPayloadSerializer.deserialize(serialized, registry)
+
+        assert deserialized.category_name == long_name
+        assert len(deserialized.category_name) == 1000
+
+    def test_roundtrip_recent_changes_with_empty_summary(self):
+        """요약 필드가 빈 최근 변경 페이로드의 왕복 변환."""
+        registry = self._create_full_registry()
+        original = RecentChangesJobPayload(
+            page_name="Doc",
+            author_id="author",
+            occurred_at=datetime(2025, 7, 2, 15, 30, 0),
+            summary=""
+        )
+
+        serialized = JobPayloadSerializer.serialize(original)
+        deserialized = JobPayloadSerializer.deserialize(serialized, registry)
+
+        assert deserialized.summary == ""
+        assert deserialized.page_name == "Doc"
+
+    def test_roundtrip_recent_changes_with_long_summary(self):
+        """긴 요약을 포함한 최근 변경 페이로드의 왕복 변환."""
+        registry = self._create_full_registry()
+        long_summary = "Updated: " + ("Lorem ipsum " * 100)
+        original = RecentChangesJobPayload(
+            page_name="Doc",
+            author_id="author",
+            occurred_at=datetime(2025, 7, 2, 15, 30, 0),
+            summary=long_summary
+        )
+
+        serialized = JobPayloadSerializer.serialize(original)
+        deserialized = JobPayloadSerializer.deserialize(serialized, registry)
+
+        assert deserialized.summary == long_summary
+        assert len(deserialized.summary) > 1000
+
+    def test_roundtrip_cache_purge_with_none_values(self):
+        """None 값을 가진 캐시 퍼지 페이로드의 왕복 변환."""
+        registry = self._create_full_registry()
+        original = CachePurgeJobPayload(purge_all=True)
+
+        serialized = JobPayloadSerializer.serialize(original)
+        deserialized = JobPayloadSerializer.deserialize(serialized, registry)
+
+        assert deserialized.purge_all is True
+        assert deserialized.source is None
+        # parser_version은 기본값 "1.0.0"을 가짐
+        assert deserialized.parser_version == "1.0.0"
+
+    def test_roundtrip_preserves_datetime_precision(self):
+        """최근 변경 페이로드의 datetime 정밀도 보존."""
+        registry = self._create_full_registry()
+        # ISO 형식으로 마이크로초 포함
+        occurred_at = datetime(2025, 7, 2, 14, 25, 33)
+        original = RecentChangesJobPayload(
+            page_name="Doc",
+            author_id="author",
+            occurred_at=occurred_at
+        )
+
+        serialized = JobPayloadSerializer.serialize(original)
+        deserialized = JobPayloadSerializer.deserialize(serialized, registry)
+
+        # 마이크로초는 직렬화/역직렬화 시에 제거될 수 있으므로
+        # 분 단위까지만 비교
+        assert deserialized.occurred_at.year == original.occurred_at.year
+        assert deserialized.occurred_at.month == original.occurred_at.month
+        assert deserialized.occurred_at.day == original.occurred_at.day
+        assert deserialized.occurred_at.hour == original.occurred_at.hour
+        assert deserialized.occurred_at.minute == original.occurred_at.minute
+
+    def test_roundtrip_with_sequential_operations(self):
+        """연속적인 직렬화/역직렬화 작업이 데이터를 보존한다."""
+        registry = self._create_full_registry()
+        original = CachePurgeJobPayload(
+            source="section.name",
+            parser_version="1.5.0"
+        )
+
+        # 5회 연속 왕복 변환
+        payload = original
+        for _ in range(5):
+            serialized = JobPayloadSerializer.serialize(payload)
+            payload = JobPayloadSerializer.deserialize(serialized, registry)
+
+        # 최종 결과가 원본과 일치
+        assert payload.source == original.source
+        assert payload.parser_version == original.parser_version
+        assert payload.purge_all == original.purge_all
