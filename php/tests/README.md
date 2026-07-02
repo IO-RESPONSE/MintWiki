@@ -16,6 +16,11 @@ PHP test suite.
   returns the `method`, `path`, `query`, `body`, and `headers` passed to
   its constructor (and sensible defaults when omitted). Run it with
   `php tests/Http/RequestTest.php` from `php/` after `composer install`.
+- `Http/RouterTest.php` (0397) — confirms `MintWiki\Http\Router` matches
+  a registered route only when both method (case-insensitively) and path
+  match exactly, and returns `null` otherwise (no dynamic segments or
+  partial matches). Run it with `php tests/Http/RouterTest.php` from
+  `php/` after `composer install`.
 
 Fixture runners (0398, 0406, 0407, ...) are added by later Phase B tasks
 and must likewise run without any network dependency

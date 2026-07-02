@@ -37,3 +37,8 @@ class TestPhpRuntimeSkeleton:
         """0396부터 `src/Http`에 Request value object가 들어온다."""
         request_file = PHP_ROOT / "src" / "Http" / "Request.php"
         assert request_file.is_file(), "missing php/src/Http/Request.php"
+
+    def test_src_http_contains_router_skeleton(self):
+        """0397부터 `src/Http`에 정적 route 매칭만 지원하는 Router가 들어온다."""
+        router_file = PHP_ROOT / "src" / "Http" / "Router.php"
+        assert router_file.is_file(), "missing php/src/Http/Router.php"
