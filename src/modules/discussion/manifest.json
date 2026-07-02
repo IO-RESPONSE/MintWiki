@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "module": "discussion",
+  "summary": "Owns document discussion workflows: threads, comments, thread state, and discussion-specific logs.",
+  "port": {
+    "source_path": "src/modules/discussion",
+    "target_namespace": "MintWiki\\Discussion",
+    "status": "not_started"
+  },
+  "service": {
+    "path": "src/modules/discussion/service.py",
+    "public_methods": [
+      "create_thread",
+      "get_thread",
+      "list_threads_by_document_id",
+      "close_thread",
+      "reopen_thread",
+      "pause_thread",
+      "add_comment",
+      "list_comments_by_thread_id",
+      "hide_comment"
+    ]
+  },
+  "repository": {
+    "port_path": "src/modules/discussion/repository.py",
+    "interface": "DiscussionRepository",
+    "adapter_path": "src/modules/discussion/repository.py"
+  },
+  "fixtures": {
+    "path": "tests/modules/discussion/fixtures",
+    "format": "json"
+  },
+  "contract_notes": [
+    "thread 상태 계약: DiscussionThread.status(thread.py)는 'open'(기본값)/'closed'/'paused' 세 값을 갖는 평범한 문자열이다. ThreadState(state.py)는 같은 세 값을 가진 별도의 Enum 이지만 thread.py/service.py/repository.py 어디에서도 참조되지 않으며 status 는 이 enum 으로 검증되지 않는다. close()/reopen()/pause() 는 현재 상태와 무관하게 항상 성공하는 무조건 전이이며, 잘못된 전이라는 개념이 없다(자기 자신으로의 전이 포함). is_open()/is_paused() 만 status 문자열 비교로 파생되며 is_closed() 는 없다 — closed 여부는 'not is_open() and not is_paused()'로 판단해야 한다.",
+    "thread 타임스탬프 계약: closed_at/paused_at 은 서로 배타적이지 않고 상호 초기화되지 않는다. reopen() 만 closed_at 을 None 으로 지우며 paused_at 은 건드리지 않는다. close() 는 closed_at 만 설정하고 paused_at 을 리셋하지 않으며, pause() 는 그 반대다. 호출자는 status 필드만으로 현재 상태를 판단해야 하며 'closed_at/paused_at 이 설정되어 있는지'로 판단하면 안 된다.",
+    "comment 계약: DiscussionComment(comment.py)는 id/thread_id/body/created_by/created_at/is_hidden/hidden_at 을 가지며, hide(now) 가 유일한 모더레이션 동작이다(is_hidden=True, hidden_at=now 로 설정, unhide/show 는 없음). hide() 는 이미 숨겨진 댓글에도 멱등하게 재적용되며 hidden_at 만 갱신된다. body 자체는 hide() 로 지워지거나 덮어써지지 않는다 — 숨김은 순수하게 뷰 레벨 결정이다.",
+    "comment 뷰 계약: to_public_view()/to_moderator_view() 는 id/thread_id/created_by/created_at/is_hidden/hidden_at 다섯 필드를 동일하게 포함하고 body 필드만 다르다. to_public_view() 는 is_hidden=True 일 때 body 를 None 으로 가리며, to_moderator_view() 는 is_hidden 값과 무관하게 항상 실제 body 를 반환한다. hide_comment(comment_id, actor_id=None) 는 actor_id 를 ACL 역할이나 권한 검사 없이 임의의 문자열로 받아들인다 — 어떤 뷰를 호출할지 선택하는 것도 가드 없는 단순 메서드 호출이다.",
+    "상태는 댓글을 막지 않는다: DiscussionService.add_comment()/hide_comment() 는 thread.is_open()/is_paused() 를 확인하지 않는다. 닫히거나 일시정지된 스레드에도 열린 스레드와 동일하게 댓글을 추가/숨김 처리할 수 있다.",
+    "감사 로그 계약: DiscussionAuditRecorder(audit_recorder.py)는 record_thread_created() 와 record_comment_hidden() 만 구현한다. DiscussionAuditAction 이 THREAD_CLOSED/THREAD_REOPENED/THREAD_PAUSED 를 정의하지만 close_thread()/reopen_thread()/pause_thread() 는 감사 이벤트를 기록하지 않는다. hide_comment() 는 존재하지 않는 댓글이면 DiscussionCommentNotFoundError 를 먼저 던지고 이 경우 감사 이벤트를 남기지 않는다.",
+    "HTTP 노출 범위: router.py 는 스레드 생성/조회/닫기(POST /threads, GET /threads, POST /threads/{id}/close)와 댓글 생성/조회(POST, GET /threads/{id}/comments)만 노출한다. reopen_thread()/pause_thread()/hide_comment() 는 DiscussionService 에는 존재하지만 라우트가 연결되어 있지 않아 in-process/테스트에서만 호출 가능하다.",
+    "discussion 은 저장소 포트(DiscussionRepository ABC)를 하나만 가지며 스레드/댓글 두 애그리게이트를 모두 다룬다. 현재 유일한 구현은 InMemoryDiscussionRepository(repository.py)이며, DB 마이그레이션은 아직 없다 — 자세한 계획은 src/modules/discussion/README.md 의 'Discussion Migration Planning Note' 참고.",
+    "fixtures 디렉터리(tests/modules/discussion/fixtures)는 아직 채워지지 않았다. 현재 픽스처는 src/modules/discussion/fixtures.py(DiscussionFixtureLoader)에 Python 객체로 존재하며, 공용 JSON fixture 변환은 태스크 0370 에서 진행한다.",
+    "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
+  ]
+}
