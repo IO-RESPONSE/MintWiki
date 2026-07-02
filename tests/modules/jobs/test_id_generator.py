@@ -24,6 +24,16 @@ class TestGenerateJobId:
         assert id2 != id3
         assert id1 != id3
 
+    def test_generates_unique_ids_large_sample(self):
+        """대량 생성 시 모든 ID가 고유한지 확인한다."""
+        # 1000개의 ID를 생성하여 중복이 없는지 확인
+        num_ids = 1000
+        generated_ids = [generate_job_id() for _ in range(num_ids)]
+
+        # 중복 없이 모두 고유해야 함
+        unique_ids = set(generated_ids)
+        assert len(unique_ids) == num_ids, f"중복된 ID 감지: {num_ids}개 생성, {len(unique_ids)}개 고유"
+
     def test_generated_id_is_non_empty_string(self):
         """생성된 ID가 비어있지 않은 문자열인지 확인한다."""
         job_id = generate_job_id()
