@@ -180,3 +180,13 @@ TNTSearch for the eventual PHP/MariaDB reimplementation specifically because
 that target excludes introducing an extra search service. Meilisearch and
 OpenSearch are candidates for this repository's current Python/FastAPI stack
 only; they do not change the PHP migration target.
+
+## Search Quality Baseline
+
+[`search-quality-baseline.md`](search-quality-baseline.md) records the
+current matching/ranking characteristics of `InMemorySearchAdapter` (plain
+substring matching, no ranking, no Korean-specific handling) along with a
+table of expected results over the `SearchFixtureLoader` fixture corpus.
+`tests/modules/search/test_quality_baseline.py` pins that table as a
+regression test, so later quality improvements have a documented "before"
+state to compare against.
