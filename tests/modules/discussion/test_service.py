@@ -130,6 +130,45 @@ class TestDiscussionServiceThreads:
         assert result[0].title == "제목1"
 
     @pytest.mark.asyncio
+    async def test_list_threads_by_document_id_applies_limit_only(self):
+        """서비스는 offset 없이 limit만 지정해도 저장소에 그대로 전달한다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        for i in range(3):
+            await service.create_thread(
+                document_id="doc1", title=f"제목{i}", created_by="user1"
+            )
+
+        result = await service.list_threads_by_document_id("doc1", limit=2)
+
+        assert [t.title for t in result] == ["제목0", "제목1"]
+
+    @pytest.mark.asyncio
+    async def test_list_threads_by_document_id_applies_offset_only(self):
+        """서비스는 limit 없이 offset만 지정해도 저장소에 그대로 전달한다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        for i in range(3):
+            await service.create_thread(
+                document_id="doc1", title=f"제목{i}", created_by="user1"
+            )
+
+        result = await service.list_threads_by_document_id("doc1", offset=1)
+
+        assert [t.title for t in result] == ["제목1", "제목2"]
+
+    @pytest.mark.asyncio
+    async def test_list_threads_by_document_id_with_offset_beyond_total_returns_empty(self):
+        """서비스는 offset이 전체 개수를 넘으면 빈 목록을 반환한다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        await service.create_thread(document_id="doc1", title="제목", created_by="user1")
+
+        result = await service.list_threads_by_document_id("doc1", offset=10)
+
+        assert result == []
+
+    @pytest.mark.asyncio
     async def test_list_threads_for_nonexistent_document(self):
         """서비스는 없는 문서의 스레드를 조회하면 빈 목록을 반환한다."""
         repo = InMemoryDiscussionRepository()

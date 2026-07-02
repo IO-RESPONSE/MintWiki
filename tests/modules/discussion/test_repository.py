@@ -292,6 +292,46 @@ class TestInMemoryDiscussionRepository:
         assert [t.id for t in result] == ["thread2", "thread3"]
 
     @pytest.mark.asyncio
+    async def test_list_threads_by_document_id_with_offset_beyond_total_returns_empty(self):
+        """인메모리 저장소는 offset이 전체 개수를 넘으면 빈 목록을 반환한다."""
+        repo = InMemoryDiscussionRepository()
+        for i in range(3):
+            await repo.create_thread(
+                DiscussionThread(
+                    id=f"thread{i}",
+                    document_id="doc1",
+                    title=f"제목{i}",
+                    created_by="user1",
+                    created_at=datetime(2026, 1, i + 1, 0, 0, 0),
+                )
+            )
+
+        result = await repo.list_threads_by_document_id("doc1", offset=10)
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_list_threads_by_document_id_with_limit_larger_than_remaining_returns_remaining(
+        self,
+    ):
+        """인메모리 저장소는 limit이 남은 개수보다 크면 남은 스레드만 반환한다."""
+        repo = InMemoryDiscussionRepository()
+        for i in range(3):
+            await repo.create_thread(
+                DiscussionThread(
+                    id=f"thread{i}",
+                    document_id="doc1",
+                    title=f"제목{i}",
+                    created_by="user1",
+                    created_at=datetime(2026, 1, i + 1, 0, 0, 0),
+                )
+            )
+
+        result = await repo.list_threads_by_document_id("doc1", limit=10, offset=2)
+
+        assert [t.id for t in result] == ["thread2"]
+
+    @pytest.mark.asyncio
     async def test_list_threads_by_document_id_ignores_interleaved_other_documents(self):
         """인메모리 저장소는 다른 문서의 스레드가 섞여 생성되어도 대상 문서의 스레드만 생성 순서대로 나열한다."""
         repo = InMemoryDiscussionRepository()

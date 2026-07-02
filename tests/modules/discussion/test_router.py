@@ -166,6 +166,48 @@ class TestListThreads:
         titles = [thread["title"] for thread in response.json()["threads"]]
         assert titles == ["제목1"]
 
+    def test_list_threads_applies_limit_only(self, client: TestClient):
+        """엔드포인트는 offset 없이 limit만 지정해도 스레드 목록을 제한한다."""
+        for i in range(3):
+            client.post(
+                "/threads",
+                json={"document_id": "doc1", "title": f"제목{i}", "created_by": "user1"},
+            )
+
+        response = client.get("/threads", params={"document_id": "doc1", "limit": 2})
+
+        assert response.status_code == 200
+        titles = [thread["title"] for thread in response.json()["threads"]]
+        assert titles == ["제목0", "제목1"]
+
+    def test_list_threads_applies_offset_only(self, client: TestClient):
+        """엔드포인트는 limit 없이 offset만 지정해도 그만큼 건너뛴 스레드 목록을 반환한다."""
+        for i in range(3):
+            client.post(
+                "/threads",
+                json={"document_id": "doc1", "title": f"제목{i}", "created_by": "user1"},
+            )
+
+        response = client.get("/threads", params={"document_id": "doc1", "offset": 1})
+
+        assert response.status_code == 200
+        titles = [thread["title"] for thread in response.json()["threads"]]
+        assert titles == ["제목1", "제목2"]
+
+    def test_list_threads_with_offset_beyond_total_returns_empty_list(self, client: TestClient):
+        """엔드포인트는 offset이 전체 개수를 넘으면 빈 목록을 반환한다."""
+        client.post(
+            "/threads",
+            json={"document_id": "doc1", "title": "제목", "created_by": "user1"},
+        )
+
+        response = client.get(
+            "/threads", params={"document_id": "doc1", "offset": 10}
+        )
+
+        assert response.status_code == 200
+        assert response.json()["threads"] == []
+
     def test_list_threads_with_invalid_limit_returns_422(self, client: TestClient):
         """엔드포인트는 0 이하의 limit으로 요청하면 422를 반환한다."""
         response = client.get(
