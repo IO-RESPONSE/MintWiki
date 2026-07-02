@@ -27,6 +27,9 @@ def test_acl_package_exports_rule():
         "EmptyDocumentIdError",
         "Decision",
         "AclService",
+        "PUBLIC_READ_RULE_ID",
+        "default_rules",
+        "build_default_namespace_acl_defaults",
     ]
     assert modules.acl.Rule is Rule
 
@@ -63,3 +66,22 @@ def test_acl_package_exports_acl_service():
 
     assert "AclService" in modules.acl.__all__
     assert modules.acl.AclService is AclService
+
+
+def test_acl_package_exports_default_policy():
+    # 0158에서 공개 읽기 허용 기본 정책이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.default_policy import (
+        PUBLIC_READ_RULE_ID,
+        build_default_namespace_acl_defaults,
+        default_rules,
+    )
+
+    assert "PUBLIC_READ_RULE_ID" in modules.acl.__all__
+    assert "default_rules" in modules.acl.__all__
+    assert "build_default_namespace_acl_defaults" in modules.acl.__all__
+    assert modules.acl.PUBLIC_READ_RULE_ID is PUBLIC_READ_RULE_ID
+    assert modules.acl.default_rules is default_rules
+    assert (
+        modules.acl.build_default_namespace_acl_defaults
+        is build_default_namespace_acl_defaults
+    )
