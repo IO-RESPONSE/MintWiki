@@ -43,6 +43,17 @@ PHP test suite.
   `php tests/Modules/Document/TitleTest.php` from `php/` after
   `composer install`.
 
+- `Modules/Document/RepositoryTest.php` (0402) — confirms
+  `MintWiki\Document\Repository` is an interface implementable with the
+  `create`/`get`/`getByNormalizedTitle`/`update` contract from
+  `docs/repository-port-contracts.md` (via an anonymous in-memory
+  implementation), and that `DuplicateNormalizedTitleError::CODE` /
+  `NotFoundError::CODE` expose `document.duplicate_title` /
+  `document.not_found`. No concrete repository implementation ships in
+  this task — that lands in 0435. Run it with
+  `php tests/Modules/Document/RepositoryTest.php` from `php/` after
+  `composer install`.
+
 Fixture runners (0406, 0407, ...) are added by later Phase B tasks and
 must likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).

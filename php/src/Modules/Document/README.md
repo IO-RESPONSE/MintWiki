@@ -20,3 +20,18 @@ manifest 는 `src/modules/document/manifest.json` 이다.
 - `EmptyTitleError.php` (0401) — Python `EmptyTitleError`와 안정적인 error
   code(`docs/portable-exception-code-policy.md`)를 맞춘 예외.
   `EmptyTitleError::CODE`가 `document.empty_title`을 노출한다.
+- `Repository.php` (0402) — Python `DocumentRepository`
+  (`src/modules/document/repository.py`)와 메서드 계약을 맞춘 저장소
+  인터페이스(port). `docs/repository-port-contracts.md`의 document
+  섹션이 정본이다. 구현 없이 시그니처만 두며, `create`/`get`/
+  `getByNormalizedTitle`/`update` 네 메서드를 선언한다. 실제 구현체는
+  이후 태스크(0435 등)에서 추가된다.
+- `DuplicateNormalizedTitleError.php` (0402) — Python
+  `DuplicateNormalizedTitleError`와 안정적인 error code를 맞춘 예외.
+  `DuplicateNormalizedTitleError::CODE`가 `document.duplicate_title`을
+  노출한다. `Repository::create()`가 던질 수 있다.
+- `NotFoundError.php` (0402) — Python `DocumentNotFoundError`와 안정적인
+  error code를 맞춘 예외. `NotFoundError::CODE`가 `document.not_found`를
+  노출한다. `Repository::update()`가 던질 수 있다. 클래스 이름은
+  `docs/php-namespace-mapping.md`가 고정한 규칙대로 `MintWiki\Document`
+  namespace 안의 중복 `Document` 접두어를 뺀 것이다.
