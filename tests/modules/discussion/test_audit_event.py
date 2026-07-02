@@ -118,3 +118,8 @@ class TestDiscussionAuditEventActionChecks:
         event = self._make_event(DiscussionAuditAction.COMMENT_ADDED)
         assert event.is_comment_added() is True
         assert event.is_thread_paused() is False
+
+    def test_is_comment_hidden(self):
+        event = self._make_event(DiscussionAuditAction.COMMENT_HIDDEN)
+        assert event.is_comment_hidden() is True
+        assert event.is_comment_added() is False

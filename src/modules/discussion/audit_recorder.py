@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from modules.discussion.audit_event import DiscussionAuditAction, DiscussionAuditEvent
+from modules.discussion.comment import DiscussionComment
 from modules.discussion.thread import DiscussionThread
 
 
@@ -11,8 +12,8 @@ class DiscussionAuditRecorder:
     """
     토론 스레드/댓글 변경을 DiscussionAuditEvent로 기록하는 서비스.
 
-    현재는 스레드 생성 시점의 감사 이벤트만 기록하며, 다른 동작(스레드
-    상태 전환, 댓글 숨김 등)에 대한 기록은 이후 태스크에서 채워진다.
+    현재는 스레드 생성과 댓글 숨김 시점의 감사 이벤트만 기록하며, 다른
+    동작(스레드 상태 전환 등)에 대한 기록은 이후 태스크에서 채워진다.
     이벤트는 메모리에 누적되며, 영속화(저장소 연동)는 이후 태스크에서
     다룬다.
     """
@@ -40,6 +41,30 @@ class DiscussionAuditRecorder:
             thread_id=thread.id,
             occurred_at=datetime.now(timezone.utc),
             actor_id=actor_id if actor_id is not None else thread.created_by,
+        )
+        self._events.append(event)
+        return event
+
+    def record_comment_hidden(
+        self, comment: DiscussionComment, actor_id: Optional[str] = None
+    ) -> DiscussionAuditEvent:
+        """
+        댓글 숨김을 감사 이벤트로 기록한다.
+
+        Args:
+            comment: 숨겨진 토론 댓글
+            actor_id: 댓글을 숨긴 사용자(주로 모더레이터)의 id (선택사항)
+
+        Returns:
+            기록된 감사 이벤트
+        """
+        event = DiscussionAuditEvent(
+            id=str(uuid.uuid4()),
+            action=DiscussionAuditAction.COMMENT_HIDDEN,
+            thread_id=comment.thread_id,
+            occurred_at=datetime.now(timezone.utc),
+            comment_id=comment.id,
+            actor_id=actor_id,
         )
         self._events.append(event)
         return event

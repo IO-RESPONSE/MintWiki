@@ -14,6 +14,7 @@ class DiscussionAuditAction(Enum):
     THREAD_REOPENED = "thread_reopened"
     THREAD_PAUSED = "thread_paused"
     COMMENT_ADDED = "comment_added"
+    COMMENT_HIDDEN = "comment_hidden"
 
 
 class EmptyDiscussionAuditEventIdError(Exception):
@@ -94,3 +95,7 @@ class DiscussionAuditEvent:
     def is_comment_added(self) -> bool:
         """이벤트가 댓글 추가를 기록하는지 확인한다."""
         return self.action is DiscussionAuditAction.COMMENT_ADDED
+
+    def is_comment_hidden(self) -> bool:
+        """이벤트가 댓글 숨김을 기록하는지 확인한다."""
+        return self.action is DiscussionAuditAction.COMMENT_HIDDEN
