@@ -96,6 +96,17 @@ PHP test suite.
   `php tests/Modules/Parser/FixtureRunnerTest.php` from `php/` after
   `composer install`.
 
+- `Modules/Acl/DecisionTest.php` (0408) — confirms
+  `MintWiki\Acl\Decision` returns the `permission`, `allowed`, `reason`,
+  and `matchedRuleId` passed to its constructor (with `matchedRuleId`
+  defaulting to `null`), and that `isAllowed()`/`isDenied()` mirror the
+  `allowed` flag for both the matched-allow and matched-deny cases (a
+  denied decision can still carry `reason === 'acl.matched_rule'` when a
+  deny rule matched, versus `acl.no_matching_rule` when none did — see
+  `tests/modules/acl/fixtures/`). No rule-evaluation logic (`AclService`)
+  ships in this task. Run it with `php tests/Modules/Acl/DecisionTest.php`
+  from `php/` after `composer install`.
+
 - `Modules/Render/FixtureRunner.php` / `Modules/Render/FixtureRunnerTest.php`
   (0407) — `FixtureRunner` reads the cross-language JSON fixtures under
   `tests/modules/render/fixtures/` (`docs/cross-language-fixture-schema.md`)
