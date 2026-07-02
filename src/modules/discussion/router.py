@@ -10,6 +10,7 @@ from modules.discussion.comment import (
     EmptyCommentBodyError,
     EmptyCommentCreatedByError,
 )
+from modules.discussion.repository import DiscussionThreadNotFoundError
 from modules.discussion.schema import (
     AddCommentRequest,
     CommentResponse,
@@ -111,6 +112,40 @@ async def list_threads(
             )
             for thread in threads
         ]
+    )
+
+
+@router.post("/threads/{thread_id}/close", tags=["discussion"])
+async def close_thread(
+    thread_id: str,
+    service: DiscussionService = Depends(get_discussion_service),
+) -> ThreadResponse:
+    """
+    토론 스레드를 닫는다.
+
+    Args:
+        thread_id: 닫을 스레드의 id
+        service: 토론 서비스
+
+    Returns:
+        닫힌 스레드
+
+    Raises:
+        HTTPException: 스레드가 없는 경우 404 반환
+    """
+    try:
+        thread = await service.close_thread(thread_id)
+    except DiscussionThreadNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    return ThreadResponse(
+        id=thread.id,
+        document_id=thread.document_id,
+        title=thread.title,
+        created_by=thread.created_by,
+        status=thread.status,
     )
 
 

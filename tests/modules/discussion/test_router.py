@@ -128,6 +128,32 @@ class TestListThreads:
         assert response.status_code == 422
 
 
+class TestCloseThread:
+    """스레드 닫기 엔드포인트 테스트."""
+
+    def test_close_thread_with_valid_id(self, client: TestClient):
+        """엔드포인트는 열려 있는 스레드를 닫는다."""
+        create_response = client.post(
+            "/threads",
+            json={"document_id": "doc1", "title": "제목", "created_by": "user1"},
+        )
+        thread_id = create_response.json()["id"]
+
+        response = client.post(f"/threads/{thread_id}/close")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == thread_id
+        assert data["status"] == "closed"
+
+    def test_close_nonexistent_thread_returns_404(self, client: TestClient):
+        """엔드포인트는 존재하지 않는 스레드를 닫으려 하면 404를 반환한다."""
+        response = client.post("/threads/nonexistent-id/close")
+
+        assert response.status_code == 404
+        assert "detail" in response.json()
+
+
 class TestAddComment:
     """댓글 추가 엔드포인트 테스트."""
 
