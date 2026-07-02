@@ -229,6 +229,16 @@ PHP test suite.
   `tests/test_php_public_front_controller.py` (Python, `php -S`) in the
   repository root. Run it with `php tests/Http/HealthRouteTest.php` from
   `php/` after `composer install`.
+- `Http/DocumentApiRoutesTest.php` (0420) — confirms
+  `MintWiki\Http\DocumentApiRoutes::register()` registers the document API
+  paths that don't need a dynamic segment (`GET`/`POST /api/documents`,
+  `GET /api/documents/by-title`, matching `src/modules/document/router.py`'s
+  `/api/documents` prefix) on a `Router`, and that each returns a `501`
+  JSON response (`{"error": "not_implemented"}`) with no repository/service
+  wired up yet. Dynamic-segment paths (`/api/documents/{id}`,
+  `/api/documents/{id}/revisions`) are out of scope until `Router` supports
+  dynamic segments. Run it with `php tests/Http/DocumentApiRoutesTest.php`
+  from `php/` after `composer install`.
 - `App/ConfigLoaderTest.php` (0415) — confirms `MintWiki\App\ConfigLoader::get()`
   prefers a `WIKI_`-prefixed environment variable when set, falls back to
   the constructor-provided file-value array when the environment variable
