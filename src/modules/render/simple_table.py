@@ -2,6 +2,7 @@
 
 from typing import Dict, Any, List
 from modules.render.escape import escape_html
+from modules.render.css_sanitizer import sanitize_css_value
 
 # XSS 공격을 방지하기 위해 필터링해야 할 속성명 패턴
 UNSAFE_ATTRIBUTE_PATTERNS = {
@@ -48,6 +49,7 @@ def render_cell_attributes(cell_attrs: Dict[str, Any]) -> str:
     테이블 셀 속성을 HTML 속성 문자열로 렌더링한다.
 
     content 키는 제외하고, XSS 공격을 방지하기 위해 위험한 속성을 필터링한다.
+    style 속성의 경우 CSS 값 새니타이저를 사용하여 추가 보안 검증을 수행한다.
 
     Args:
         cell_attrs: 셀 속성 딕셔너리
@@ -63,8 +65,16 @@ def render_cell_attributes(cell_attrs: Dict[str, Any]) -> str:
         # 안전하지 않은 속성 필터링
         if not is_safe_attribute(key):
             continue
-        # 속성값 이스케이프
-        escaped_value = escape_attribute_value(value)
+        # style 속성은 CSS 값 새니타이저로 검증
+        if key.lower() == "style":
+            sanitized_value = sanitize_css_value(str(value))
+            if sanitized_value is None:
+                # 위험한 CSS 값은 건너뜀
+                continue
+            escaped_value = escape_attribute_value(sanitized_value)
+        else:
+            # 다른 속성값 이스케이프
+            escaped_value = escape_attribute_value(value)
         attrs.append(f'{key}="{escaped_value}"')
 
     return " ".join(attrs)

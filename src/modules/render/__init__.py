@@ -2,6 +2,7 @@
 
 from modules.render.escape import escape_html
 from modules.render.url_sanitizer import sanitize_url
+from modules.render.css_sanitizer import sanitize_css_value
 from modules.render.paragraph import render_plain_paragraph
 from modules.render.heading import render_heading, generate_heading_id
 from modules.render.internal_link import render_internal_link
@@ -18,4 +19,4 @@ from modules.render.nowiki import render_nowiki
 from modules.render.code_block import render_code_block
 from modules.render.model import RenderResult, RenderMetadata, Heading, Footnote
 
-__all__ = ["escape_html", "sanitize_url", "render_plain_paragraph", "render_heading", "generate_heading_id", "render_internal_link", "render_external_link", "render_bold", "render_italic", "render_strike", "render_unordered_list", "render_ordered_list", "render_line_break", "render_redirect_notice", "render_categories_metadata", "render_simple_table", "render_footnotes_section", "render_nowiki", "render_code_block", "RenderResult", "RenderMetadata", "Heading", "Footnote"]
+__all__ = ["escape_html", "sanitize_url", "sanitize_css_value", "render_plain_paragraph", "render_heading", "generate_heading_id", "render_internal_link", "render_external_link", "render_bold", "render_italic", "render_strike", "render_unordered_list", "render_ordered_list", "render_line_break", "render_redirect_notice", "render_categories_metadata", "render_simple_table", "render_footnotes_section", "render_nowiki", "render_code_block", "RenderResult", "RenderMetadata", "Heading", "Footnote"]

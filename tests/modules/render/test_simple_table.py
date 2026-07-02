@@ -737,3 +737,362 @@ class TestRenderSimpleTableEdgeCases:
         }
         result = render_simple_table(table)
         assert result == "<table><tr><td>cell1</td><td>cell2</td></tr></table>"
+
+
+class TestRenderSimpleTableStyleAttributes:
+    """단순 테이블 style 속성 테스트."""
+
+    def test_renders_safe_style_attribute(self):
+        """안전한 style 속성을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Styled Cell",
+                            "style": "color: red; padding: 10px",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'style="color: red; padding: 10px"' in result
+        assert "Styled Cell" in result
+
+    def test_renders_simple_color_style(self):
+        """단순 색상 style을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Red Text",
+                            "style": "color: red",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'style="color: red"' in result
+
+    def test_renders_background_color_style(self):
+        """배경색 style을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Highlighted",
+                            "style": "background-color: yellow",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'style="background-color: yellow"' in result
+
+    def test_blocks_expression_in_style(self):
+        """style 속성에서 expression을 차단한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "style": "width: expression(alert('xss'))",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        # style 속성이 렌더링되지 않아야 함
+        assert "style=" not in result
+        assert "expression" not in result
+        assert "Cell" in result
+
+    def test_blocks_behavior_in_style(self):
+        """style 속성에서 behavior를 차단한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "style": "behavior: url(xss.htc)",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert "style=" not in result
+        assert "behavior" not in result
+        assert "Cell" in result
+
+    def test_blocks_javascript_url_in_style(self):
+        """style 속성에서 javascript: URL을 차단한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "style": "background: url(javascript:alert('xss'))",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert "style=" not in result
+        assert "javascript" not in result
+        assert "Cell" in result
+
+    def test_blocks_data_url_in_style(self):
+        """style 속성에서 data: URL을 차단한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "style": "background: url(data:text/html,<script>alert('xss')</script>)",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert "style=" not in result
+        assert "data:" not in result or "alert" not in result
+        assert "Cell" in result
+
+    def test_blocks_var_function_in_style(self):
+        """style 속성에서 var() 함수를 차단한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "style": "color: var(--malicious)",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert "style=" not in result
+        assert "var(" not in result
+        assert "Cell" in result
+
+    def test_blocks_import_in_style(self):
+        """style 속성에서 @import를 차단한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "style": "@import url('http://malicious.com')",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert "style=" not in result
+        assert "@import" not in result
+        assert "Cell" in result
+
+    def test_renders_multiple_properties_in_style(self):
+        """여러 속성이 있는 style을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Styled",
+                            "style": "color: blue; font-size: 14px; padding: 5px",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'style="color: blue; font-size: 14px; padding: 5px"' in result
+
+    def test_style_with_important_declaration(self):
+        """!important가 있는 style을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Important",
+                            "style": "color: red !important",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'style="color: red !important"' in result
+
+    def test_style_with_calc_function(self):
+        """calc()를 포함한 style을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Calculated",
+                            "style": "width: calc(100% - 10px)",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'style="width: calc(100% - 10px)"' in result
+
+    def test_mixed_safe_style_and_unsafe_attributes(self):
+        """안전한 style과 unsafe 속성이 섞여 있을 때 처리한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "style": "color: red",
+                            "onclick": "alert('xss')",
+                            "class": "test",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        # 안전한 속성은 포함
+        assert 'style="color: red"' in result
+        assert 'class="test"' in result
+        # 위험한 속성은 제외
+        assert "onclick" not in result
+        assert "Cell" in result
+
+    def test_multiple_cells_with_different_styles(self):
+        """여러 셀이 다른 style을 가질 때 처리한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Red",
+                            "style": "color: red",
+                        },
+                        {
+                            "content": "Blue",
+                            "style": "color: blue",
+                        },
+                        {
+                            "content": "Green",
+                            "style": "color: green",
+                        },
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'style="color: red"' in result
+        assert 'style="color: blue"' in result
+        assert 'style="color: green"' in result
+
+    def test_style_with_hex_color(self):
+        """16진수 색상을 포함한 style을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Hex Color",
+                            "style": "color: #FF5733",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'style="color: #FF5733"' in result
+
+    def test_style_with_rgb_color(self):
+        """RGB 색상을 포함한 style을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "RGB Color",
+                            "style": "color: rgb(255, 87, 51)",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'style="color: rgb(255, 87, 51)"' in result
+
+    def test_empty_style_attribute(self):
+        """빈 style 속성을 처리한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "style": "",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        # 빈 style 속성도 안전한 것으로 렌더링
+        assert 'style=""' in result or "<td>Cell</td>" in result
