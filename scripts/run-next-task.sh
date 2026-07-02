@@ -85,6 +85,10 @@ finish_failed() {
   # 실패한 태스크를 failed/ 로 이동하고 커밋해 트리를 clean 상태로 만든다.
   mkdir -p "$FAILED_DIR"
   if [ -f "$failed_task_tmp" ]; then
+    # git reset --hard 가 큐 파일(queue/TASK)을 되살리므로, 명시적으로 큐에서 제거해
+    # 실패 태스크가 failed/ 에만 남게 한다. 이렇게 하지 않으면 다음 사이클이 같은
+    # 태스크를 다시 집어 무한 실패 루프에 빠진다.
+    rm -f "$QUEUE_DIR/$TASK_NAME"
     mv "$failed_task_tmp" "$FAILED_DIR/$TASK_NAME"
     git add -A >/dev/null 2>&1 || true
     git commit -q -m "태스크 ${TASK_NAME%.md} 실패" >/dev/null 2>&1 || true
