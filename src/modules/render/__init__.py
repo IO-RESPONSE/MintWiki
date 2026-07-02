@@ -11,5 +11,6 @@ from modules.render.ordered_list import render_ordered_list
 from modules.render.line_break import render_line_break
 from modules.render.redirect_notice import render_redirect_notice
 from modules.render.categories_metadata import render_categories_metadata
+from modules.render.simple_table import render_simple_table
 
-__all__ = ["escape_html", "render_plain_paragraph", "render_heading", "generate_heading_id", "render_internal_link", "render_external_link", "render_bold", "render_italic", "render_strike", "render_unordered_list", "render_ordered_list", "render_line_break", "render_redirect_notice", "render_categories_metadata"]
+__all__ = ["escape_html", "render_plain_paragraph", "render_heading", "generate_heading_id", "render_internal_link", "render_external_link", "render_bold", "render_italic", "render_strike", "render_unordered_list", "render_ordered_list", "render_line_break", "render_redirect_notice", "render_categories_metadata", "render_simple_table"]
