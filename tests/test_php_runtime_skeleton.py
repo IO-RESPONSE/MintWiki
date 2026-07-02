@@ -32,3 +32,8 @@ class TestPhpRuntimeSkeleton:
         """0395부터 `src/Http`에 Response value object가 들어온다."""
         response_file = PHP_ROOT / "src" / "Http" / "Response.php"
         assert response_file.is_file(), "missing php/src/Http/Response.php"
+
+    def test_src_http_contains_request_value_object(self):
+        """0396부터 `src/Http`에 Request value object가 들어온다."""
+        request_file = PHP_ROOT / "src" / "Http" / "Request.php"
+        assert request_file.is_file(), "missing php/src/Http/Request.php"

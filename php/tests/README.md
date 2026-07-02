@@ -12,6 +12,10 @@ PHP test suite.
   returns the `status`, `headers`, and `body` passed to its constructor
   (and sensible defaults when omitted). Run it with
   `php tests/Http/ResponseTest.php` from `php/` after `composer install`.
+- `Http/RequestTest.php` (0396) — confirms `MintWiki\Http\Request`
+  returns the `method`, `path`, `query`, `body`, and `headers` passed to
+  its constructor (and sensible defaults when omitted). Run it with
+  `php tests/Http/RequestTest.php` from `php/` after `composer install`.
 
 Fixture runners (0398, 0406, 0407, ...) are added by later Phase B tasks
 and must likewise run without any network dependency
