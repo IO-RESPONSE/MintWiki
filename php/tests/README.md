@@ -83,7 +83,20 @@ PHP test suite.
   Run it with `php tests/Modules/Revision/RepositoryTest.php` from
   `php/` after `composer install`.
 
-Fixture runners (0406, 0407, ...) are added by later Phase B tasks and
+- `Modules/Parser/FixtureRunner.php` / `Modules/Parser/FixtureRunnerTest.php`
+  (0406) — `FixtureRunner` reads the cross-language JSON fixtures under
+  `tests/modules/parser/fixtures/` (`docs/cross-language-fixture-schema.md`)
+  directly with `json_decode` (the shared JSON fixture loader lands
+  separately in 0425) and runs them against any `callable(string $source): array`
+  parse callback, comparing the callback's return value to the fixture's
+  `expected` field. The parser module's PHP port is still a placeholder
+  (0399), so the test exercises `FixtureRunner` itself — listing/loading
+  fixtures and detecting match/mismatch — against stub callbacks rather
+  than a real parser. Run it with
+  `php tests/Modules/Parser/FixtureRunnerTest.php` from `php/` after
+  `composer install`.
+
+Further fixture runners (0407, ...) are added by later Phase B tasks and
 must likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
 
