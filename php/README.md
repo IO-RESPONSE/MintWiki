@@ -27,6 +27,10 @@ rules, the `strict_types` and namespace conventions, and the class
 declaration conventions (`final class` by default, `interface` for
 module ports) that new files under `src/` follow.
 
+See `docs/php-static-analysis-plan.md` for the plan (tool choice and
+adoption triggers) around introducing PHPStan or Psalm — no static
+analysis tool is installed yet.
+
 Contract manifests, fixtures, and policies that this tree must eventually
 satisfy live under `src/modules/*/manifest.json` and `docs/` — see
 `docs/php-replacement-strategy.md` for the readiness gate each module must
