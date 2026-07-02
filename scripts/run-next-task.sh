@@ -131,6 +131,11 @@ fi
 trap 'finish_failed $?' ERR
 scripts/qa.sh
 
+if [ ! -f "$ACTIVE_TASK" ] && [ -f "$RUN_DIR/task.md" ]; then
+  mkdir -p "$IN_PROGRESS_DIR"
+  cp "$RUN_DIR/task.md" "$ACTIVE_TASK"
+fi
+
 mv "$ACTIVE_TASK" "$DONE_DIR/$TASK_NAME"
 
 if [ "${WIKI_ENGINE_SKIP_PROGRESS:-0}" != "1" ]; then
