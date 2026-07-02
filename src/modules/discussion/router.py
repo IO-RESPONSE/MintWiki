@@ -6,7 +6,16 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from modules.acl.permission import Permission
 from modules.acl.router import require_permission
 from modules.acl.service import AclService
-from modules.discussion.schema import CreateThreadRequest, ThreadResponse
+from modules.discussion.comment import (
+    EmptyCommentBodyError,
+    EmptyCommentCreatedByError,
+)
+from modules.discussion.schema import (
+    AddCommentRequest,
+    CommentResponse,
+    CreateThreadRequest,
+    ThreadResponse,
+)
 from modules.discussion.service import DiscussionService
 from modules.discussion.thread import (
     EmptyThreadCreatedByError,
@@ -70,6 +79,46 @@ async def create_thread(
         title=thread.title,
         created_by=thread.created_by,
         status=thread.status,
+    )
+
+
+@router.post("/threads/{thread_id}/comments", tags=["discussion"])
+async def add_comment(
+    thread_id: str,
+    body: AddCommentRequest,
+    service: DiscussionService = Depends(get_discussion_service),
+) -> CommentResponse:
+    """
+    토론 스레드에 새로운 댓글을 추가한다.
+
+    Args:
+        thread_id: 댓글이 속할 스레드의 id
+        body: 댓글 추가 요청 (body, created_by)
+        service: 토론 서비스
+
+    Returns:
+        생성된 댓글
+
+    Raises:
+        HTTPException: 필수 필드가 비어있는 경우 422 반환
+    """
+    try:
+        comment = await service.add_comment(
+            thread_id=thread_id,
+            body=body.body,
+            created_by=body.created_by,
+        )
+    except (EmptyCommentBodyError, EmptyCommentCreatedByError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
+    return CommentResponse(
+        id=comment.id,
+        thread_id=comment.thread_id,
+        body=comment.body,
+        created_by=comment.created_by,
+        is_hidden=comment.is_hidden,
     )
 
 

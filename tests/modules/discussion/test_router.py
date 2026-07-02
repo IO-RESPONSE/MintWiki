@@ -87,3 +87,55 @@ class TestCreateThread:
         )
 
         assert response.status_code == 422
+
+
+class TestAddComment:
+    """댓글 추가 엔드포인트 테스트."""
+
+    def test_add_comment_with_valid_request(self, client: TestClient):
+        """엔드포인트는 유효한 요청으로 댓글을 추가한다."""
+        response = client.post(
+            "/threads/thread1/comments",
+            json={"body": "동의합니다.", "created_by": "user1"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["thread_id"] == "thread1"
+        assert data["body"] == "동의합니다."
+        assert data["created_by"] == "user1"
+        assert data["is_hidden"] is False
+        assert isinstance(data["id"], str)
+        assert len(data["id"]) > 0
+
+    def test_add_comment_generates_unique_ids(self, client: TestClient):
+        """엔드포인트는 매 요청마다 고유한 id를 발급한다."""
+        response1 = client.post(
+            "/threads/thread1/comments",
+            json={"body": "첫 번째", "created_by": "user1"},
+        )
+        response2 = client.post(
+            "/threads/thread1/comments",
+            json={"body": "두 번째", "created_by": "user1"},
+        )
+
+        assert response1.json()["id"] != response2.json()["id"]
+
+    def test_add_comment_with_empty_body_returns_422(self, client: TestClient):
+        """엔드포인트는 빈 본문으로 요청하면 422를 반환한다."""
+        response = client.post(
+            "/threads/thread1/comments",
+            json={"body": "", "created_by": "user1"},
+        )
+
+        assert response.status_code == 422
+        assert "detail" in response.json()
+
+    def test_add_comment_with_empty_created_by_returns_422(self, client: TestClient):
+        """엔드포인트는 빈 작성자 id로 요청하면 422를 반환한다."""
+        response = client.post(
+            "/threads/thread1/comments",
+            json={"body": "본문", "created_by": ""},
+        )
+
+        assert response.status_code == 422

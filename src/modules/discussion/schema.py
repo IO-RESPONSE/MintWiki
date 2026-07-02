@@ -18,3 +18,20 @@ class ThreadResponse(BaseModel):
     title: str
     created_by: str
     status: str
+
+
+class AddCommentRequest(BaseModel):
+    """댓글 추가 요청 스키마."""
+
+    body: str
+    created_by: str
+
+
+class CommentResponse(BaseModel):
+    """댓글 응답 스키마."""
+
+    id: str
+    thread_id: str
+    body: str
+    created_by: str
+    is_hidden: bool
