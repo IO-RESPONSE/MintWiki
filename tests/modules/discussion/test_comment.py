@@ -141,3 +141,60 @@ class TestDiscussionCommentHide:
 
         assert comment.is_hidden is True
         assert comment.hidden_at == datetime(2026, 1, 2, 0, 0, 0)
+
+
+class TestDiscussionCommentPublicView:
+    """일반 사용자에게 노출되는 댓글 뷰 테스트."""
+
+    def test_hidden_comment_omits_body_in_public_view(self):
+        """숨김 처리된 댓글은 일반 사용자 뷰에서 본문이 노출되지 않는다."""
+        comment = DiscussionComment(
+            id="comment1",
+            thread_id="thread1",
+            body="비공개로 전환되어야 할 본문",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1),
+        )
+        comment.hide(datetime(2026, 1, 2, 0, 0, 0))
+
+        view = comment.to_public_view()
+
+        assert view["body"] is None
+        assert view["is_hidden"] is True
+
+    def test_visible_comment_includes_body_in_public_view(self):
+        """숨김 처리되지 않은 댓글은 일반 사용자 뷰에서 본문이 그대로 노출된다."""
+        comment = DiscussionComment(
+            id="comment1",
+            thread_id="thread1",
+            body="공개된 본문",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1),
+        )
+
+        view = comment.to_public_view()
+
+        assert view["body"] == "공개된 본문"
+        assert view["is_hidden"] is False
+
+    def test_public_view_includes_non_sensitive_fields_regardless_of_hidden_state(self):
+        """본문을 제외한 다른 필드는 숨김 여부와 무관하게 뷰에 포함된다."""
+        created_at = datetime(2026, 1, 1)
+        hidden_at = datetime(2026, 1, 2)
+        comment = DiscussionComment(
+            id="comment1",
+            thread_id="thread1",
+            body="본문",
+            created_by="user1",
+            created_at=created_at,
+            is_hidden=True,
+            hidden_at=hidden_at,
+        )
+
+        view = comment.to_public_view()
+
+        assert view["id"] == "comment1"
+        assert view["thread_id"] == "thread1"
+        assert view["created_by"] == "user1"
+        assert view["created_at"] == created_at
+        assert view["hidden_at"] == hidden_at

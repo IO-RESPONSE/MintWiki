@@ -83,3 +83,24 @@ class DiscussionComment:
         """댓글을 숨김 처리한다."""
         self.is_hidden = True
         self.hidden_at = now
+
+    def to_public_view(self) -> dict:
+        """
+        일반 사용자에게 노출할 댓글 뷰를 만든다.
+
+        숨김 처리된 댓글은 모더레이터가 아닌 일반 사용자에게 본문을
+        노출하지 않아야 하므로, is_hidden이 True이면 body를 None으로
+        가린다. 모더레이터용 전체 뷰는 이후 태스크에서 별도로 제공한다.
+
+        Returns:
+            일반 사용자에게 노출할 필드로 구성된 댓글 뷰 딕셔너리
+        """
+        return {
+            "id": self.id,
+            "thread_id": self.thread_id,
+            "body": None if self.is_hidden else self.body,
+            "created_by": self.created_by,
+            "created_at": self.created_at,
+            "is_hidden": self.is_hidden,
+            "hidden_at": self.hidden_at,
+        }
