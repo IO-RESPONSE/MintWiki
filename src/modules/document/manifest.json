@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "module": "document",
+  "summary": "Owns stable document identity and title lifecycle.",
+  "port": {
+    "source_path": "src/modules/document",
+    "target_namespace": "MintWiki\\Document",
+    "status": "not_started"
+  },
+  "service": {
+    "path": "src/modules/document/service.py",
+    "public_methods": [
+      "create",
+      "get",
+      "get_by_title",
+      "get_current_revision_read_model"
+    ]
+  },
+  "repository": {
+    "port_path": "src/modules/document/repository.py",
+    "interface": "DocumentRepository"
+  },
+  "fixtures": {
+    "path": "tests/modules/document/fixtures",
+    "format": "json"
+  },
+  "contract_notes": [
+    "document 는 docs/modules.md 의 의존 규칙에 따라 revision 의 현재 리비전 정보를 서비스 인터페이스(RevisionService)를 통해서만 조회하며, revision 내부 저장소를 직접 참조하지 않는다.",
+    "fixtures 디렉터리(tests/modules/document/fixtures)는 아직 채워지지 않았으며, 공용 fixture 변환은 태스크 0370 에서 진행한다.",
+    "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
+  ]
+}
