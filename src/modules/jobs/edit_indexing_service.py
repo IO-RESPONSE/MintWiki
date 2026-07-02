@@ -2,6 +2,7 @@
 from typing import Optional
 
 from modules.document.repository import DocumentRepository
+from modules.jobs.cache_purge_payload import CachePurgeJobPayload
 from modules.jobs.queue_backend import QueueBackend
 from modules.revision.model import Revision
 from modules.revision.service import RevisionService
@@ -84,8 +85,15 @@ class EditIndexingService:
             body=source,
         )
 
+        # 캐시 퍼지 작업 페이로드 생성
+        cache_purge_payload = CachePurgeJobPayload(
+            source=source,
+            purge_all=False,
+        )
+
         # 큐에 적재
         await self._queue.enqueue(index_payload)
+        await self._queue.enqueue(cache_purge_payload)
 
         return revision
 

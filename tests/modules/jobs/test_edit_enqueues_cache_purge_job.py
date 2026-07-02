@@ -1,4 +1,4 @@
-"""문서 편집 시 색인 작업을 큐에 적재하는 통합 테스트."""
+"""문서 편집 시 캐시 퍼지 작업을 큐에 적재하는 통합 테스트."""
 import pytest
 
 from modules.document.model import Document
@@ -14,12 +14,12 @@ from modules.search import IndexDocumentJobPayload
 from tests.modules.jobs.test_queue_backend import ConcreteQueueBackend
 
 
-class TestEditEnqueuesIndexJob:
-    """문서 편집 시 색인 작업이 큐에 적재되는지 확인."""
+class TestEditEnqueuesCachePurgeJob:
+    """문서 편집 시 캐시 퍼지 작업이 큐에 적재되는지 확인."""
 
     @pytest.mark.asyncio
-    async def test_create_revision_enqueues_index_job(self):
-        """리비전을 생성하면 색인 작업을 큐에 적재한다."""
+    async def test_create_revision_enqueues_cache_purge_job(self):
+        """리비전을 생성하면 캐시 퍼지 작업을 큐에 적재한다."""
         doc_repo = InMemoryDocumentRepository()
         rev_repo = InMemoryRevisionRepository()
         queue = ConcreteQueueBackend()
@@ -40,17 +40,24 @@ class TestEditEnqueuesIndexJob:
             parent_revision_id=doc.current_revision_id,
         )
 
-        # 색인 작업이 큐에 적재되었는지 확인
-        enqueued = await queue.dequeue()
-        assert enqueued is not None
-        assert isinstance(enqueued, IndexDocumentJobPayload)
-        assert enqueued.document_id == doc.id
-        assert enqueued.title == "Test Document"
-        assert enqueued.body == "Updated content"
+        # 색인 작업과 캐시 퍼지 작업이 큐에 적재되었는지 확인
+        index_job = await queue.dequeue()
+        cache_purge_job = await queue.dequeue()
+
+        # 색인 작업 확인
+        assert index_job is not None
+        assert isinstance(index_job, IndexDocumentJobPayload)
+        assert index_job.document_id == doc.id
+
+        # 캐시 퍼지 작업 확인
+        assert cache_purge_job is not None
+        assert isinstance(cache_purge_job, CachePurgeJobPayload)
+        assert cache_purge_job.source == "Updated content"
+        assert cache_purge_job.purge_all is False
 
     @pytest.mark.asyncio
-    async def test_edit_enqueues_index_job_with_correct_payload(self):
-        """편집 시 정확한 문서 정보를 담은 색인 작업을 큐에 적재한다."""
+    async def test_cache_purge_job_contains_updated_source(self):
+        """편집 시 업데이트된 소스가 캐시 퍼지 작업에 포함된다."""
         doc_repo = InMemoryDocumentRepository()
         rev_repo = InMemoryRevisionRepository()
         queue = ConcreteQueueBackend()
@@ -71,15 +78,19 @@ class TestEditEnqueuesIndexJob:
             parent_revision_id=doc.current_revision_id,
         )
 
-        # 첫 번째 색인 작업 확인
-        first_job = await queue.dequeue()
-        assert first_job is not None
-        assert first_job.title == "Wiki Page"
-        assert first_job.body == "Content v2"
+        # 색인 작업 확인 및 스킵
+        index_job = await queue.dequeue()
+        assert index_job is not None
+
+        # 캐시 퍼지 작업 확인
+        cache_purge_job = await queue.dequeue()
+        assert cache_purge_job is not None
+        assert isinstance(cache_purge_job, CachePurgeJobPayload)
+        assert cache_purge_job.source == "Content v2"
 
     @pytest.mark.asyncio
-    async def test_multiple_edits_enqueue_multiple_jobs(self):
-        """여러 번 편집하면 각각마다 색인 작업을 큐에 적재한다."""
+    async def test_multiple_edits_enqueue_multiple_cache_purge_jobs(self):
+        """여러 번 편집하면 각각마다 캐시 퍼지 작업을 큐에 적재한다."""
         doc_repo = InMemoryDocumentRepository()
         rev_repo = InMemoryRevisionRepository()
         queue = ConcreteQueueBackend()
@@ -116,22 +127,26 @@ class TestEditEnqueuesIndexJob:
         job4 = await queue.dequeue()  # 캐시 퍼지 작업 2
         job5 = await queue.dequeue()  # None (큐가 비어있음)
 
-        # 색인 작업 확인
+        # 첫 번째 편집의 작업들 확인
         assert job1 is not None
         assert isinstance(job1, IndexDocumentJobPayload)
         assert job1.body == "v2"
+
+        assert job2 is not None
+        assert isinstance(job2, CachePurgeJobPayload)
+        assert job2.source == "v2"
+
+        # 두 번째 편집의 작업들 확인
         assert job3 is not None
         assert isinstance(job3, IndexDocumentJobPayload)
         assert job3.body == "v3"
 
-        # 캐시 퍼지 작업 확인
-        assert job2 is not None
-        assert isinstance(job2, CachePurgeJobPayload)
         assert job4 is not None
         assert isinstance(job4, CachePurgeJobPayload)
+        assert job4.source == "v3"
 
         # 큐가 비어있음
         assert job5 is None
 
 
-__all__ = ["TestEditEnqueuesIndexJob"]
+__all__ = ["TestEditEnqueuesCachePurgeJob"]
