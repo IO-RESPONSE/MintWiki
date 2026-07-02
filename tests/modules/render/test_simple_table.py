@@ -353,7 +353,7 @@ class TestRenderSimpleTableCellTypes:
             "rows": [{"type": "data", "cells": [{"colspan": 2}, {"rowspan": 3}]}],
         }
         result = render_simple_table(table)
-        assert result == "<table><tr><td></td><td></td></tr></table>"
+        assert result == '<table><tr><td colspan="2"></td><td rowspan="3"></td></tr></table>'
 
     def test_handles_mixed_cell_types(self):
         """문자열과 딕셔너리 셀을 혼합하여 처리한다."""
@@ -375,6 +375,293 @@ class TestRenderSimpleTableCellTypes:
             result
             == "<table><tr><td>string_cell</td><td>dict_cell</td><td>another_string</td></tr></table>"
         )
+
+
+class TestRenderSimpleTableCellAttributes:
+    """단순 테이블 셀 속성 렌더링 테스트."""
+
+    def test_renders_colspan_attribute(self):
+        """colspan 속성을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {"content": "Merged", "colspan": 2},
+                        "Normal",
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert (
+            result
+            == '<table><tr><td colspan="2">Merged</td><td>Normal</td></tr></table>'
+        )
+
+    def test_renders_rowspan_attribute(self):
+        """rowspan 속성을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {"content": "Span 2", "rowspan": 2},
+                        "Col 2",
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert (
+            result
+            == '<table><tr><td rowspan="2">Span 2</td><td>Col 2</td></tr></table>'
+        )
+
+    def test_renders_multiple_attributes(self):
+        """여러 속성을 함께 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {"content": "Merged", "colspan": 2, "rowspan": 3}
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        # colspan과 rowspan이 모두 포함되어야 함
+        assert "colspan=" in result
+        assert "rowspan=" in result
+        assert "Merged" in result
+
+    def test_escapes_attribute_values(self):
+        """속성값의 특수 문자를 이스케이프한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {"content": "Cell", "class": 'test"value'}
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        # 큰따옴표가 이스케이프되어야 함
+        assert "&quot;" in result
+        assert 'class="test&quot;value"' in result
+
+    def test_filters_onclick_attribute(self):
+        """onclick 속성을 필터링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "onclick": "alert('xss')",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        # onclick이 렌더링되지 않아야 함
+        assert "onclick" not in result
+        assert "<td>Cell</td>" in result
+
+    def test_filters_onload_attribute(self):
+        """onload 속성을 필터링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "onload": "malicious()",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert "onload" not in result
+        assert "<td>Cell</td>" in result
+
+    def test_filters_onerror_attribute(self):
+        """onerror 속성을 필터링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "onerror": "attack()",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert "onerror" not in result
+        assert "<td>Cell</td>" in result
+
+    def test_renders_safe_custom_attributes(self):
+        """안전한 커스텀 속성을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "data-id": "12345",
+                            "data-type": "special",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'data-id="12345"' in result
+        assert 'data-type="special"' in result
+        assert "Cell" in result
+
+    def test_renders_class_attribute(self):
+        """class 속성을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "class": "highlight bold",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'class="highlight bold"' in result
+
+    def test_renders_id_attribute(self):
+        """id 속성을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "id": "cell-123",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'id="cell-123"' in result
+
+    def test_renders_header_cells_with_attributes(self):
+        """속성이 있는 헤더 셀을 렌더링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "header",
+                    "cells": [
+                        {
+                            "content": "Header",
+                            "colspan": 2,
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert '<th colspan="2">Header</th>' in result
+
+    def test_handles_numeric_attribute_values(self):
+        """숫자 속성값을 처리한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "colspan": 3,
+                            "rowspan": 2,
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert 'colspan="3"' in result
+        assert 'rowspan="2"' in result
+
+    def test_event_handler_with_uppercase_is_filtered(self):
+        """대문자 이벤트 핸들러도 필터링한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "ONCLICK": "alert('xss')",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        assert "ONCLICK" not in result and "onclick" not in result
+        assert "<td>Cell</td>" in result
+
+    def test_mixed_safe_and_unsafe_attributes(self):
+        """안전한 속성과 위험한 속성이 섞여 있을 때 처리한다."""
+        table = {
+            "type": "table",
+            "rows": [
+                {
+                    "type": "data",
+                    "cells": [
+                        {
+                            "content": "Cell",
+                            "colspan": 2,
+                            "onclick": "alert('xss')",
+                            "class": "safe",
+                        }
+                    ],
+                }
+            ],
+        }
+        result = render_simple_table(table)
+        # 안전한 속성은 포함
+        assert 'colspan="2"' in result
+        assert 'class="safe"' in result
+        # 위험한 속성은 제외
+        assert "onclick" not in result
 
 
 class TestRenderSimpleTableEdgeCases:
