@@ -145,6 +145,22 @@ class TestSearchServiceSearch:
         result_ids = {result.document.document_id for result in results}
         assert result_ids == {"doc1", "doc2"}
 
+    @pytest.mark.asyncio
+    async def test_search_applies_pagination_from_query(self):
+        """search는 질의에 담긴 limit/offset을 어댑터에 그대로 전달해 페이지네이션한다."""
+        adapter = InMemorySearchAdapter()
+        service = SearchService(adapter)
+        await service.index_document(
+            SearchDocument(document_id="doc1", title="Apple Pie")
+        )
+        await service.index_document(
+            SearchDocument(document_id="doc2", title="Apple Juice")
+        )
+
+        results = await service.search(SearchQuery(term="Apple", limit=1, offset=1))
+
+        assert len(results) == 1
+
 
 class TestSearchServiceRankingPlaceholder:
     """관련도 순위가 아직 구현되지 않은 placeholder 점수 동작 테스트."""

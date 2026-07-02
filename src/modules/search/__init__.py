@@ -7,6 +7,8 @@ from modules.search.document import (
 from modules.search.query import (
     SearchQuery,
     EmptySearchQueryTermError,
+    InvalidSearchQueryLimitError,
+    InvalidSearchQueryOffsetError,
 )
 from modules.search.result import (
     SearchResult,
@@ -22,6 +24,8 @@ __all__ = [
     "EmptySearchDocumentTitleError",
     "SearchQuery",
     "EmptySearchQueryTermError",
+    "InvalidSearchQueryLimitError",
+    "InvalidSearchQueryOffsetError",
     "SearchResult",
     "InvalidSearchResultScoreError",
     "SearchAdapter",

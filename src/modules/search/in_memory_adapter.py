@@ -39,10 +39,11 @@ class InMemorySearchAdapter(SearchAdapter):
 
         Returns:
             질의어가 제목, 본문, 리다이렉트 대상, 카테고리 중 하나에
-            포함된 문서의 검색 결과 목록 (일치하는 문서가 없으면 빈 목록)
+            포함된 문서의 검색 결과 목록 (일치하는 문서가 없으면 빈 목록).
+            query의 limit/offset에 따라 페이지네이션이 적용된다.
         """
         term = query.term.lower()
-        return [
+        matches = [
             SearchResult(document=document, score=1.0)
             for document in self._documents.values()
             if term in document.title.lower()
@@ -50,6 +51,10 @@ class InMemorySearchAdapter(SearchAdapter):
             or (document.redirect_target is not None and term in document.redirect_target.lower())
             or any(term in category.lower() for category in document.categories)
         ]
+        paginated = matches[query.offset:]
+        if query.limit is not None:
+            paginated = paginated[: query.limit]
+        return paginated
 
     async def delete(self, document_id: str) -> None:
         """

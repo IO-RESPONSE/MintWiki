@@ -343,6 +343,73 @@ class TestInMemorySearchAdapterBodySearchFallback:
         assert new_body_results[0].document.document_id == "doc1"
 
 
+class TestInMemorySearchAdapterPagination:
+    """검색 결과 페이지네이션 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_limit_truncates_results(self):
+        """limit을 지정하면 결과가 그 개수만큼으로 잘린다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(SearchDocument(document_id="doc1", title="Apple Pie"))
+        await adapter.index(SearchDocument(document_id="doc2", title="Apple Juice"))
+        await adapter.index(SearchDocument(document_id="doc3", title="Apple Sauce"))
+
+        results = await adapter.search(SearchQuery(term="Apple", limit=2))
+
+        assert len(results) == 2
+
+    @pytest.mark.asyncio
+    async def test_offset_skips_leading_results(self):
+        """offset을 지정하면 그 개수만큼 앞쪽 결과를 건너뛴다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(SearchDocument(document_id="doc1", title="Apple Pie"))
+        await adapter.index(SearchDocument(document_id="doc2", title="Apple Juice"))
+        await adapter.index(SearchDocument(document_id="doc3", title="Apple Sauce"))
+
+        all_results = await adapter.search(SearchQuery(term="Apple"))
+        offset_results = await adapter.search(SearchQuery(term="Apple", offset=1))
+
+        assert len(offset_results) == 2
+        assert [r.document.document_id for r in offset_results] == [
+            r.document.document_id for r in all_results[1:]
+        ]
+
+    @pytest.mark.asyncio
+    async def test_limit_and_offset_combine_for_a_page(self):
+        """limit과 offset을 함께 지정하면 그 범위에 해당하는 페이지만 반환한다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(SearchDocument(document_id="doc1", title="Apple Pie"))
+        await adapter.index(SearchDocument(document_id="doc2", title="Apple Juice"))
+        await adapter.index(SearchDocument(document_id="doc3", title="Apple Sauce"))
+
+        all_results = await adapter.search(SearchQuery(term="Apple"))
+        page_results = await adapter.search(SearchQuery(term="Apple", limit=1, offset=1))
+
+        assert len(page_results) == 1
+        assert page_results[0].document.document_id == all_results[1].document.document_id
+
+    @pytest.mark.asyncio
+    async def test_offset_beyond_result_count_returns_empty_list(self):
+        """offset이 일치하는 결과 개수보다 크면 빈 목록을 반환한다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(SearchDocument(document_id="doc1", title="Apple Pie"))
+
+        results = await adapter.search(SearchQuery(term="Apple", offset=5))
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_no_limit_returns_all_matching_results(self):
+        """limit을 지정하지 않으면 일치하는 결과를 모두 반환한다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(SearchDocument(document_id="doc1", title="Apple Pie"))
+        await adapter.index(SearchDocument(document_id="doc2", title="Apple Juice"))
+
+        results = await adapter.search(SearchQuery(term="Apple"))
+
+        assert len(results) == 2
+
+
 class TestInMemorySearchAdapterRedirectSearch:
     """리다이렉트 대상으로 검색되는 동작 테스트."""
 

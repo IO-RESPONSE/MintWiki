@@ -14,10 +14,10 @@ class TestSearchPackageExports:
 
         본문 검색/리다이렉트 검색 등 추가 인덱싱 계약은 후속 태스크에서
         추가되므로, 현재는 검색 문서 모델(SearchDocument), 검색 질의
-        모델(SearchQuery), 검색 결과 모델(SearchResult), 검색 어댑터
-        인터페이스(SearchAdapter), 메모리 기반 검색 어댑터 구현
-        (InMemorySearchAdapter), 어댑터로 위임하는 검색 서비스 골격
-        (SearchService), 그리고 그 오류 타입만 export한다.
+        모델(SearchQuery, 페이지네이션 파라미터 포함), 검색 결과 모델
+        (SearchResult), 검색 어댑터 인터페이스(SearchAdapter), 메모리
+        기반 검색 어댑터 구현(InMemorySearchAdapter), 어댑터로 위임하는
+        검색 서비스 골격(SearchService), 그리고 그 오류 타입만 export한다.
         """
         assert search.__all__ == [
             "SearchDocument",
@@ -25,6 +25,8 @@ class TestSearchPackageExports:
             "EmptySearchDocumentTitleError",
             "SearchQuery",
             "EmptySearchQueryTermError",
+            "InvalidSearchQueryLimitError",
+            "InvalidSearchQueryOffsetError",
             "SearchResult",
             "InvalidSearchResultScoreError",
             "SearchAdapter",
