@@ -48,6 +48,9 @@ def test_acl_package_exports_rule():
         "EmptyAclAuditEventIdError",
         "MissingRuleIdError",
         "AclAuditRecorder",
+        "AclMatrixCase",
+        "AclMatrixFixture",
+        "AclMatrixFixtureLoader",
     ]
     assert modules.acl.Rule is Rule
 
@@ -234,3 +237,19 @@ def test_acl_package_exports_audit_recorder():
 
     assert "AclAuditRecorder" in modules.acl.__all__
     assert modules.acl.AclAuditRecorder is AclAuditRecorder
+
+
+def test_acl_package_exports_matrix_fixture():
+    # 0176에서 ACL 매트릭스 픽스처 형식이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.matrix_fixture import (
+        AclMatrixCase,
+        AclMatrixFixture,
+        AclMatrixFixtureLoader,
+    )
+
+    assert "AclMatrixCase" in modules.acl.__all__
+    assert "AclMatrixFixture" in modules.acl.__all__
+    assert "AclMatrixFixtureLoader" in modules.acl.__all__
+    assert modules.acl.AclMatrixCase is AclMatrixCase
+    assert modules.acl.AclMatrixFixture is AclMatrixFixture
+    assert modules.acl.AclMatrixFixtureLoader is AclMatrixFixtureLoader

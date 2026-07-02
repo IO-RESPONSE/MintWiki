@@ -28,6 +28,11 @@ from modules.acl.document_policy import (
     restrict_document_move,
     restrict_document_read,
 )
+from modules.acl.matrix_fixture import (
+    AclMatrixCase,
+    AclMatrixFixture,
+    AclMatrixFixtureLoader,
+)
 from modules.acl.namespace_defaults import DEFAULT_NAMESPACE, NamespaceAclDefaults
 from modules.acl.permission import Permission
 from modules.acl.rule import (
@@ -73,4 +78,7 @@ __all__ = [
     "EmptyAclAuditEventIdError",
     "MissingRuleIdError",
     "AclAuditRecorder",
+    "AclMatrixCase",
+    "AclMatrixFixture",
+    "AclMatrixFixtureLoader",
 ]
