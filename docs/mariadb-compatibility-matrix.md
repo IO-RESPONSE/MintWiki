@@ -42,7 +42,7 @@ ID, timestamp, collation)은 후속 문서(0443~0446)에서 확정한다.
 
 | 도메인 타입 | PostgreSQL | MariaDB (10.6+) | 상태 | 비고 |
 |---|---|---|---|---|
-| ID 문자열 | `VARCHAR(255)` | `VARCHAR(255)` | 공통 | 애플리케이션 생성 UUID 문자열 저장(0444에서 정책 확정) |
+| ID 문자열 | `VARCHAR(255)` | `VARCHAR(255)` | 공통 | 애플리케이션 생성 UUID 문자열 저장([portable-id-column-policy.md](portable-id-column-policy.md)에서 확정) |
 | 제목/이름 | `VARCHAR(n)` | `VARCHAR(n)` | 공통 | `n` 값은 두 DB의 바이트 제한(MariaDB 행 크기 상한)을 함께 고려해 정한다 |
 | 본문/장문 텍스트 | `TEXT` | `TEXT` | 공통 | MariaDB `TEXT`는 기본 인덱스 길이 제한이 있어 인덱스 컬럼으로는 쓰지 않는다(2절 참고) |
 | 정수 | `INTEGER` | `INTEGER` | 공통 | |
@@ -92,7 +92,8 @@ ID, timestamp, collation)은 후속 문서(0443~0446)에서 확정한다.
 
 ## 이 문서 이후 단계
 
-- **0443**([portable-schema-naming-policy.md](portable-schema-naming-policy.md))**~0446**:
+- **0443**([portable-schema-naming-policy.md](portable-schema-naming-policy.md)),
+  **0444**([portable-id-column-policy.md](portable-id-column-policy.md))**~0446**:
   이 매트릭스의 개별 항목(naming, ID, timestamp, collation)을 실행 가능한
   정책으로 확정한다.
 - **0447**: 금지 목록(타입/인덱스/트랜잭션 표의 "금지(정책)" 항목)을
