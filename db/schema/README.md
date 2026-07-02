@@ -131,9 +131,25 @@
   두 DB 모두의 표준 기능이라 이 디렉터리의 다른 파일들과 달리 `CREATE
   TABLE` 외의 문을 추가로 포함한다.
 
+## 0467이 채우는 것
+
+- `audit_event.sql`: `src/modules/acl/audit_event.py`의 `AclAuditEvent`,
+  `src/modules/discussion/audit_event.py`의 `DiscussionAuditEvent`와 [Audit
+  Portable Repository Plan
+  §3](../../docs/audit-portable-repository-plan.md#3-audit_event-테이블)이
+  확정한 컬럼(`id`, `category`, `action`, `entity_id`, `related_entity_id`,
+  `actor_id`, `occurred_at`)을 옮기는 portable `CREATE TABLE` 문.
+  `acl_audit_event`/`discussion_audit_event`로 나누지 않고 `audit` 모듈이
+  소유하는 단일 테이블로 통합한다(계획 문서 §2). `entity_id`/
+  `related_entity_id`는 `category`에 따라 `acl_rule`/`discussion_thread`나
+  `document`/`discussion_comment`를 가리키는 다형 참조라 FK를 걸지 않는다
+  (계획 문서 §4). `updated_at` 컬럼을 두지 않아 append-only 의도를 표현한다
+  (계획 문서 §5). 인덱스는 계획 문서 §7이 아직 확립된 조회 패턴이 없다고
+  판단해 이 태스크에서는 추가하지 않는다.
+
 ## 이후 채워질 파일
 
-- **0467~0468**: audit, jobs 테이블.
+- **0468**: jobs 테이블.
 - **0469**: 이 디렉터리 전체에 대한 SQL feature 금지 목록 자동 검사(lint
   테스트).
 - **0493**: PHP 웹호스팅 installer가 참조할 별도의 schema version 테이블.

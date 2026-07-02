@@ -371,6 +371,46 @@ def test_db_schema_discussion_comment_sql_separates_dialect_differences_in_comme
     assert "SERIAL" not in create_table_stmt
 
 
+def test_db_schema_audit_event_sql_exists():
+    """0467이 추가한 audit_event.sql이 존재하는지 확인한다."""
+    audit_event_sql = _db_dir() / "schema" / "audit_event.sql"
+    assert audit_event_sql.exists(), "db/schema/audit_event.sql should exist"
+
+
+def test_db_schema_audit_event_sql_matches_plan_spec():
+    """audit_event.sql이 AclAuditEvent/DiscussionAuditEvent와 계획 문서 §3과 같은 컬럼·제약을 갖는지 확인한다."""
+    content = (_db_dir() / "schema" / "audit_event.sql").read_text()
+
+    assert "CREATE TABLE audit_event" in content
+    assert "id VARCHAR(255) NOT NULL" in content
+    assert "category VARCHAR(20) NOT NULL" in content
+    assert "action VARCHAR(50) NOT NULL" in content
+    assert "entity_id VARCHAR(255) NOT NULL" in content
+    assert "related_entity_id VARCHAR(255) NULL" in content
+    assert "actor_id VARCHAR(255) NULL" in content
+    assert "occurred_at TIMESTAMP NOT NULL" in content
+    assert "CONSTRAINT pk_audit_event PRIMARY KEY (id)" in content
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    # entity_id/related_entity_id는 다형 참조라 FK를 걸지 않는다(계획 문서 §4).
+    assert "FOREIGN KEY" not in create_table_stmt
+    # 감사 이벤트는 append-only라 updated_at 컬럼을 두지 않는다(계획 문서 §5).
+    assert "updated_at" not in create_table_stmt
+
+
+def test_db_schema_audit_event_sql_separates_dialect_differences_in_comments():
+    """PostgreSQL/MariaDB 차이가 주석으로 분리되어 있는지 확인한다(0461과 동일 패턴)."""
+    content = (_db_dir() / "schema" / "audit_event.sql").read_text()
+
+    assert "PostgreSQL" in content
+    assert "MariaDB" in content
+    # 실제 CREATE TABLE 문에는 방언 전용 문법이 섞이지 않는다.
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    assert "WITH TIME ZONE" not in create_table_stmt
+    assert "COLLATE" not in create_table_stmt
+    assert "AUTO_INCREMENT" not in create_table_stmt
+    assert "SERIAL" not in create_table_stmt
+
+
 def test_db_readme_confirms_migration_history_table():
     """README가 checklist §6이 보류한 적용 이력 테이블 이름/방식을 확정하는지 확인한다."""
     content = (_db_dir() / "README.md").read_text()
