@@ -4,9 +4,15 @@ from modules.search.document import (
     EmptySearchDocumentIdError,
     EmptySearchDocumentTitleError,
 )
+from modules.search.query import (
+    SearchQuery,
+    EmptySearchQueryTermError,
+)
 
 __all__ = [
     "SearchDocument",
     "EmptySearchDocumentIdError",
     "EmptySearchDocumentTitleError",
+    "SearchQuery",
+    "EmptySearchQueryTermError",
 ]
