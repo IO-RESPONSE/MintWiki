@@ -121,6 +121,38 @@ def test_db_schema_revision_sql_separates_dialect_differences_in_comments():
     assert "SERIAL" not in create_table_stmt
 
 
+def test_db_schema_account_sql_exists():
+    """0463이 추가한 account.sql이 존재하는지 확인한다."""
+    account_sql = _db_dir() / "schema" / "account.sql"
+    assert account_sql.exists(), "db/schema/account.sql should exist"
+
+
+def test_db_schema_account_sql_matches_model_spec():
+    """account.sql이 User(model.py)와 같은 컬럼·제약을 갖는지 확인한다."""
+    content = (_db_dir() / "schema" / "account.sql").read_text()
+
+    assert "CREATE TABLE account" in content
+    assert "id VARCHAR(255) NOT NULL" in content
+    assert "username VARCHAR(255) NOT NULL" in content
+    assert "display_name VARCHAR(255) NULL" in content
+    assert "CONSTRAINT pk_account PRIMARY KEY (id)" in content
+    assert "CONSTRAINT uq_account_username UNIQUE (username)" in content
+
+
+def test_db_schema_account_sql_separates_dialect_differences_in_comments():
+    """PostgreSQL/MariaDB 차이가 주석으로 분리되어 있는지 확인한다(0461과 동일 패턴)."""
+    content = (_db_dir() / "schema" / "account.sql").read_text()
+
+    assert "PostgreSQL" in content
+    assert "MariaDB" in content
+    # 실제 CREATE TABLE 문에는 방언 전용 문법이 섞이지 않는다.
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    assert "WITH TIME ZONE" not in create_table_stmt
+    assert "COLLATE" not in create_table_stmt
+    assert "AUTO_INCREMENT" not in create_table_stmt
+    assert "SERIAL" not in create_table_stmt
+
+
 def test_db_readme_confirms_migration_history_table():
     """README가 checklist §6이 보류한 적용 이력 테이블 이름/방식을 확정하는지 확인한다."""
     content = (_db_dir() / "README.md").read_text()

@@ -56,10 +56,21 @@
   `document` 테이블을 참조하는 `fk_revision_document_id` FK를 갖는다.
   `parent_revision_id`는 ORM/마이그레이션 원본과 동일하게 FK 없이 둔다.
 
+## 0463이 채우는 것
+
+- `account.sql`: `src/modules/user/model.py`의 `User`와
+  [User Portable Repository Plan](../../docs/user-portable-repository-plan.md)
+  §2가 확정한 컬럼(`id`, `username`, `display_name`)을 옮기는 portable
+  `CREATE TABLE` 문. 테이블 이름은 `user`가 아니라 [Portable Schema Naming
+  Policy §5](../../docs/portable-schema-naming-policy.md#5-예약어-회피)의
+  예약어 회피 규칙에 따라 `account`다. 비밀번호/세션은 이 테이블에 두지
+  않는다 — 비밀번호는 별도 컬럼/테이블(번호 미배정), 세션은
+  `user_session` 테이블(0464)로 분리한다. `User` 도메인 모델이
+  `created_at`/`updated_at`을 갖지 않아 이 파일도 두 컬럼을 두지 않는다.
+
 ## 이후 채워질 파일
 
-- **0463~0468**: `account`, `user_session`, ACL, discussion, audit, jobs
-  테이블.
+- **0464~0468**: `user_session`, ACL, discussion, audit, jobs 테이블.
 - **0469**: 이 디렉터리 전체에 대한 SQL feature 금지 목록 자동 검사(lint
   테스트).
 - **0493**: PHP 웹호스팅 installer가 참조할 별도의 schema version 테이블.
