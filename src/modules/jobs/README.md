@@ -23,3 +23,12 @@ and, on `handle()`, calls `Cache.clear_all()` when `purge_all=True` or
 synchronous contract but the cache module is async, the handler wraps the
 call in `asyncio.run`. It returns `JobResult.fail(...)` if given a payload
 that isn't a `CachePurgeJobPayload`.
+
+`SearchIndexJobHandler` (`search_index_handler.py`) is the `JobHandler` that
+executes an `IndexDocumentJobPayload` from `modules/search`, exposing
+`job_type` as `SEARCH_INDEX_JOB_TYPE` (`"search.index"`). It is constructed
+with a `SearchAdapter` and, on `handle()`, converts the payload to a
+`SearchDocument` (via `to_search_document()`) and calls the adapter's async
+`index()`, wrapped in `asyncio.run` for the same synchronous-contract reason
+as `CachePurgeJobHandler`. It returns `JobResult.fail(...)` if given a
+payload that isn't an `IndexDocumentJobPayload`.
