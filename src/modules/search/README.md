@@ -17,6 +17,14 @@ case-insensitive substring check. `delete()` removes an entry by id and is a
 no-op if the id isn't indexed. Matches are paginated according to the
 query's `offset`/`limit` before being returned.
 
+`MeilisearchSearchAdapter` (`meilisearch_adapter.py`) is a skeleton for an
+external Meilisearch-backed adapter: it implements the `SearchAdapter`
+interface shape only. Its constructor stores connection settings (`host`,
+`index_name`, optional `api_key`) for a future Meilisearch client, but
+`index()`, `search()`, and `delete()` all raise `NotImplementedError`. The
+actual Meilisearch client integration and wiring through
+`SearchAdapterConfig` are filled in by later tasks.
+
 `SearchQuery` (`query.py`) carries the search term plus pagination
 parameters: `limit` (max results to return, `None` means no limit) and
 `offset` (results to skip, defaults to `0`). `limit` below `1` raises
