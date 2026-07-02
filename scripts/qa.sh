@@ -21,6 +21,15 @@ fi
 
 scripts/test.sh
 
+# PHP QA는 선택 실행: php CLI가 없으면(=PHP 런타임 도구 미설치) 명확히
+# skip 메시지를 남기고 넘어간다(0431 Notes).
+PHP_QA_SH="$ROOT_DIR/php/scripts/qa.sh"
+if command -v php >/dev/null 2>&1; then
+  "$PHP_QA_SH"
+else
+  echo "php CLI를 찾을 수 없어 PHP QA(php/scripts/qa.sh)를 건너뜁니다." >&2
+fi
+
 if command -v git >/dev/null 2>&1; then
   git diff --check
 fi
