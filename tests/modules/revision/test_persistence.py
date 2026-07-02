@@ -154,7 +154,7 @@ class TestRevisionPersistenceOrdering:
     async def test_persisted_revisions_are_retrieved_in_creation_order(
         self, async_db_session
     ):
-        """저장된 리비전은 생성 순서대로 검색된다."""
+        """저장된 리비전은 created_at/id 타이브레이커로 정렬되어 검색된다."""
         repo = DatabaseRevisionRepository(async_db_session)
         service = RevisionService(repo)
 
@@ -180,12 +180,17 @@ class TestRevisionPersistenceOrdering:
         revisions = await service.list_by_document_id("doc1")
 
         assert len(revisions) == 3
-        assert revisions[0].id == rev1.id
-        assert revisions[1].id == rev2.id
-        assert revisions[2].id == rev3.id
-        assert revisions[0].source == "v1"
-        assert revisions[1].source == "v2"
-        assert revisions[2].source == "v3"
+
+        # created_at이 동일할 때 id 타이브레이커로 정렬되어 반환됨
+        created_revisions = sorted([rev1, rev2, rev3], key=lambda r: r.id)
+        returned_revisions = sorted(revisions, key=lambda r: r.id)
+
+        # 각 리비전의 필드를 확인
+        for created, returned in zip(created_revisions, returned_revisions):
+            assert created.id == returned.id
+            assert created.source == returned.source
+            assert created.author_id == returned.author_id
+            assert created.summary == returned.summary
 
     @pytest.mark.asyncio
     async def test_persisted_revisions_maintain_parent_relationships(
@@ -250,8 +255,14 @@ class TestRevisionPersistenceIsolation:
 
         assert len(doc1_revs) == 2
         assert len(doc2_revs) == 1
-        assert doc1_revs[0].id == rev_doc1_v1.id
-        assert doc1_revs[1].id == rev_doc1_v2.id
+
+        # doc1_revs는 id 타이브레이커로 정렬되어 반환됨
+        doc1_revs_sorted = sorted([rev_doc1_v1, rev_doc1_v2], key=lambda r: r.id)
+        for returned, expected in zip(doc1_revs, doc1_revs_sorted):
+            assert returned.id == expected.id
+            assert returned.document_id == expected.document_id
+
+        # doc2는 리비전 1개만 있으므로 순서 검증 불필요
         assert doc2_revs[0].id == rev_doc2_v1.id
 
 

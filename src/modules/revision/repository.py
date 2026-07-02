@@ -169,6 +169,9 @@ class DatabaseRevisionRepository(RevisionRepository):
         """
         주어진 문서의 리비전을 생성 순서대로 나열한다.
 
+        created_at이 동일한 리비전들은 id를 기준으로 정렬되어 일관된 순서를 보장한다
+        (created_at/id tie-breaker policy).
+
         Args:
             document_id: 조회할 문서의 고유 식별자
 
@@ -177,7 +180,7 @@ class DatabaseRevisionRepository(RevisionRepository):
         """
         query = select(RevisionORM).where(
             RevisionORM.document_id == document_id
-        ).order_by(RevisionORM.created_at)
+        ).order_by(RevisionORM.created_at, RevisionORM.id)
         result = await self.session.execute(query)
         orm_revisions = result.scalars().all()
         return [orm_revision.to_domain() for orm_revision in orm_revisions]

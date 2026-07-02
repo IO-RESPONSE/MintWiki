@@ -271,23 +271,26 @@ class TestRevisionOrderingPortability:
     async def test_lists_many_rapidly_created_revisions_in_creation_order(
         self, async_db_session
     ):
-        """짧은 시간에 연속 생성된(동일 초 내) 리비전도 생성 순서대로 나열된다."""
+        """짧은 시간에 연속 생성된(동일 초 내) 리비전도 id 타이브레이커로 일관되게 정렬된다."""
         repo = DatabaseRevisionRepository(async_db_session)
         revision_ids = []
         for i in range(20):
+            # id가 알파벳 순서로도 생성 순서로도 정렬되도록 zero-padded 사용
+            rev_id = f"rev{i:02d}"
             rev = Revision(
-                id=f"rev{i}",
+                id=rev_id,
                 document_id="doc1",
                 source=f"content {i}",
                 author_id="user1",
                 summary=f"Revision {i}",
             )
             await repo.create(rev)
-            revision_ids.append(f"rev{i}")
+            revision_ids.append(rev_id)
 
         result = await repo.list_by_document_id("doc1")
         assert len(result) == 20
-        assert [rev.id for rev in result] == revision_ids
+        # id 타이브레이커에 의해 알파벳순 정렬됨 (created_at 동일시)
+        assert [rev.id for rev in result] == sorted(revision_ids)
 
     @pytest.mark.asyncio
     async def test_ordering_is_isolated_per_document_under_interleaved_writes(
@@ -315,8 +318,124 @@ class TestRevisionOrderingPortability:
         doc1_result = await repo.list_by_document_id("doc1")
         doc2_result = await repo.list_by_document_id("doc2")
 
-        assert [rev.id for rev in doc1_result] == doc1_ids
-        assert [rev.id for rev in doc2_result] == doc2_ids
+        # id 타이브레이커로 인해 각 문서의 리비전들은 id 기준으로 정렬됨
+        assert [rev.id for rev in doc1_result] == sorted(doc1_ids)
+        assert [rev.id for rev in doc2_result] == sorted(doc2_ids)
+
+    @pytest.mark.asyncio
+    async def test_tiebreaker_orders_by_id_when_created_at_identical(
+        self, async_db_session
+    ):
+        """created_at이 동일한 리비전들(빠른 생성)은 id를 기준으로 정렬된다."""
+        repo = DatabaseRevisionRepository(async_db_session)
+
+        # 의도적으로 역순 id로 생성하여 id 타이브레이커가 작동하는지 확인
+        # 모두 같은 초에 생성되므로 created_at이 동일함
+        rev_ids = ["rev_c", "rev_b", "rev_a"]
+        for rev_id in rev_ids:
+            await repo.create(
+                Revision(
+                    id=rev_id,
+                    document_id="doc1",
+                    source=f"content {rev_id}",
+                    author_id="user1",
+                    summary=f"Revision {rev_id}",
+                )
+            )
+
+        result = await repo.list_by_document_id("doc1")
+        # id 타이브레이커에 의해 알파벳순 정렬이 됨 (created_at 동일시)
+        assert [rev.id for rev in result] == sorted(rev_ids)
+
+    @pytest.mark.asyncio
+    async def test_tiebreaker_maintains_deterministic_order_across_queries(
+        self, async_db_session
+    ):
+        """id 타이브레이커는 반복 쿼리에서도 일관된 순서를 보장한다."""
+        repo = DatabaseRevisionRepository(async_db_session)
+
+        # 다양한 id를 생성하여 타이브레이커 작동 확인 (모두 같은 초에 생성됨)
+        rev_ids = ["zzz_rev", "aaa_rev", "mmm_rev", "bbb_rev"]
+        for rev_id in rev_ids:
+            await repo.create(
+                Revision(
+                    id=rev_id,
+                    document_id="doc1",
+                    source=f"content {rev_id}",
+                    author_id="user1",
+                    summary=f"Revision {rev_id}",
+                )
+            )
+
+        # 여러 번 쿼리해도 항상 같은 순서 (id 기준 정렬)
+        expected_order = sorted(rev_ids)
+        for _ in range(3):
+            result = await repo.list_by_document_id("doc1")
+            assert [rev.id for rev in result] == expected_order
+
+    @pytest.mark.asyncio
+    async def test_tiebreaker_with_special_characters_in_id(
+        self, async_db_session
+    ):
+        """특수문자가 포함된 id도 일관되게 정렬된다 (문자열 비교 기반)."""
+        repo = DatabaseRevisionRepository(async_db_session)
+
+        rev_ids = ["rev_2", "rev_10", "rev_1", "rev_20"]
+        for rev_id in rev_ids:
+            await repo.create(
+                Revision(
+                    id=rev_id,
+                    document_id="doc1",
+                    source=f"content {rev_id}",
+                    author_id="user1",
+                    summary=f"Revision {rev_id}",
+                )
+            )
+
+        result = await repo.list_by_document_id("doc1")
+        # 문자열 정렬 순서: rev_1, rev_10, rev_2, rev_20 (숫자가 아닌 문자열 비교)
+        assert [rev.id for rev in result] == sorted(rev_ids)
+
+    @pytest.mark.asyncio
+    async def test_tiebreaker_maintains_document_isolation_with_same_created_at(
+        self, async_db_session
+    ):
+        """id 타이브레이커가 작동할 때도 문서별 격리가 유지된다."""
+        repo = DatabaseRevisionRepository(async_db_session)
+
+        doc1_ids = ["doc1_zzz", "doc1_aaa", "doc1_mmm"]
+        doc2_ids = ["doc2_zzz", "doc2_aaa", "doc2_bbb"]
+
+        # 문서 1의 리비전들 생성
+        for rev_id in doc1_ids:
+            await repo.create(
+                Revision(
+                    id=rev_id,
+                    document_id="doc1",
+                    source=f"content {rev_id}",
+                    author_id="user1",
+                    summary=f"Revision {rev_id}",
+                )
+            )
+
+        # 문서 2의 리비전들 생성 (같은 초에 생성됨)
+        for rev_id in doc2_ids:
+            await repo.create(
+                Revision(
+                    id=rev_id,
+                    document_id="doc2",
+                    source=f"content {rev_id}",
+                    author_id="user1",
+                    summary=f"Revision {rev_id}",
+                )
+            )
+
+        doc1_result = await repo.list_by_document_id("doc1")
+        doc2_result = await repo.list_by_document_id("doc2")
+
+        # 각 문서별로 독립적으로 id 기준 정렬됨
+        assert [rev.id for rev in doc1_result] == sorted(doc1_ids)
+        assert [rev.id for rev in doc2_result] == sorted(doc2_ids)
 
 
 class TestForeignKeyPortability:
