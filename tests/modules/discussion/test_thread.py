@@ -139,3 +139,20 @@ class TestDiscussionThreadState:
         assert thread.status == "closed"
         assert thread.closed_at == closed_at
         assert thread.is_open() is False
+
+    def test_reopen_marks_thread_open(self):
+        """reopen 호출 시 스레드가 열린 상태로 전환된다."""
+        thread = DiscussionThread(
+            id="thread1",
+            document_id="doc1",
+            title="제목",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1),
+        )
+        thread.close(datetime(2026, 1, 2))
+
+        thread.reopen()
+
+        assert thread.status == "open"
+        assert thread.closed_at is None
+        assert thread.is_open() is True

@@ -89,3 +89,8 @@ class DiscussionThread:
         """스레드를 닫는다."""
         self.status = "closed"
         self.closed_at = now
+
+    def reopen(self) -> None:
+        """스레드를 다시 연다."""
+        self.status = "open"
+        self.closed_at = None

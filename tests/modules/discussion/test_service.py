@@ -198,6 +198,46 @@ class TestDiscussionServiceThreads:
         with pytest.raises(DiscussionThreadNotFoundError):
             await service.close_thread("nonexistent-id")
 
+    @pytest.mark.asyncio
+    async def test_reopen_thread(self):
+        """서비스는 닫힌 스레드를 다시 열 수 있다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        await service.close_thread(thread.id)
+
+        reopened = await service.reopen_thread(thread.id)
+
+        assert reopened.id == thread.id
+        assert reopened.is_open() is True
+        assert reopened.closed_at is None
+
+    @pytest.mark.asyncio
+    async def test_reopen_thread_delegates_to_repository(self):
+        """서비스는 저장소에 스레드 다시 열기를 위임한다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        await service.close_thread(thread.id)
+
+        await service.reopen_thread(thread.id)
+
+        retrieved = await repo.get_thread(thread.id)
+        assert retrieved.is_open() is True
+
+    @pytest.mark.asyncio
+    async def test_reopen_nonexistent_thread_raises(self):
+        """서비스는 존재하지 않는 스레드를 다시 열려 하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(DiscussionThreadNotFoundError):
+            await service.reopen_thread("nonexistent-id")
+
 
 class TestDiscussionServiceComments:
     """토론 서비스의 댓글 추가/조회 테스트."""

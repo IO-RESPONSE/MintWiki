@@ -94,6 +94,25 @@ class DiscussionService:
         thread.close(datetime.now(timezone.utc))
         return await self.repository.update_thread(thread)
 
+    async def reopen_thread(self, thread_id: str) -> DiscussionThread:
+        """
+        닫힌 토론 스레드를 다시 연다.
+
+        Args:
+            thread_id: 다시 열 스레드의 id
+
+        Returns:
+            다시 열린 토론 스레드
+
+        Raises:
+            DiscussionThreadNotFoundError: 스레드가 없는 경우
+        """
+        thread = await self.repository.get_thread(thread_id)
+        if thread is None:
+            raise DiscussionThreadNotFoundError(f"스레드 id '{thread_id}'를 찾을 수 없습니다")
+        thread.reopen()
+        return await self.repository.update_thread(thread)
+
     async def add_comment(
         self, thread_id: str, body: str, created_by: str
     ) -> DiscussionComment:
