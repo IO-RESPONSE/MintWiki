@@ -196,6 +196,17 @@ PHP test suite.
   later task. Run it with `php tests/Modules/Jobs/RunnerTest.php` from
   `php/` after `composer install`.
 
+- `Modules/Audit/AuditEventTest.php` (0413) — confirms
+  `MintWiki\Audit\AuditEvent` returns the `id`/`module`/`action`/
+  `occurredAt`/`actorId`/`metadata` passed to (or defaulted by) its
+  constructor (`actorId` defaults to `null`, `metadata` defaults to
+  `[]`), that all its properties are `readonly` (append-only: no
+  mutator methods), and that a blank `id`/`module`/`action` raises the
+  matching `EmptyAuditEvent*Error`. No service/repository port
+  (`record`/`list_events`) ships in this task. Run it with
+  `php tests/Modules/Audit/AuditEventTest.php` from `php/` after
+  `composer install`.
+
 Further fixture runners (...) are added by later Phase B tasks and must
 likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
