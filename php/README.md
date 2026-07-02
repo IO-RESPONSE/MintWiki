@@ -22,6 +22,11 @@ See `docs/php-test-bootstrap.md` for how to bootstrap and run
 criteria for when to introduce a composer-dev dependency like PHPUnit
 instead of the current framework-free scripts.
 
+See `docs/php-coding-standard.md` for the PSR-4/classmap autoload
+rules, the `strict_types` and namespace conventions, and the class
+declaration conventions (`final class` by default, `interface` for
+module ports) that new files under `src/` follow.
+
 Contract manifests, fixtures, and policies that this tree must eventually
 satisfy live under `src/modules/*/manifest.json` and `docs/` — see
 `docs/php-replacement-strategy.md` for the readiness gate each module must
