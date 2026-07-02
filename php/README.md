@@ -17,6 +17,11 @@ git-ignored (`php/.gitignore`) — `composer.json` declares no packages
 beyond the `php` engine constraint, so regenerating them never touches the
 network.
 
+See `docs/php-test-bootstrap.md` for how to bootstrap and run
+`tests/` (`composer install` then `php <file>` per test) and the
+criteria for when to introduce a composer-dev dependency like PHPUnit
+instead of the current framework-free scripts.
+
 Contract manifests, fixtures, and policies that this tree must eventually
 satisfy live under `src/modules/*/manifest.json` and `docs/` — see
 `docs/php-replacement-strategy.md` for the readiness gate each module must
