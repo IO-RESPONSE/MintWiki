@@ -9,6 +9,13 @@ def test_admin_package_is_importable():
 
 def test_admin_package_exports():
     """__all__에 선언된 이름이 실제 모듈 속성으로 존재한다."""
-    assert modules.admin.__all__ == []
+    expected_exports = [
+        "AdminBlockAuditAction",
+        "AdminBlockAuditEvent",
+        "EmptyAdminBlockAuditEventIdError",
+        "MissingAdminBlockAuditEventBlockIdError",
+        "AdminBlockService",
+    ]
+    assert modules.admin.__all__ == expected_exports
     for name in modules.admin.__all__:
         assert hasattr(modules.admin, name)
