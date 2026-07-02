@@ -3,6 +3,7 @@ from modules.cache.key import build_render_cache_key
 from modules.cache.backend import CacheBackend, InMemoryCacheBackend
 from modules.cache.cache import Cache
 from modules.cache.redis import RedisCacheBackend
+from modules.cache.read import read_render_cache
 
 __all__ = [
     "build_render_cache_key",
@@ -10,4 +11,5 @@ __all__ = [
     "InMemoryCacheBackend",
     "RedisCacheBackend",
     "Cache",
+    "read_render_cache",
 ]
