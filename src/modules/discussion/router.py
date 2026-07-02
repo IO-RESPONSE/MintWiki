@@ -1,10 +1,16 @@
-"""Discussion 모듈의 HTTP 어댑터: 토론(discuss) 권한 의존성 골격."""
+"""Discussion 모듈의 HTTP 어댑터: 토론 라우터와 권한 의존성 골격."""
 from typing import Optional
+
+from fastapi import APIRouter
 
 from modules.acl.permission import Permission
 from modules.acl.router import require_permission
 from modules.acl.service import AclService
 from modules.user.block_check_service import BlockCheckService
+
+# 토론 스레드/댓글 라우터. 접두사는 main.py에 등록할 때 지정한다.
+# 실제 스레드/댓글 라우트는 이후 태스크에서 이 라우터에 연결한다.
+router = APIRouter()
 
 
 def require_discuss_permission(
