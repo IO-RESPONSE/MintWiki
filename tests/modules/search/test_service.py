@@ -144,3 +144,39 @@ class TestSearchServiceSearch:
 
         result_ids = {result.document.document_id for result in results}
         assert result_ids == {"doc1", "doc2"}
+
+
+class TestSearchServiceRankingPlaceholder:
+    """관련도 순위가 아직 구현되지 않은 placeholder 점수 동작 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_search_result_has_placeholder_score(self):
+        """검색 결과의 점수는 실제 관련도 계산 없이 고정된 placeholder 값을 가진다."""
+        adapter = InMemorySearchAdapter()
+        service = SearchService(adapter)
+        await service.index_document(
+            SearchDocument(document_id="doc1", title="Hello World")
+        )
+
+        results = await service.search(SearchQuery(term="Hello"))
+
+        assert results[0].score == 1.0
+
+    @pytest.mark.asyncio
+    async def test_search_results_share_equal_placeholder_score_regardless_of_match_location(
+        self,
+    ):
+        """제목/본문 등 일치 위치가 다른 문서들도 관련도 순위 없이 동일한 점수를 받는다."""
+        adapter = InMemorySearchAdapter()
+        service = SearchService(adapter)
+        await service.index_document(
+            SearchDocument(document_id="doc1", title="Apple Pie")
+        )
+        await service.index_document(
+            SearchDocument(document_id="doc2", title="Fruit", body="Apple mentioned once in body")
+        )
+
+        results = await service.search(SearchQuery(term="Apple"))
+
+        scores = {result.document.document_id: result.score for result in results}
+        assert scores == {"doc1": 1.0, "doc2": 1.0}
