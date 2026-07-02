@@ -113,17 +113,24 @@ class TestModuleDirs:
 
 
 class TestMainAgainstRealRepo:
-    """실제 저장소 상태로 스크립트를 실행해, 스키마 위반뿐 아니라 manifest 자체가
-    없는 모듈(예: search)도 QA 에서 잡아내는지 확인한다 (태스크 노트 요구사항)."""
+    """스크립트를 실행해, 스키마 위반뿐 아니라 manifest 자체가 없는 모듈도 QA 에서
+    잡아내는지 확인한다 (태스크 노트 요구사항). manifest 누락 감지는 실제 저장소의
+    특정 모듈 상태에 의존하지 않도록 합성 모듈 루트로 검증한다."""
 
-    def test_main_reports_module_missing_manifest(self, monkeypatch, capsys):
-        """search 모듈은 아직 manifest.json 이 없으므로 위반으로 보고되어야 한다."""
+    def test_main_reports_module_missing_manifest(self, tmp_path, monkeypatch, capsys):
+        """manifest.json 이 없는 모듈은 위반으로 보고되고 종료 코드 1 을 반환한다."""
         module = _load_script_module()
-        monkeypatch.chdir(REPO_ROOT)
+        (tmp_path / "widget").mkdir()
+        (tmp_path / "widget" / "manifest.json").write_text(
+            json.dumps(VALID_MANIFEST), encoding="utf-8"
+        )
+        (tmp_path / "orphan").mkdir()  # manifest.json 없음 → 위반이어야 한다
+        monkeypatch.setattr(module, "MODULES_ROOT", tmp_path)
+        monkeypatch.setattr(module, "SCHEMA_PATH", REAL_SCHEMA_PATH)
         exit_code = module.main()
         captured = capsys.readouterr()
         assert exit_code == 1
-        assert "search" in captured.err
+        assert "orphan" in captured.err
         assert "manifest.json 파일이 없습니다" in captured.err
 
     def test_modules_with_manifest_individually_pass(self, monkeypatch):
