@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Wiki Engine PHP track task runner
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5s
+Persistent=true
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target

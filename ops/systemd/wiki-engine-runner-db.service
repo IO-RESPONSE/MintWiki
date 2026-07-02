@@ -1,14 +1,17 @@
 [Unit]
-Description=Wiki Engine Codex non-interactive task runner
+Description=Wiki Engine DB track task runner
 Wants=network-online.target
 After=network-online.target
 
 [Service]
 Type=oneshot
-WorkingDirectory=/root/wiki-engine-blueprint
-Environment=WIKI_ENGINE_REPO=/root/wiki-engine-blueprint
-Environment=WIKI_ENGINE_LOCK=/tmp/wiki-engine-runner.lock
-Environment=WIKI_ENGINE_TASK_MAX=0350
+WorkingDirectory=/root/wiki-engine-db-track
+Environment=WIKI_ENGINE_REPO=/root/wiki-engine-db-track
+Environment=WIKI_ENGINE_LOCK=/tmp/wiki-engine-runner-db.lock
+Environment=WIKI_ENGINE_TASK_MIN=0441
+Environment=WIKI_ENGINE_TASK_MAX=0520
+Environment=WIKI_ENGINE_GIT_SYNC=0
+Environment=WIKI_ENGINE_SKIP_PROGRESS=1
 Environment=HOME=/root
 Environment=WIKI_ENGINE_AGENT=claude
 Environment=CLAUDE_BIN=/root/.local/bin/claude
@@ -18,6 +21,5 @@ Environment=CLAUDE_OUTPUT_FORMAT=json
 Environment=CODEX_BIN=/root/.nvm/versions/node/v22.22.2/bin/codex
 Environment=CODEX_SANDBOX=workspace-write
 Environment=CODEX_APPROVAL=never
-Environment=GITHUB_TOKEN_FILE=/root/.github-mintwiki-token
-ExecStart=/root/wiki-engine-blueprint/scripts/run-next-task.sh
+ExecStart=/root/wiki-engine-db-track/scripts/run-next-task.sh
 TimeoutStartSec=540
