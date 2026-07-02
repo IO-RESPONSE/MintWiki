@@ -38,10 +38,20 @@
   주석 분리 패턴은 [0461 document table portable SQL](../../docs/php-db-ui-micro-job-prompts-0351-0670.md)부터
   적용한다.
 
+## 0461이 채우는 것
+
+- `document.sql`: `src/persistence/models.py`의 `DocumentORM`,
+  `migrations/versions/0002_add_document_table.py`와 동일한 결과를 내는
+  portable `CREATE TABLE` 문. 이 파일부터 PostgreSQL/MariaDB 차이(ID/FK,
+  timestamp, text collation)를 컬럼별 주석으로 분리해 남긴다 — 실제 DDL은
+  두 DB 모두에서 그대로 실행되는 공통 문법만 쓰고, 차이가 나는 지점은
+  주석으로만 설명한다(collation 등 컬럼 단위 강제가 필요 없는 이유는 파일
+  안의 주석 참고).
+
 ## 이후 채워질 파일
 
-- **0461~0468**: `document`, `revision`, `account`, `user_session`, ACL,
-  discussion, audit, jobs 테이블.
+- **0462~0468**: `revision`, `account`, `user_session`, ACL, discussion,
+  audit, jobs 테이블.
 - **0469**: 이 디렉터리 전체에 대한 SQL feature 금지 목록 자동 검사(lint
   테스트).
 - **0493**: PHP 웹호스팅 installer가 참조할 별도의 schema version 테이블.

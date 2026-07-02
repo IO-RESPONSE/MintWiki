@@ -47,6 +47,41 @@ def test_db_schema_migration_sql_matches_readme_spec():
     assert "CONSTRAINT pk_schema_migration PRIMARY KEY" in content
 
 
+def test_db_schema_document_sql_exists():
+    """0461이 추가한 document.sql이 존재하는지 확인한다."""
+    document_sql = _db_dir() / "schema" / "document.sql"
+    assert document_sql.exists(), "db/schema/document.sql should exist"
+
+
+def test_db_schema_document_sql_matches_orm_spec():
+    """document.sql이 DocumentORM/0002 마이그레이션과 같은 컬럼·제약을 갖는지 확인한다."""
+    content = (_db_dir() / "schema" / "document.sql").read_text()
+
+    assert "CREATE TABLE document" in content
+    assert "id VARCHAR(255) NOT NULL" in content
+    assert "title VARCHAR(500) NOT NULL" in content
+    assert "normalized_title VARCHAR(500) NOT NULL" in content
+    assert "current_revision_id VARCHAR(255) NULL" in content
+    assert "created_at TIMESTAMP NOT NULL" in content
+    assert "updated_at TIMESTAMP NOT NULL" in content
+    assert "CONSTRAINT pk_document PRIMARY KEY (id)" in content
+    assert "CONSTRAINT uq_document_normalized_title UNIQUE (normalized_title)" in content
+
+
+def test_db_schema_document_sql_separates_dialect_differences_in_comments():
+    """PostgreSQL/MariaDB 차이가 주석으로 분리되어 있는지 확인한다(0461 노트)."""
+    content = (_db_dir() / "schema" / "document.sql").read_text()
+
+    assert "PostgreSQL" in content
+    assert "MariaDB" in content
+    # 실제 CREATE TABLE 문에는 방언 전용 문법이 섞이지 않는다.
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    assert "WITH TIME ZONE" not in create_table_stmt
+    assert "COLLATE" not in create_table_stmt
+    assert "AUTO_INCREMENT" not in create_table_stmt
+    assert "SERIAL" not in create_table_stmt
+
+
 def test_db_readme_confirms_migration_history_table():
     """README가 checklist §6이 보류한 적용 이력 테이블 이름/방식을 확정하는지 확인한다."""
     content = (_db_dir() / "README.md").read_text()
