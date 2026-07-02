@@ -3,6 +3,8 @@
 태스크 0391 의 산출물이다 — `docs/php-db-ui-micro-job-prompts-0351-0670.md`
 가 정한 대로 `php/src`, `php/public`, `php/tests` 디렉터리만 있으면 되고,
 그 안에 실제 PHP 코드가 있을 필요는 없다(후속 Phase B 태스크의 범위).
+`php/src` 는 태스크 0395부터 `Http` value object 등 실제 골격 PHP 파일을
+담기 시작하므로, "PHP 파일이 없어야 한다"는 제약은 더 이상 유효하지 않다.
 """
 from pathlib import Path
 
@@ -26,10 +28,7 @@ class TestPhpRuntimeSkeleton:
             readme = PHP_ROOT / name / "README.md"
             assert readme.is_file(), f"missing php/{name}/README.md"
 
-    def test_src_contains_no_php_files_yet(self):
-        """0391 시점 골격 원칙은 `src/`에는 여전히 유효하다 — 실제
-        애플리케이션 PHP 소스는 아직 없다. `tests/`는 0393부터,
-        `public/`은 0394부터 각각 골격 PHP 파일을 담으므로 이 제약에서
-        제외한다."""
-        php_files = list((PHP_ROOT / "src").rglob("*.php"))
-        assert php_files == [], "unexpected .php files under php/src"
+    def test_src_http_contains_response_value_object(self):
+        """0395부터 `src/Http`에 Response value object가 들어온다."""
+        response_file = PHP_ROOT / "src" / "Http" / "Response.php"
+        assert response_file.is_file(), "missing php/src/Http/Response.php"
