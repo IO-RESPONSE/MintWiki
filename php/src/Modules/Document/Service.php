@@ -46,6 +46,17 @@ final class Service
     }
 
     /**
+     * 기존 문서를 업데이트한다 (태스크 0533).
+     *
+     * @throws DuplicateNormalizedTitleError normalizedTitle이 이미 존재하는 경우
+     * @throws NotFoundError document의 id가 저장소에 없는 경우
+     */
+    public function update(Document $document): Document
+    {
+        return $this->documentRepository->update($document);
+    }
+
+    /**
      * UUID v4 문자열을 생성한다 (문서 id 발급용).
      */
     private static function generateId(): string
