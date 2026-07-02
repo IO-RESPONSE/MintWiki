@@ -79,12 +79,12 @@ ID, timestamp, collation)은 후속 문서(0443~0446)에서 확정한다.
 
 ## 4. Collation 매트릭스
 
-상세 정책은 0446(portable text collation policy)에서 확정한다. 이 절은
-그 정책이 다뤄야 할 차이를 매트릭스로 미리 정리한다.
+상세 정책은 [portable-text-collation-policy.md](portable-text-collation-policy.md)에서
+확정한다. 이 절은 그 정책이 다뤄야 할 차이를 매트릭스로 미리 정리한다.
 
 | 항목 | PostgreSQL | MariaDB (10.6+) | 상태 | 비고 |
 |---|---|---|---|---|
-| 기본 문자열 비교 | 기본적으로 대소문자 구분(`LIKE`, `=`) | collation에 따라 다름 — 흔한 기본값(`utf8mb4_general_ci`, `utf8mb4_unicode_ci`)은 **대소문자 비구분** | 대체 필요 | 대소문자 구분 비교가 필요한 컬럼(예: ID, 코드값)은 명시적으로 `_bin`/`_cs` collation 또는 정규화된 컬럼을 쓴다. 반대로 `ILIKE`가 필요했던 자리는 MariaDB의 대소문자 비구분 기본 collation으로 대체 가능(정책 확정은 0446) |
+| 기본 문자열 비교 | 기본적으로 대소문자 구분(`LIKE`, `=`) | collation에 따라 다름 — 흔한 기본값(`utf8mb4_general_ci`, `utf8mb4_unicode_ci`)은 **대소문자 비구분** | 대체 필요 | 대소문자 구분 비교가 필요한 컬럼(예: ID, 코드값)은 명시적으로 `_bin`/`_cs` collation 또는 정규화된 컬럼을 쓴다. 반대로 `ILIKE`가 필요했던 자리는 MariaDB의 대소문자 비구분 기본 collation으로 대체 가능(정책 확정은 [portable-text-collation-policy.md](portable-text-collation-policy.md)) |
 | 한글 정렬 순서 | ICU/locale collation(`ko-KR-x-icu` 등) 설정 가능 | `utf8mb4_unicode_ci`/`utf8mb4_0900_ai_ci`류의 유니코드 기반 정렬, ICU locale collation은 없음 | 차이(주의) | 완전히 동일한 정렬 순서를 보장하지 않는다. 한글 제목 정렬은 "완전한 사전순 일치"가 아니라 "유니코드 코드포인트 기반 안정적 정렬"을 목표로 삼는다. 실제 fixture 검증은 0511(MariaDB collation fixture tests)에서 진행 |
 | 대소문자 무시 검색(`ILIKE`) | 네이티브 연산자 | 없음 — collation 또는 `LOWER()` 비교로 대체 | 금지(정책) | [ansi-sql-persistence-policy.md](ansi-sql-persistence-policy.md#postgresql-전용-기능-금지-목록) 참고. portable LIKE 정책은 0512에서 확정 |
 | 문자셋 | `UTF8`(PostgreSQL 인코딩) | `utf8mb4` (4바이트 UTF-8, 이모지/일부 한자 포함) | 대체 필요 | MariaDB 쪽은 반드시 `utf8mb4`를 쓴다(3바이트 `utf8`은 일부 유니코드 문자를 저장하지 못한다). 스키마 생성 시 데이터베이스/테이블 기본 문자셋을 `utf8mb4`로 명시한다 |
@@ -94,7 +94,8 @@ ID, timestamp, collation)은 후속 문서(0443~0446)에서 확정한다.
 
 - **0443**([portable-schema-naming-policy.md](portable-schema-naming-policy.md)),
   **0444**([portable-id-column-policy.md](portable-id-column-policy.md)),
-  **0445**([portable-timestamp-column-policy.md](portable-timestamp-column-policy.md))**~0446**:
+  **0445**([portable-timestamp-column-policy.md](portable-timestamp-column-policy.md)),
+  **0446**([portable-text-collation-policy.md](portable-text-collation-policy.md)):
   이 매트릭스의 개별 항목(naming, ID, timestamp, collation)을 실행 가능한
   정책으로 확정한다.
 - **0447**: 금지 목록(타입/인덱스/트랜잭션 표의 "금지(정책)" 항목)을

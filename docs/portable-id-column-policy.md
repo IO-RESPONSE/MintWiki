@@ -119,9 +119,10 @@ DB별 전용 타입은 쓰지 않는다.
   이 문서와 별개로 확정한다 — ID는 항상 애플리케이션 생성이라는 원칙을
   timestamp에도 확장하되, `server_default` 의존은 신규 컬럼부터 최소화하는
   방향으로 정리한다.
-- **0446**: text collation 정책. ID 문자열은 UUID 형식(소문자 hex +
-  하이픈)만 쓰므로 대소문자 비교 이슈가 실질적으로 발생하지 않지만,
-  0446이 그 전제를 명시적으로 확인한다.
+- **0446**([portable-text-collation-policy.md](portable-text-collation-policy.md)):
+  text collation 정책. ID 문자열은 UUID 형식(소문자 hex + 하이픈)만 쓰므로
+  대소문자 비교 이슈가 실질적으로 발생하지 않지만, 0446이 그 전제를
+  명시적으로 확인한다.
 - **0447**: 이 문서가 금지한 `gen_random_uuid()`/`uuid_generate_v4()`/
   `AUTO_INCREMENT` 등을 [ANSI SQL Persistence
   Policy](ansi-sql-persistence-policy.md)의 금지 목록과 함께 코드에서

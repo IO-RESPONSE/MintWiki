@@ -132,8 +132,9 @@ ID 컬럼에 이미 적용한 "애플리케이션이 값을 정하고 DB는 그 
 
 ## 이 문서 이후 단계
 
-- **0446**: text collation 정책. timestamp는 문자열 비교/collation 대상이
-  아니므로 이 문서와 독립적이지만, 두 문서 모두
+- **0446**([portable-text-collation-policy.md](portable-text-collation-policy.md)):
+  text collation 정책. timestamp는 문자열 비교/collation 대상이 아니므로
+  이 문서와 독립적이지만, 두 문서 모두
   [mariadb-compatibility-matrix.md](mariadb-compatibility-matrix.md)의
   "대체 필요" 항목을 구체화한다는 점에서 짝을 이룬다.
 - **0447**: 이 문서가 최소화 대상으로 지정한 `server_default=func.now()`/
