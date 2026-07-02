@@ -1,16 +1,76 @@
 """Discussion 모듈의 HTTP 어댑터: 토론 라우터와 권한 의존성 골격."""
 from typing import Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from modules.acl.permission import Permission
 from modules.acl.router import require_permission
 from modules.acl.service import AclService
+from modules.discussion.schema import CreateThreadRequest, ThreadResponse
+from modules.discussion.service import DiscussionService
+from modules.discussion.thread import (
+    EmptyThreadCreatedByError,
+    EmptyThreadDocumentIdError,
+    EmptyThreadTitleError,
+)
 from modules.user.block_check_service import BlockCheckService
 
 # 토론 스레드/댓글 라우터. 접두사는 main.py에 등록할 때 지정한다.
-# 실제 스레드/댓글 라우트는 이후 태스크에서 이 라우터에 연결한다.
+# 스레드/댓글 관련 나머지 라우트는 이후 태스크에서 이 라우터에 연결한다.
 router = APIRouter()
+
+
+async def get_discussion_service(request: Request) -> DiscussionService:
+    """
+    토론 서비스를 반환한다.
+
+    앱 상태(app.state.discussion_service)에 미리 준비된 서비스 인스턴스를
+    사용한다. 서비스 인스턴스를 준비하는 절차(저장소 선택 등)는 앱을
+    구성하는 쪽(main.py 또는 테스트)의 책임이다.
+    """
+    return request.app.state.discussion_service
+
+
+@router.post("/threads", tags=["discussion"])
+async def create_thread(
+    body: CreateThreadRequest,
+    service: DiscussionService = Depends(get_discussion_service),
+) -> ThreadResponse:
+    """
+    새로운 토론 스레드를 생성한다.
+
+    Args:
+        body: 스레드 생성 요청 (document_id, title, created_by)
+        service: 토론 서비스
+
+    Returns:
+        생성된 스레드
+
+    Raises:
+        HTTPException: 필수 필드가 비어있는 경우 422 반환
+    """
+    try:
+        thread = await service.create_thread(
+            document_id=body.document_id,
+            title=body.title,
+            created_by=body.created_by,
+        )
+    except (
+        EmptyThreadDocumentIdError,
+        EmptyThreadTitleError,
+        EmptyThreadCreatedByError,
+    ) as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
+    return ThreadResponse(
+        id=thread.id,
+        document_id=thread.document_id,
+        title=thread.title,
+        created_by=thread.created_by,
+        status=thread.status,
+    )
 
 
 def require_discuss_permission(
