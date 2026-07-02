@@ -10,6 +10,7 @@ from modules.acl.rule import (
     Rule,
     SubjectType,
 )
+from modules.acl.service import AclService
 
 __all__ = [
     "Permission",
@@ -23,4 +24,5 @@ __all__ = [
     "DocumentAcl",
     "EmptyDocumentIdError",
     "Decision",
+    "AclService",
 ]

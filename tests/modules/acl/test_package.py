@@ -26,6 +26,7 @@ def test_acl_package_exports_rule():
         "DocumentAcl",
         "EmptyDocumentIdError",
         "Decision",
+        "AclService",
     ]
     assert modules.acl.Rule is Rule
 
@@ -54,3 +55,11 @@ def test_acl_package_exports_decision():
 
     assert "Decision" in modules.acl.__all__
     assert modules.acl.Decision is Decision
+
+
+def test_acl_package_exports_acl_service():
+    # 0157에서 AclService 골격이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.service import AclService
+
+    assert "AclService" in modules.acl.__all__
+    assert modules.acl.AclService is AclService
