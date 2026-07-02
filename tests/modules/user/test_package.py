@@ -13,6 +13,9 @@ def test_user_package_exports_domain_model():
         "AnonymousIdentity",
         "IpIdentity",
         "InvalidIpAddressError",
+        "Block",
+        "EmptyBlockIdError",
+        "EmptyBlockUserIdError",
         "Group",
         "EmptyGroupNameError",
         "UserRepository",
@@ -28,6 +31,9 @@ def test_user_package_exports_domain_model():
     assert modules.user.AnonymousIdentity is not None
     assert modules.user.IpIdentity is not None
     assert modules.user.InvalidIpAddressError is not None
+    assert modules.user.Block is not None
+    assert modules.user.EmptyBlockIdError is not None
+    assert modules.user.EmptyBlockUserIdError is not None
     assert modules.user.Group is not None
     assert modules.user.EmptyGroupNameError is not None
     assert modules.user.UserRepository is not None
