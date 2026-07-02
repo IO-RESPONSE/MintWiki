@@ -6,6 +6,7 @@ from modules.discussion.comment import (
     EmptyCommentIdError,
     EmptyCommentThreadIdError,
 )
+from modules.discussion.state import ThreadState
 from modules.discussion.thread import (
     DiscussionThread,
     EmptyThreadCreatedByError,
@@ -25,4 +26,5 @@ __all__ = [
     "EmptyCommentThreadIdError",
     "EmptyCommentBodyError",
     "EmptyCommentCreatedByError",
+    "ThreadState",
 ]
