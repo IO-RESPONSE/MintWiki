@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "description": "혼합 언어와 특수 문자, 숫자가 섞인 제목을 정규화한다.",
+  "input": { "title": "  Document 한글 Title: Chapter 3  " },
+  "expected": { "title": "Document 한글 Title: Chapter 3" },
+  "errors": []
+}

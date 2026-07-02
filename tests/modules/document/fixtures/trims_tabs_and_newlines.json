@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "description": "제목 앞뒤의 탭과 개행을 제거한다.",
+  "input": { "title": "\n\thello\t\n" },
+  "expected": { "title": "hello" },
+  "errors": []
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "description": "한글 제목의 앞뒤 공백을 제거하고 내용은 그대로 유지한다.",
+  "input": { "title": "  한글 제목  " },
+  "expected": { "title": "한글 제목" },
+  "errors": []
+}

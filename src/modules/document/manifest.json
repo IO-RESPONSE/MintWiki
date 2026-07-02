@@ -26,7 +26,7 @@
   },
   "contract_notes": [
     "document 는 docs/modules.md 의 의존 규칙에 따라 revision 의 현재 리비전 정보를 서비스 인터페이스(RevisionService)를 통해서만 조회하며, revision 내부 저장소를 직접 참조하지 않는다.",
-    "fixtures 디렉터리(tests/modules/document/fixtures)는 아직 채워지지 않았으며, 공용 fixture 변환은 태스크 0370 에서 진행한다.",
+    "fixtures 디렉터리(tests/modules/document/fixtures)는 태스크 0370 에서 normalize_title 정규화 시나리오로 채워졌다. 이후 PHP 포트(0426)가 같은 파일을 재사용한다.",
     "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
   ]
 }

@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "description": "제목 양 끝의 공백 제거와 내부 공백 축소를 동시에 수행한다.",
+  "input": { "title": "  a   b   c  " },
+  "expected": { "title": "a b c" },
+  "errors": []
+}
