@@ -28,7 +28,9 @@ foreach ([
     '<meta charset="utf-8">' => 'UTF-8 meta charset을 포함해야 한다.',
     '<meta name="viewport" content="width=device-width, initial-scale=1">' => 'viewport meta를 포함해야 한다.',
     '<title>MintWiki &lt;Home&gt;</title>' => 'title은 escape해야 한다.',
+    '<header></header>' => 'header landmark를 포함해야 한다.',
     '<main><h1>홈</h1></main>' => 'body HTML은 layout 안에 포함해야 한다.',
+    '<footer></footer>' => 'footer landmark를 포함해야 한다.',
 ] as $needle => $message) {
     if (!str_contains($html, $needle)) {
         $failures[] = $message;

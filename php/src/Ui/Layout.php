@@ -32,7 +32,9 @@ final class Layout
             . '<title>' . $escapedTitle . '</title>'
             . '</head>'
             . '<body>'
+            . '<header></header>'
             . $body
+            . '<footer></footer>'
             . '</body>'
             . '</html>';
     }
