@@ -21,5 +21,15 @@ def test_acl_package_exports_rule():
         "Effect",
         "EmptyRuleIdError",
         "MissingSubjectIdError",
+        "NamespaceAclDefaults",
+        "DEFAULT_NAMESPACE",
     ]
     assert modules.acl.Rule is Rule
+
+
+def test_acl_package_exports_namespace_defaults():
+    # 0154에서 NamespaceAclDefaults가 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.namespace_defaults import NamespaceAclDefaults
+
+    assert "NamespaceAclDefaults" in modules.acl.__all__
+    assert modules.acl.NamespaceAclDefaults is NamespaceAclDefaults
