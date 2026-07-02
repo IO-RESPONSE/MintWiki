@@ -63,7 +63,7 @@ ID, timestamp, collation)은 후속 문서(0443~0446)에서 확정한다.
 | 부분 인덱스(`WHERE` 절) | 지원 | 미지원 | 금지(정책) | 일반 인덱스 + 서비스 계층 검증으로 대체 |
 | 함수 기반/표현식 인덱스 | 지원 | 제한적 지원(10.2+ generated column 경유) | 회피 | 저장소 코드에서 새로 도입하지 않는다. 대소문자 무시 검색은 [persistence-boundaries.md](persistence-boundaries.md)의 정규화된 컬럼 패턴을 쓴다 |
 | 긴 TEXT/VARCHAR 컬럼 인덱스 | 컬럼 전체 인덱싱 가능 | InnoDB는 인덱스 prefix 길이 제한(기본 `innodb_large_prefix`로 3072바이트, `utf8mb4`에서는 문자 수 기준 더 작아짐) | 대체 필요 | `TEXT` 컬럼을 직접 인덱싱하지 않는다. 조회가 필요하면 별도 정규화된 `VARCHAR(n)` 컬럼을 두고 그 컬럼에 인덱싱한다(`document.normalized_title` 패턴) |
-| 인덱스/제약 이름 길이 | 63바이트 식별자 제한 | 64자 식별자 제한 | 대체 필요 | 두 한도 중 더 짧은 63바이트를 기준으로 이름을 짓는다(0443 portable schema naming 정책에서 확정) |
+| 인덱스/제약 이름 길이 | 63바이트 식별자 제한 | 64자 식별자 제한 | 대체 필요 | 두 한도 중 더 짧은 63바이트를 기준으로 이름을 짓는다([portable-schema-naming-policy.md](portable-schema-naming-policy.md)에서 확정) |
 | `SKIP LOCKED` | 지원 | 표준 배포 미지원/버전 의존 | 금지(정책) | 폴링 기반 폴백 (0516) |
 
 ## 3. 트랜잭션 매트릭스
@@ -92,8 +92,9 @@ ID, timestamp, collation)은 후속 문서(0443~0446)에서 확정한다.
 
 ## 이 문서 이후 단계
 
-- **0443~0446**: 이 매트릭스의 개별 항목(naming, ID, timestamp, collation)을
-  실행 가능한 정책으로 확정한다.
+- **0443**([portable-schema-naming-policy.md](portable-schema-naming-policy.md))**~0446**:
+  이 매트릭스의 개별 항목(naming, ID, timestamp, collation)을 실행 가능한
+  정책으로 확정한다.
 - **0447**: 금지 목록(타입/인덱스/트랜잭션 표의 "금지(정책)" 항목)을
   코드에서 자동 탐지하는 스크립트를 추가한다.
 - **0511**: 이 매트릭스의 "차이(주의)" 항목 중 한글 정렬/collation을
