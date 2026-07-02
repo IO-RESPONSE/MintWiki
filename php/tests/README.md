@@ -77,6 +77,29 @@ PHP test suite.
   revision port exists (0404/0405). Run it with
   `php tests/Modules/Document/ServiceTest.php` from `php/` after
   `composer install`.
+- `Modules/Document/ServiceParityTest.php` (0434) — the parity
+  counterpart of `ServiceTest.php`: each scenario is labeled with the
+  matching Python test method name from
+  `tests/modules/document/test_service.py`'s `TestDocumentService`
+  (`test_create_document_with_title`, `test_create_normalizes_title`,
+  `test_create_generates_unique_id`, `test_create_delegates_to_repository`,
+  `test_create_raises_on_empty_title`,
+  `test_create_raises_on_whitespace_only_title`,
+  `test_create_raises_on_duplicate_normalized_title`,
+  `test_create_raises_on_duplicate_normalized_title_with_spaces`,
+  `test_create_allows_different_normalized_titles`,
+  `test_get_document_by_id`, `test_get_document_by_id_not_found`), and
+  additionally checks `normalizedTitle`/`currentRevisionId`, which
+  `ServiceTest.php` doesn't assert. There is no shared JSON fixture
+  directory for service create/get scenarios (unlike
+  `TitleFixtureRunnerTest.php`) — `tests/modules/document/fixtures/` is
+  Title-normalization-only — so this file ports the Python assertions
+  directly instead of reading fixture files. Like `ServiceTest.php`, it
+  uses an anonymous in-memory `Repository` (the concrete
+  `InMemoryDocumentRepository` ships in 0435) and stays within the
+  `create`/`get` contract. Run it with
+  `php tests/Modules/Document/ServiceParityTest.php` from `php/` after
+  `composer install`.
 
 - `Modules/Revision/RevisionTest.php` (0404) — confirms
   `MintWiki\Revision\Revision` returns the `id`, `documentId`, `source`,
