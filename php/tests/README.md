@@ -217,6 +217,14 @@ PHP test suite.
   `php tests/Modules/Admin/ServiceTest.php` from `php/` after
   `composer install`.
 
+- `App/ConfigLoaderTest.php` (0415) — confirms `MintWiki\App\ConfigLoader::get()`
+  prefers a `WIKI_`-prefixed environment variable when set, falls back to
+  the constructor-provided file-value array when the environment variable
+  is absent, and returns the caller's `$default` (or `null`) when neither
+  is present. No `.env`/config file parser ships in this task — that
+  lands in 0616. Run it with `php tests/App/ConfigLoaderTest.php` from
+  `php/` after `composer install`.
+
 Further fixture runners (...) are added by later Phase B tasks and must
 likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
