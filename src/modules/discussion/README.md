@@ -162,3 +162,74 @@ Moderation behavior is tested in:
 - `tests/modules/discussion/test_audit_recorder.py::TestDiscussionAuditRecorderRecordCommentHidden`
   — `record_comment_hidden()` in isolation, including the `actor_id=None`
   case
+
+## Discussion Phase QA Checklist
+
+Manual/exploratory checklist for this phase (threads, comments, state,
+logs), grouped by the same areas documented above. Each item names the
+automated test that already covers it, so a QA pass can spot-check the
+listed behavior directly (e.g. via the HTTP API or a REPL) and cross-check
+against the referenced test when a result looks wrong.
+
+### Threads
+
+- [ ] `POST /threads` creates a thread with `status == "open"` and rejects
+  blank `document_id`/`title`/`created_by` with `422`.
+  (`test_router.py`, `test_thread.py`)
+- [ ] `GET /threads?document_id=...` returns only that document's threads,
+  in creation order, honoring `limit`/`offset`. (`test_router.py`,
+  `test_repository.py`)
+- [ ] `POST /threads/{id}/close` closes an open thread and returns `404`
+  for an unknown `thread_id`. (`test_router.py`)
+- [ ] `reopen_thread()`/`pause_thread()` work through `DiscussionService`
+  but are **not** reachable over HTTP yet — confirm no `/reopen` or
+  `/pause` route exists in `router.py` before treating this as a bug.
+  (`test_service.py`, `test_state.py`)
+- [ ] Close/reopen/pause are unconditional (no illegal-transition check):
+  calling any of them from any status succeeds, including re-applying the
+  current status. (`test_thread.py::TestDiscussionThreadState`)
+- [ ] `closed_at`/`paused_at` are independent fields, not cleared by an
+  unrelated transition — verify `status` alone drives behavior, not
+  "is a timestamp set". (`test_thread.py::test_full_state_cycle_through_all_transitions`)
+
+### Comments
+
+- [ ] `POST /threads/{id}/comments` adds a comment and rejects blank
+  `body`/`created_by` with `422`. (`test_router.py`, `test_comment.py`)
+- [ ] `GET /threads/{id}/comments` returns comments in creation order,
+  honoring `limit`/`offset`. (`test_router.py`, `test_repository.py`)
+- [ ] Adding/hiding a comment succeeds regardless of thread status — a
+  closed or paused thread does not block either operation.
+  (`test_service.py`)
+- [ ] `hide_comment()` is **not** reachable over HTTP yet and has no
+  permission check tying `actor_id` to an ACL role — confirm this is
+  expected before treating it as a bug. (`test_service.py::TestDiscussionServiceHideComment`)
+- [ ] `to_public_view()` masks `body` to `None` only when `is_hidden` is
+  `True`; `to_moderator_view()` always returns the real `body`.
+  (`test_comment.py`)
+
+### State
+
+- [ ] `ThreadState` enum values (`OPEN`/`CLOSED`/`PAUSED`) exist but are
+  not wired into `DiscussionThread.status` validation — an arbitrary
+  string is not rejected. (`test_state.py`, `test_thread.py`)
+- [ ] `is_open()`/`is_paused()` are derived from `status`; there is no
+  `is_closed()` — confirm callers use `not is_open() and not is_paused()`.
+  (`test_thread.py`)
+
+### Logs (audit trail)
+
+- [ ] Thread creation and comment hiding always produce a
+  `DiscussionAuditEvent` (`THREAD_CREATED`, `COMMENT_HIDDEN`).
+  (`test_audit_recorder.py`, `test_service.py`)
+- [ ] Close/reopen/pause do **not** currently call the audit recorder —
+  confirm no `THREAD_CLOSED`/`THREAD_REOPENED`/`THREAD_PAUSED` event is
+  produced by `DiscussionService`, even though `DiscussionAuditAction`
+  defines those members. (`test_audit_recorder.py`, `test_service.py`)
+- [ ] Hiding a nonexistent comment raises
+  `DiscussionCommentNotFoundError` and records no audit event.
+  (`test_service.py::test_hide_nonexistent_comment_does_not_record_audit_event`)
+- [ ] `DiscussionFixtureLoader.load_all()` fixtures (open/closed/paused
+  threads, hidden/mixed-visibility comments) reproduce each of the above
+  states with matching audit events, for use as canned QA scenarios.
+  (`test_fixtures.py`)
