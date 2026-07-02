@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 
 from modules.search.document import SearchDocument
 from modules.search.in_memory_adapter import InMemorySearchAdapter
-from modules.search.router import router
+from modules.search.router import get_search_service, router
 from modules.search.service import SearchService
 
 
@@ -35,6 +35,30 @@ class TestSearchRouteRegistration:
     def test_no_unexpected_routes_are_registered(self):
         """의도하지 않은 라우트가 실수로 추가되지 않았는지 확인한다."""
         assert self._registered_routes() == {("/title", "GET"), ("/body", "GET")}
+
+    def test_routes_are_tagged_search(self):
+        """모든 라우트가 OpenAPI 문서에서 search 태그로 묶이는지 확인한다."""
+        for route in router.routes:
+            assert route.tags == ["search"]
+
+
+class TestGetSearchService:
+    """get_search_service 의존성 함수 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_returns_service_from_app_state(self):
+        """의존성 함수는 request.app.state.search_service를 그대로 반환한다."""
+        app = FastAPI()
+        service = SearchService(InMemorySearchAdapter())
+        app.state.search_service = service
+
+        class DummyRequest:
+            pass
+
+        request = DummyRequest()
+        request.app = app
+
+        assert await get_search_service(request) is service
 
 
 @pytest.fixture
@@ -272,3 +296,109 @@ class TestSearchByBody:
         response = client.get("/body", params={"body": "Apple", "offset": -1})
 
         assert response.status_code == 422
+
+
+class TestSearchResponseShape:
+    """검색 응답이 계약된 필드만 노출하는지 확인한다."""
+
+    @pytest.mark.asyncio
+    async def test_search_by_title_response_exposes_only_declared_fields(
+        self, app: FastAPI, client: TestClient
+    ):
+        """응답 항목은 document_id, title, score 외의 필드를 노출하지 않는다."""
+        await app.state.search_service.index_document(
+            SearchDocument(
+                document_id="doc1",
+                title="Hello World",
+                body="비공개로 유지되어야 하는 본문",
+                categories=["Category"],
+            )
+        )
+
+        response = client.get("/title", params={"title": "Hello"})
+
+        result = response.json()["results"][0]
+        assert set(result.keys()) == {"document_id", "title", "score"}
+
+    @pytest.mark.asyncio
+    async def test_search_by_body_response_exposes_only_declared_fields(
+        self, app: FastAPI, client: TestClient
+    ):
+        """응답 항목은 document_id, title, score 외의 필드를 노출하지 않는다."""
+        await app.state.search_service.index_document(
+            SearchDocument(
+                document_id="doc1",
+                title="Doc One",
+                body="Hello World",
+                categories=["Category"],
+            )
+        )
+
+        response = client.get("/body", params={"body": "Hello"})
+
+        result = response.json()["results"][0]
+        assert set(result.keys()) == {"document_id", "title", "score"}
+
+
+class TestSearchMatchesAcrossIndexedFields:
+    """제목/본문 검색 엔드포인트가 리다이렉트 대상, 카테고리에도 매칭되는지 확인한다.
+
+    두 엔드포인트 모두 동일한 SearchService/어댑터에 위임하므로, 질의어는
+    title/body 파라미터 이름과 무관하게 색인된 모든 필드에 매칭된다.
+    """
+
+    @pytest.mark.asyncio
+    async def test_search_by_title_matches_redirect_target(
+        self, app: FastAPI, client: TestClient
+    ):
+        await app.state.search_service.index_document(
+            SearchDocument(
+                document_id="doc1", title="Doc One", redirect_target="TargetPage"
+            )
+        )
+
+        response = client.get("/title", params={"title": "TargetPage"})
+
+        assert response.status_code == 200
+        assert len(response.json()["results"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_search_by_title_matches_category(
+        self, app: FastAPI, client: TestClient
+    ):
+        await app.state.search_service.index_document(
+            SearchDocument(document_id="doc1", title="Doc One", categories=["Science"])
+        )
+
+        response = client.get("/title", params={"title": "Science"})
+
+        assert response.status_code == 200
+        assert len(response.json()["results"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_search_by_body_matches_redirect_target(
+        self, app: FastAPI, client: TestClient
+    ):
+        await app.state.search_service.index_document(
+            SearchDocument(
+                document_id="doc1", title="Doc One", redirect_target="TargetPage"
+            )
+        )
+
+        response = client.get("/body", params={"body": "TargetPage"})
+
+        assert response.status_code == 200
+        assert len(response.json()["results"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_search_by_body_matches_category(
+        self, app: FastAPI, client: TestClient
+    ):
+        await app.state.search_service.index_document(
+            SearchDocument(document_id="doc1", title="Doc One", categories=["Science"])
+        )
+
+        response = client.get("/body", params={"body": "Science"})
+
+        assert response.status_code == 200
+        assert len(response.json()["results"]) == 1
