@@ -1,6 +1,11 @@
 """토론 서비스 테스트."""
 import pytest
 
+from modules.discussion.comment import (
+    EmptyCommentBodyError,
+    EmptyCommentCreatedByError,
+    EmptyCommentThreadIdError,
+)
 from modules.discussion.repository import InMemoryDiscussionRepository
 from modules.discussion.service import DiscussionService
 from modules.discussion.thread import (
@@ -240,3 +245,50 @@ class TestDiscussionServiceComments:
         result = await service.list_comments_by_thread_id("nonexistent")
 
         assert result == []
+
+    @pytest.mark.asyncio
+    async def test_add_comment_raises_on_empty_thread_id(self):
+        """서비스는 빈 스레드 id로 댓글을 추가하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(EmptyCommentThreadIdError):
+            await service.add_comment(thread_id="", body="본문", created_by="user1")
+
+    @pytest.mark.asyncio
+    async def test_add_comment_raises_on_empty_body(self):
+        """서비스는 빈 본문으로 댓글을 추가하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+
+        with pytest.raises(EmptyCommentBodyError):
+            await service.add_comment(thread_id=thread.id, body="", created_by="user1")
+
+    @pytest.mark.asyncio
+    async def test_add_comment_raises_on_empty_created_by(self):
+        """서비스는 빈 작성자 id로 댓글을 추가하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+
+        with pytest.raises(EmptyCommentCreatedByError):
+            await service.add_comment(thread_id=thread.id, body="본문", created_by="")
+
+    @pytest.mark.asyncio
+    async def test_add_comment_does_not_persist_on_validation_error(self):
+        """서비스는 검증에 실패한 댓글을 저장소에 남기지 않는다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+
+        with pytest.raises(EmptyCommentBodyError):
+            await service.add_comment(thread_id=thread.id, body="", created_by="user1")
+
+        assert await service.list_comments_by_thread_id(thread.id) == []
