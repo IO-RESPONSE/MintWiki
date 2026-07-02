@@ -27,6 +27,15 @@ PHP test suite.
   `tryFromDriver`, `fromDriver`) work correctly. Run it with
   `php tests/Persistence/SqlDialectTest.php` from `php/` after
   `composer install`.
+- `Persistence/SeedLoaderTest.php` (0492) — confirms
+  `MintWiki\Persistence\SeedLoader` parses and loads ANSI SQL seed
+  fixtures from `tests/fixtures/seed/*.sql` files. Tests SQL parsing
+  (INSERT statement extraction, comment removal) and fixture loading
+  (individual table and all-seeds modes). Uses an in-memory `pdo_sqlite`
+  connection so the test stays network-free. Seed fixture files support
+  PostgreSQL and MariaDB transparently. Run it with
+  `php tests/Persistence/SeedLoaderTest.php` from `php/` after
+  `composer install`.
 - `Modules/Document/DocumentRepositoryTest.php` (0487) — confirms
   `MintWiki\Modules\Document\DocumentRepository` skeleton and `Document`
   domain model are correctly structured. Uses an in-memory `pdo_sqlite`
