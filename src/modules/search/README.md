@@ -28,6 +28,12 @@ depend on: it wraps a `SearchAdapter` and delegates `index_document()`,
 `search()`, and `delete_document()` to it. Converting source documents into
 `SearchDocument`s and ranking query results are filled in by later tasks.
 
+`IndexDocumentRequest` (`schema.py`) is the indexing payload model: it
+mirrors the fields needed to construct a `SearchDocument` (`document_id`,
+`title`, `body`, `redirect_target`, `categories`) so a future indexing HTTP
+route can accept it directly as a request body. It is not yet wired to a
+route.
+
 `router` (`router.py`) is an `APIRouter`, not yet registered in `main.py`.
 It exposes `GET /title` and `GET /body`, each reading a required query
 parameter (`title` or `body`, respectively) plus optional `limit`/`offset`
