@@ -83,6 +83,105 @@ sync and queued execution without changing handler or payload code.
 Both models record audit events (`JobAuditEvent`) on completion, enabling
 observability regardless of execution mode.
 
+## Background Work Boundaries
+
+The jobs module defines clear architectural boundaries to manage dependencies
+and responsibilities between the jobs framework and the modules that use it.
+
+### Module Integration Boundary
+
+**Enqueuers (e.g., document module)** decide *what* work needs to happen:
+- When a document is edited, the document module knows that search indexing,
+  cache invalidation, and recent-changes tracking are needed
+- Rather than directly performing this work, the document module creates
+  `JobPayload` objects (e.g., `IndexDocumentJobPayload`, `CachePurgeJobPayload`)
+  and enqueues them via `QueueBackend.enqueue()`
+- This decouples the document module from knowing *how* indexing or cache
+  purging actually works
+
+**Jobs framework** (this module) manages *when* and *how often*:
+- Persisting payloads in a durable queue
+- Executing payloads via registered handlers
+- Recording audit events for success/failure
+- Retrying failed jobs according to retry policies
+- Handling dead letters for jobs that fail beyond max retries
+
+**Handlers** (implemented by subject-matter modules) execute the work:
+- The search module provides `SearchIndexJobHandler` that knows how to index
+  a document
+- The cache module provides `CachePurgeJobHandler` that knows how to purge
+  the render cache
+- Handlers are *not* responsible for retrying, enqueueing, or persistence;
+  those concerns are owned by the jobs framework
+
+### Enqueue vs Execute Boundary
+
+**Enqueue time** (synchronous, blocking):
+- The enqueuer has all the data needed to create a payload
+- `QueueBackend.enqueue(payload)` stores the payload for later execution
+- The enqueuer doesn't know whether the job will run immediately (sync runner)
+  or much later (queued runner)
+- The enqueue operation should be fast and should not block on the actual
+  work (indexing, cache purge, etc.)
+
+**Execute time** (asynchronous, background):
+- A job runner (sync or queued) calls `handler.handle(payload)` with the
+  stored payload
+- The handler performs the actual work, which may be slow or I/O-intensive
+- The runner records an audit event on completion
+- If a retry policy allows, the runner may retry failed jobs
+- The enqueuer is not aware of execution timing or outcomes (unless audit
+  events are persisted and the enqueuer queries them separately)
+
+### Handler Design Boundary
+
+**What a handler must do:**
+1. Accept a `JobPayload` and return a `JobResult`
+2. Be idempotent: calling `handle(payload)` multiple times with the same
+   payload must produce the same outcome (important for retries)
+3. Validate its payload type; return `JobResult.fail()` if given a payload
+   it doesn't recognize
+4. Return a `JobResult.ok()` or `JobResult.fail()` to indicate success or
+   failure; do not raise uncaught exceptions (the runner will catch and
+   convert them, but explicit failures are preferred)
+
+**What the handler *does not* manage:**
+1. Retries — the runner or retry policy decides whether to retry
+2. Async execution — handler code may be async, but the `handle()` method
+   signature is synchronous; wrap async calls in `asyncio.run()` if needed
+3. Persistence — the payload is already persisted by the time the handler
+   runs; the handler should not be responsible for storing results
+4. Audit recording — the runner records audit events automatically
+
+### In-Scope vs Out-of-Scope Boundaries
+
+**Owned by this module (in-scope for MVP):**
+- Job payload and handler interfaces
+- Sync execution model (`SyncJobRunner`)
+- Audit event recording and retrieval from memory
+- Retry policy configuration
+- Dead letter metadata
+- Queue backend abstraction and basic adapters (RQ, Celery)
+
+**Owned by other modules (out-of-scope for MVP):**
+- *Handler implementation* — each handler is provided by the module that
+  knows how to do the work (cache module, search module, etc.)
+- *Worker processes* — actual background workers that dequeue and run jobs
+  are deployed separately
+- *Persistent audit storage* — audit events are recorded in memory; a later
+  phase will persist them to a database
+- *Job scheduling* — periodic or delayed job execution (e.g., "run this job
+  at 3am") is left to a later phase
+- *Monitoring and alerting* — integrating job metrics with observability
+  tools is deferred
+
+**Dependencies between modules:**
+- The document module depends on the jobs module to enqueue work
+- The jobs module depends on handlers provided by other modules (search,
+  cache) via the job registry
+- The search and cache modules depend on nothing else in the jobs framework;
+  they just implement a `JobHandler` interface
+
 ## Job Failure Handling
 
 Job failures can occur in two ways:
