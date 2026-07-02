@@ -168,6 +168,210 @@ class TestSanitizeCssValueComments:
         assert sanitize_css_value("color: red */ width: 1000px /*") is None
 
 
+class TestSanitizeCssValueColors:
+    """CSS 색상 값 테스트."""
+
+    def test_allows_named_colors(self):
+        """CSS 명명 색상을 허용한다."""
+        named_colors = [
+            "red", "blue", "green", "white", "black", "yellow",
+            "cyan", "magenta", "gray", "silver", "orange", "purple",
+            "pink", "brown", "lime", "navy", "teal", "maroon",
+            "khaki", "salmon", "gold", "coral", "indigo"
+        ]
+        for color in named_colors:
+            assert sanitize_css_value(color) == color, f"Failed for {color}"
+            # 대소문자 혼합도 허용
+            assert sanitize_css_value(color.upper()) == color.upper()
+            assert sanitize_css_value(color.capitalize()) == color.capitalize()
+
+    def test_allows_hex_colors_short(self):
+        """3글자 hex 색상을 허용한다."""
+        assert sanitize_css_value("#RGB") == "#RGB"
+        assert sanitize_css_value("#000") == "#000"
+        assert sanitize_css_value("#FFF") == "#FFF"
+        assert sanitize_css_value("#F00") == "#F00"
+        assert sanitize_css_value("#abc") == "#abc"
+        assert sanitize_css_value("#ABC") == "#ABC"
+
+    def test_allows_hex_colors_long(self):
+        """6글자 hex 색상을 허용한다."""
+        assert sanitize_css_value("#RRGGBB") == "#RRGGBB"
+        assert sanitize_css_value("#000000") == "#000000"
+        assert sanitize_css_value("#FFFFFF") == "#FFFFFF"
+        assert sanitize_css_value("#FF0000") == "#FF0000"
+        assert sanitize_css_value("#00FF00") == "#00FF00"
+        assert sanitize_css_value("#0000FF") == "#0000FF"
+        assert sanitize_css_value("#abcdef") == "#abcdef"
+        assert sanitize_css_value("#ABCDEF") == "#ABCDEF"
+
+    def test_allows_hex_colors_with_alpha(self):
+        """8글자 hex 색상 (alpha 포함)을 허용한다."""
+        assert sanitize_css_value("#RRGGBBAA") == "#RRGGBBAA"
+        assert sanitize_css_value("#00000000") == "#00000000"
+        assert sanitize_css_value("#FFFFFFFF") == "#FFFFFFFF"
+        assert sanitize_css_value("#FF0000FF") == "#FF0000FF"
+        assert sanitize_css_value("#FF0000AA") == "#FF0000AA"
+        assert sanitize_css_value("#FF000080") == "#FF000080"
+        assert sanitize_css_value("#ffffffff") == "#ffffffff"
+
+    def test_allows_rgb_colors(self):
+        """rgb() 색상을 허용한다."""
+        assert sanitize_css_value("rgb(255, 0, 0)") == "rgb(255, 0, 0)"
+        assert sanitize_css_value("rgb(0, 0, 0)") == "rgb(0, 0, 0)"
+        assert sanitize_css_value("rgb(255, 255, 255)") == "rgb(255, 255, 255)"
+        assert sanitize_css_value("rgb(100, 150, 200)") == "rgb(100, 150, 200)"
+        assert sanitize_css_value("rgb(255,0,0)") == "rgb(255,0,0)"
+        assert sanitize_css_value("rgb(255 0 0)") == "rgb(255 0 0)"
+        assert sanitize_css_value("rgb(100% 50% 25%)") == "rgb(100% 50% 25%)"
+
+    def test_allows_rgba_colors(self):
+        """rgba() 색상을 허용한다."""
+        assert sanitize_css_value("rgba(255, 0, 0, 1)") == "rgba(255, 0, 0, 1)"
+        assert sanitize_css_value("rgba(255, 0, 0, 0)") == "rgba(255, 0, 0, 0)"
+        assert sanitize_css_value("rgba(255, 0, 0, 0.5)") == "rgba(255, 0, 0, 0.5)"
+        assert sanitize_css_value("rgba(0, 0, 0, 0.1)") == "rgba(0, 0, 0, 0.1)"
+        assert sanitize_css_value("rgba(255,0,0,1)") == "rgba(255,0,0,1)"
+        assert sanitize_css_value("rgba(255 0 0 / 0.5)") == "rgba(255 0 0 / 0.5)"
+        assert sanitize_css_value("rgba(100% 50% 25% / 0.8)") == "rgba(100% 50% 25% / 0.8)"
+
+    def test_allows_hsl_colors(self):
+        """hsl() 색상을 허용한다."""
+        assert sanitize_css_value("hsl(0, 100%, 50%)") == "hsl(0, 100%, 50%)"
+        assert sanitize_css_value("hsl(120, 100%, 50%)") == "hsl(120, 100%, 50%)"
+        assert sanitize_css_value("hsl(240, 100%, 50%)") == "hsl(240, 100%, 50%)"
+        assert sanitize_css_value("hsl(0, 0%, 0%)") == "hsl(0, 0%, 0%)"
+        assert sanitize_css_value("hsl(360, 100%, 100%)") == "hsl(360, 100%, 100%)"
+        assert sanitize_css_value("hsl(45deg, 50%, 75%)") == "hsl(45deg, 50%, 75%)"
+        assert sanitize_css_value("hsl(45 50% 75%)") == "hsl(45 50% 75%)"
+
+    def test_allows_hsla_colors(self):
+        """hsla() 색상을 허용한다."""
+        assert sanitize_css_value("hsla(0, 100%, 50%, 1)") == "hsla(0, 100%, 50%, 1)"
+        assert sanitize_css_value("hsla(120, 100%, 50%, 0.5)") == "hsla(120, 100%, 50%, 0.5)"
+        assert sanitize_css_value("hsla(240, 100%, 50%, 0)") == "hsla(240, 100%, 50%, 0)"
+        assert sanitize_css_value("hsla(0, 0%, 0%, 0.1)") == "hsla(0, 0%, 0%, 0.1)"
+        assert sanitize_css_value("hsla(45deg, 50%, 75%, 0.8)") == "hsla(45deg, 50%, 75%, 0.8)"
+        assert sanitize_css_value("hsla(45 50% 75% / 0.5)") == "hsla(45 50% 75% / 0.5)"
+
+    def test_allows_special_color_keywords(self):
+        """특별한 색상 키워드를 허용한다."""
+        assert sanitize_css_value("transparent") == "transparent"
+        assert sanitize_css_value("currentColor") == "currentColor"
+        assert sanitize_css_value("currentcolor") == "currentcolor"
+        assert sanitize_css_value("inherit") == "inherit"
+        assert sanitize_css_value("initial") == "initial"
+        assert sanitize_css_value("unset") == "unset"
+        assert sanitize_css_value("revert") == "revert"
+
+    def test_allows_hwb_colors(self):
+        """hwb() 색상을 허용한다."""
+        assert sanitize_css_value("hwb(0 0% 0%)") == "hwb(0 0% 0%)"
+        assert sanitize_css_value("hwb(120 10% 20%)") == "hwb(120 10% 20%)"
+        assert sanitize_css_value("hwb(240deg 30% 40%)") == "hwb(240deg 30% 40%)"
+        assert sanitize_css_value("hwb(45, 25%, 15%)") == "hwb(45, 25%, 15%)"
+
+    def test_allows_lab_colors(self):
+        """lab() 색상을 허용한다."""
+        assert sanitize_css_value("lab(50 20 30)") == "lab(50 20 30)"
+        assert sanitize_css_value("lab(100% 10 -20)") == "lab(100% 10 -20)"
+        assert sanitize_css_value("lab(75.5 10.5 -5.5)") == "lab(75.5 10.5 -5.5)"
+
+    def test_allows_lch_colors(self):
+        """lch() 색상을 허용한다."""
+        assert sanitize_css_value("lch(50 30 180)") == "lch(50 30 180)"
+        assert sanitize_css_value("lch(100% 50 45deg)") == "lch(100% 50 45deg)"
+        assert sanitize_css_value("lch(75.5 25.5 120)") == "lch(75.5 25.5 120)"
+
+    def test_allows_color_function(self):
+        """color() 함수를 허용한다."""
+        assert sanitize_css_value("color(display-p3 1 0 0)") == "color(display-p3 1 0 0)"
+        assert sanitize_css_value("color(srgb 1 0 0)") == "color(srgb 1 0 0)"
+        assert sanitize_css_value("color(rec2020 0.5 0.2 0.8)") == "color(rec2020 0.5 0.2 0.8)"
+
+    def test_allows_color_mix_function(self):
+        """color-mix() 함수를 허용한다."""
+        assert sanitize_css_value("color-mix(in srgb, red 50%, blue)") == "color-mix(in srgb, red 50%, blue)"
+        assert sanitize_css_value("color-mix(in hsl, hsl(0 100% 50%) 80%, white)") == "color-mix(in hsl, hsl(0 100% 50%) 80%, white)"
+
+    def test_color_values_with_spaces(self):
+        """공백이 포함된 색상 값을 처리한다."""
+        assert sanitize_css_value("  red  ") == "  red  "
+        assert sanitize_css_value("  #FF0000  ") == "  #FF0000  "
+        assert sanitize_css_value("  rgb(255, 0, 0)  ") == "  rgb(255, 0, 0)  "
+
+    def test_color_values_case_insensitivity(self):
+        """색상 함수는 대소문자를 구분하지 않는다."""
+        assert sanitize_css_value("RGB(255, 0, 0)") == "RGB(255, 0, 0)"
+        assert sanitize_css_value("RGBA(255, 0, 0, 0.5)") == "RGBA(255, 0, 0, 0.5)"
+        assert sanitize_css_value("HSL(0, 100%, 50%)") == "HSL(0, 100%, 50%)"
+        assert sanitize_css_value("HSLA(120, 50%, 50%, 1)") == "HSLA(120, 50%, 50%, 1)"
+        assert sanitize_css_value("HWB(45, 10%, 20%)") == "HWB(45, 10%, 20%)"
+        assert sanitize_css_value("LAB(50 20 30)") == "LAB(50 20 30)"
+        assert sanitize_css_value("LCH(50 30 180)") == "LCH(50 30 180)"
+
+    def test_color_with_alpha_in_rgb(self):
+        """RGB 함수에서 alpha 채널이 있는 경우를 처리한다."""
+        assert sanitize_css_value("rgb(255, 0, 0, 0.5)") == "rgb(255, 0, 0, 0.5)"
+        assert sanitize_css_value("rgb(255 0 0 / 50%)") == "rgb(255 0 0 / 50%)"
+
+    def test_invalid_but_safe_color_values(self):
+        """렌더링되지 않지만 안전한 색상 값을 허용한다."""
+        # 유효하지 않은 색상이지만 보안 위협이 없음
+        assert sanitize_css_value("notacolor") == "notacolor"
+        assert sanitize_css_value("reddish") == "reddish"
+        assert sanitize_css_value("#GGGGGG") == "#GGGGGG"
+        assert sanitize_css_value("rgb(300, 300, 300)") == "rgb(300, 300, 300)"
+
+    def test_color_values_with_units(self):
+        """단위가 포함된 색상 값을 처리한다."""
+        assert sanitize_css_value("rgb(255deg, 0rad, 0grad)") == "rgb(255deg, 0rad, 0grad)"
+        assert sanitize_css_value("hsl(45turn, 50%, 75%)") == "hsl(45turn, 50%, 75%)"
+
+    def test_color_gradients_with_colors(self):
+        """색상을 포함한 gradient를 허용한다."""
+        assert sanitize_css_value("linear-gradient(to right, red, blue)") == "linear-gradient(to right, red, blue)"
+        assert sanitize_css_value("linear-gradient(45deg, #FF0000, #0000FF)") == "linear-gradient(45deg, #FF0000, #0000FF)"
+        assert sanitize_css_value("radial-gradient(circle, rgba(255,0,0,1), rgba(0,0,255,1))") == "radial-gradient(circle, rgba(255,0,0,1), rgba(0,0,255,1))"
+        assert sanitize_css_value("conic-gradient(from 45deg, red, blue, green)") == "conic-gradient(from 45deg, red, blue, green)"
+
+    def test_multiple_colors_in_value(self):
+        """여러 색상이 있는 값을 처리한다."""
+        assert sanitize_css_value("red blue green") == "red blue green"
+        assert sanitize_css_value("#FF0000, #00FF00, #0000FF") == "#FF0000, #00FF00, #0000FF"
+        assert sanitize_css_value("rgb(255,0,0) rgba(0,255,0,0.5) hsl(240,100%,50%)") == "rgb(255,0,0) rgba(0,255,0,0.5) hsl(240,100%,50%)"
+
+    def test_color_with_alpha_unit_variations(self):
+        """Alpha 채널의 다양한 단위 형식을 처리한다."""
+        assert sanitize_css_value("rgba(255, 0, 0, 100%)") == "rgba(255, 0, 0, 100%)"
+        assert sanitize_css_value("rgba(255, 0, 0, 0%)") == "rgba(255, 0, 0, 0%)"
+        assert sanitize_css_value("rgba(255, 0, 0, 50%)") == "rgba(255, 0, 0, 50%)"
+
+    def test_hsl_with_turn_unit(self):
+        """HSL에서 turn 단위를 처리한다."""
+        assert sanitize_css_value("hsl(0.5turn, 100%, 50%)") == "hsl(0.5turn, 100%, 50%)"
+        assert sanitize_css_value("hsl(1turn, 50%, 50%)") == "hsl(1turn, 50%, 50%)"
+        assert sanitize_css_value("hsla(0.25turn, 75%, 25%, 0.8)") == "hsla(0.25turn, 75%, 25%, 0.8)"
+
+    def test_color_values_should_not_contain_expression(self):
+        """색상 값에 expression을 포함하면 차단한다."""
+        assert sanitize_css_value("rgb(expression(255), 0, 0)") is None
+        assert sanitize_css_value("hsl(expression(0), 100%, 50%)") is None
+        assert sanitize_css_value("#000 expression()") is None
+
+    def test_color_values_should_not_contain_url(self):
+        """색상 값에 위험한 url()을 포함하면 차단한다."""
+        assert sanitize_css_value("rgb(255, url(javascript:alert()), 0)") is None
+        assert sanitize_css_value("hsl(url(data:...), 50%, 50%)") is None
+        assert sanitize_css_value("color: red url(javascript:)") is None
+
+    def test_color_values_should_not_contain_var_function(self):
+        """색상 값에 var()을 포함하면 차단한다."""
+        assert sanitize_css_value("var(--color)") is None
+        assert sanitize_css_value("rgb(var(--red), 0, 0)") is None
+        assert sanitize_css_value("hsl(var(--hue), 100%, 50%)") is None
+
+
 class TestSanitizeCssValueEdgeCases:
     """CSS 값 엣지 케이스 테스트."""
 
