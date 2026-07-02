@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "description": "<nowiki> 블록 정규식이 <, >, &, 따옴표, 이중 대괄호/중괄호 등 다른 패턴과 충돌할 수 있는 문자를 이스케이프 없이 그대로 보존한다.",
+  "input": { "source": "<nowiki>< > & ' \" [[ ]] {{ }}</nowiki>" },
+  "expected": {
+    "blocks": [
+      { "type": "nowiki", "content": "< > & ' \" [[ ]] {{ }}" }
+    ],
+    "metadata": {
+      "links": [],
+      "categories": [],
+      "headings": []
+    }
+  },
+  "errors": []
+}

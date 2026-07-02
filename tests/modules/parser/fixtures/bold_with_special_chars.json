@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "description": "굵은 텍스트 정규식(BOLD_PATTERN, DOTALL)이 &, ! 같은 특수 문자를 포함해도 원문을 변형 없이 보존한다.",
+  "input": { "source": "This is '''bold & important!''' text." },
+  "expected": {
+    "blocks": [
+      { "type": "paragraph", "content": "This is '''bold & important!''' text." }
+    ],
+    "metadata": {
+      "links": [],
+      "categories": [],
+      "headings": []
+    }
+  },
+  "errors": []
+}

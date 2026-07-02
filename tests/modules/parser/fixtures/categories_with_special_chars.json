@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "description": "카테고리 정규식이 &, 숫자 등 특수 문자를 포함한 카테고리명도 손실 없이 추출한다.",
+  "input": { "source": "[[Category:Science & Technology]]\n[[Category:2024 Events]]" },
+  "expected": {
+    "blocks": [],
+    "metadata": {
+      "links": [],
+      "categories": ["Science & Technology", "2024 Events"],
+      "headings": []
+    }
+  },
+  "errors": []
+}

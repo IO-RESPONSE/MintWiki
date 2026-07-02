@@ -26,7 +26,7 @@
     "parse(source: str) -> ParserResult 가 고정된 입력/출력 계약이다. 입력은 원본 source 문자열이며, 출력은 blocks(AST 유사 블록 목록)와 metadata(links/categories/headings 등 추출 정보)로 구성된 ParserResult 이다. blocks 의 각 항목은 최소 'type' 키를 가진 dict 이며, 필드 구성은 modules/parser/model.py 와 modules/parser/README.md 의 지원 블록 목록을 따른다.",
     "revision 은 docs/modules.md 의 의존 규칙에 따라 parser 를 테스트나 검증 헬퍼에서만 호출할 수 있으며, 저장 경로(storage path)에서는 호출하지 않는다. render 는 parser 를 렌더링 경로에서 호출할 수 있다.",
     "정규식 문법은 Python re 와 PHP PCRE 가 다를 수 있으므로, PHP 전환 시 tests/modules/parser/test_fixtures.py 의 입력/기대출력 픽스처로 두 언어의 파싱 결과가 같은지 반드시 검증한다.",
-    "fixtures 디렉터리(tests/modules/parser/fixtures)는 아직 채워지지 않았으며, 공용 JSON fixture 변환은 태스크 0370 에서 진행한다. 현재 픽스처는 tests/modules/parser/fixtures.py(ParserFixtureLoader) 에 Python 객체로 존재한다.",
+    "fixtures 디렉터리(tests/modules/parser/fixtures)는 태스크 0371 에서 정규식 차이가 조기에 드러날 수 있는 시나리오(제목/굵은 텍스트/링크/nowiki/코드/테이블 옵션 등) 위주로 부분 채워졌으며, tests/modules/parser/test_shared_fixtures.py 가 이를 검증한다. 나머지 픽스처는 여전히 tests/modules/parser/fixtures.py(ParserFixtureLoader) 에 Python 객체로 존재하며, 필요 시 이후 태스크에서 추가 변환된다.",
     "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
   ]
 }

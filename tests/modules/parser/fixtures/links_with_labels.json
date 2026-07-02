@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "description": "내부 링크 정규식(INTERNAL_LINK_PATTERN)이 [[대상|라벨]] 형태에서 라벨을 제외한 대상만 links 메타데이터로 추출한다.",
+  "input": { "source": "See [[Document1|this document]] and [[Document2|another one]] for details." },
+  "expected": {
+    "blocks": [
+      {
+        "type": "paragraph",
+        "content": "See [[Document1|this document]] and [[Document2|another one]] for details."
+      }
+    ],
+    "metadata": {
+      "links": ["Document1", "Document2"],
+      "categories": [],
+      "headings": []
+    }
+  },
+  "errors": []
+}

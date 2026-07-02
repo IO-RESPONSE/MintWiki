@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "description": "굵은 텍스트(''')와 이탤릭('') 마커가 다섯 개의 연속된 따옴표로 겹칠 때 BOLD_PATTERN/ITALIC_PATTERN 우선순위 충돌이 재현되는지 확인한다.",
+  "input": { "source": "Text with '''''bold italic''''' mixed." },
+  "expected": {
+    "blocks": [
+      { "type": "paragraph", "content": "Text with '''''bold italic''''' mixed." }
+    ],
+    "metadata": {
+      "links": [],
+      "categories": [],
+      "headings": []
+    }
+  },
+  "errors": []
+}

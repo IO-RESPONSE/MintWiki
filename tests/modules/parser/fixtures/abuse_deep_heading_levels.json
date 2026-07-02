@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "description": "제목 정규식이 등호 개수를 제한하지 않으므로 7단계처럼 비정상적으로 깊은 수준도 그대로 캡처한다.",
+  "input": { "source": "======= Level 7 Heading =======" },
+  "expected": {
+    "blocks": [
+      { "type": "heading", "level": 7, "content": "Level 7 Heading" }
+    ],
+    "metadata": {
+      "links": [],
+      "categories": [],
+      "headings": [{ "level": 7, "text": "Level 7 Heading" }]
+    }
+  },
+  "errors": []
+}
