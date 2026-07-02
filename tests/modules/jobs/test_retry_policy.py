@@ -77,11 +77,7 @@ class TestRetryPolicyShouldRetry:
 
 
 class TestRetryPolicyNextDelay:
-    """next_delay()의 기본적인 계산 결과를 검증한다.
-
-    지수 백오프 계산의 세부 케이스는 후속 태스크(재시도 정책 next_delay
-    테스트)에서 더 다룬다.
-    """
+    """next_delay()의 지수 백오프 계산 결과를 검증한다."""
 
     def test_first_attempt_uses_base_delay(self):
         """첫 번째 시도(attempt=1) 이후에는 base_delay_seconds 그대로 반환한다."""
@@ -99,3 +95,40 @@ class TestRetryPolicyNextDelay:
 
         assert policy.next_delay(2) == 4.0
         assert policy.next_delay(3) == 8.0
+
+    def test_constant_delay_when_backoff_multiplier_is_one(self):
+        """backoff_multiplier가 1이면 시도 횟수와 무관하게 간격이 일정하다."""
+        policy = RetryPolicy(
+            max_attempts=5, base_delay_seconds=3.0, backoff_multiplier=1.0
+        )
+
+        assert policy.next_delay(1) == 3.0
+        assert policy.next_delay(2) == 3.0
+        assert policy.next_delay(4) == 3.0
+
+    def test_zero_base_delay_stays_zero_regardless_of_attempt(self):
+        """base_delay_seconds가 0이면 시도 횟수와 무관하게 0을 반환한다."""
+        policy = RetryPolicy(
+            max_attempts=5, base_delay_seconds=0, backoff_multiplier=2.0
+        )
+
+        assert policy.next_delay(1) == 0
+        assert policy.next_delay(3) == 0
+
+    def test_delay_with_fractional_backoff_multiplier(self):
+        """backoff_multiplier가 정수가 아니어도 지수 계산이 정확히 적용된다."""
+        policy = RetryPolicy(
+            max_attempts=5, base_delay_seconds=4.0, backoff_multiplier=1.5
+        )
+
+        assert policy.next_delay(1) == 4.0
+        assert policy.next_delay(2) == 6.0
+        assert policy.next_delay(3) == 9.0
+
+    def test_delay_at_final_allowed_attempt(self):
+        """max_attempts에 도달한 시도에 대해서도 간격 계산이 계속 동작한다."""
+        policy = RetryPolicy(
+            max_attempts=4, base_delay_seconds=1.0, backoff_multiplier=2.0
+        )
+
+        assert policy.next_delay(4) == 8.0
