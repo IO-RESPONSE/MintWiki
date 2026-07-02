@@ -13,6 +13,9 @@ fi
 # 도메인 이식성 경계 검사 (PHP 전환 대비: 도메인 계층에 프레임워크 누수 차단)
 "$PYTHON" scripts/check_boundaries.py
 
+# PostgreSQL 전용 SQL feature 금지 목록 검사 (MariaDB 이식 대비)
+"$PYTHON" scripts/check_sql_denylist.py
+
 scripts/test.sh
 
 if command -v git >/dev/null 2>&1; then
