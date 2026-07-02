@@ -13,3 +13,10 @@
   아직 이 태스크 범위 밖)을, 그것도 없으면 호출자가 넘긴 `$default`를
   반환한다. `.env`/config 파일 자체를 읽는 실제 파서는 0616 "local
   config loader"에서 추가된다.
+- `ErrorCodeRegistry.php` (태스크 0416) — `docs/portable-exception-code-
+  policy.md`가 정한 `<module>.<reason>` error code 형식 검증과 등록된
+  code 조회를 한 곳에서 제공한다. code 값의 정본은 여전히 각 모듈 예외
+  클래스의 `CODE` 상수이며, 이 registry는 그 값을 참조만 한다 — 현재는
+  `MintWiki\Document`의 세 code(`document.empty_title`,
+  `document.duplicate_title`, `document.not_found`)가 등록되어 있고,
+  Python `tests/modules/document/test_error_codes.py`와 이름이 같다.
