@@ -98,6 +98,16 @@ success/error contract of `JobResult`). `is_succeeded()` / `is_failed()`
 report which outcome the event records. Persisting events is left to a later
 task, once a storage-backed implementation exists.
 
+`QueueBackend` (`queue_backend.py`) is the interface a job queue backend
+must implement: `enqueue(payload)` to append a `JobPayload`, `dequeue()` to
+pop and return the next payload in FIFO order (or `None` when the queue is
+empty), and `size()` to report how many payloads remain queued. All three
+methods are async, mirroring `CacheBackend` and `SearchAdapter`, since real
+backends (message brokers, Redis, etc.) are I/O-bound. This is an interface
+only, with no in-memory or storage-backed implementation yet; wiring the
+queue into `SyncJobRunner` / `JobRegistry` and adding a concrete backend are
+left to a later task.
+
 `JobAuditRecorder` (`audit_recorder.py`) is the service that creates and
 accumulates `JobAuditEvent`s in memory. `record_job_succeeded(job_type)`
 builds a `JobAuditEvent` with a generated `id`, `action=JOB_SUCCEEDED`, and
