@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "description": "코드 블록 정규식이 &, 꺾쇠, 대괄호, 중괄호, #, !, ~ 등 다른 마크업 토큰과 겹치는 문자를 그대로 캡처한다.",
+  "input": { "source": "{{{& < > ' \" [ ] {{ # ! ~}}}" },
+  "expected": {
+    "blocks": [
+      { "type": "code", "content": "& < > ' \" [ ] {{ # ! ~" }
+    ],
+    "metadata": {
+      "links": [],
+      "categories": [],
+      "headings": []
+    }
+  },
+  "errors": []
+}

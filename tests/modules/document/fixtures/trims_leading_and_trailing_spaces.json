@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "description": "제목 앞뒤 공백을 제거한다.",
+  "input": { "title": "  hello  " },
+  "expected": { "title": "hello" },
+  "errors": []
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "description": "굵은 텍스트 렌더링 시 내부 텍스트의 script 태그를 이스케이프한다.",
+  "input": {
+    "text": "<script>alert(1)</script>"
+  },
+  "expected": {
+    "html": "<b>&lt;script&gt;alert(1)&lt;/script&gt;</b>"
+  },
+  "errors": []
+}

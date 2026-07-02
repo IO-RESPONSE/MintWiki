@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "module": "jobs",
+  "summary": "Owns background work orchestration: a job interface, a sync runner for local development and shared hosting, a queued runner adapter, retry metadata, and dead-letter handling.",
+  "port": {
+    "source_path": "src/modules/jobs",
+    "target_namespace": "MintWiki\\Jobs",
+    "status": "not_started"
+  },
+  "service": {
+    "path": "src/modules/jobs/service.py",
+    "public_methods": [
+      "enqueue",
+      "run_sync",
+      "get_status"
+    ]
+  },
+  "repository": {
+    "port_path": "src/modules/jobs/repository.py",
+    "interface": "JobRepository"
+  },
+  "fixtures": {
+    "path": "tests/modules/jobs/fixtures",
+    "format": "json"
+  },
+  "contract_notes": [
+    "jobs 모듈은 아직 Python 구현이 없다 — src/modules/jobs 에는 README.md 만 존재하며 service.py/repository.py 는 이 manifest 가 선언하는 계획된 위치일 뿐 파일이 실제로 생성되어 있지 않다. 다른 모듈(cache, discussion 등) manifest 와 달리 이 문서는 기존 코드를 서술하는 것이 아니라 tasks/queue 의 'Jobs and Indexing MVP' 단계(0291-0339, 아직 미실행)가 구현해야 할 목표 계약을 고정한다. 실제 구현이 이 이름/시그니처와 다르게 진행되면 해당 태스크에서 이 manifest 를 함께 갱신해야 한다.",
+    "shared hosting 환경(크론이나 별도 워커 프로세스를 붙일 수 없는 공유 호스팅)에서는 큐 기반 러너 대신 sync 러너가 기본 동작이다 — enqueue() 가 호출된 요청/응답 사이클 안에서 즉시 run_sync() 를 실행해 처리를 완료하며, 별도 워커나 외부 큐(Redis 등)가 없어도 동작해야 한다. queued runner adapter 는 sync fallback 위에 얹히는 선택적 개선이며, sync 경로가 항상 최소 기준선이다.",
+    "docs/modules.md 는 jobs 의 책임으로 job interface, sync runner, queued runner adapter, retry metadata, dead-letter handling, job audit records 여섯 가지를 명시한다. docs/job-model.md 는 이 여섯 책임을 어떻게 작은 태스크로 쪼갤지에 대한 10분 단위 job 분할 규칙만 다루며, jobs 모듈 자체의 서비스 시그니처는 규정하지 않는다.",
+    "docs/modules.md 의 Dependency Rules 는 'search 는 jobs 또는 서비스 호출로부터 이벤트를 소비한다'고 선언하지만, jobs/search 어느 쪽에도 아직 코드가 없어 이 의존은 현재 미구현이다.",
+    "fixtures 디렉터리(tests/modules/jobs/fixtures)는 아직 존재하지 않으며, 실제 구현 태스크(0331 add-job-fixture-set)가 채운다.",
+    "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
+  ]
+}

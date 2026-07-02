@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "description": "스킴에 탭 문자가 섞여 있으면 안전하지 않은 시도로 간주해 None 을 반환한다.",
+  "input": {
+    "url": "java\tscript:alert(1)"
+  },
+  "expected": {
+    "url": null
+  },
+  "errors": []
+}

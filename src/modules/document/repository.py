@@ -13,13 +13,15 @@ from persistence.models import DocumentORM
 class DuplicateNormalizedTitleError(Exception):
     """정규화된 제목이 중복될 때 발생하는 예외."""
 
-    pass
+    # docs/portable-exception-code-policy.md 가 고정한 안정적인 error code.
+    code = "document.duplicate_title"
 
 
 class DocumentNotFoundError(Exception):
     """문서를 찾을 수 없을 때 발생하는 예외."""
 
-    pass
+    # docs/portable-exception-code-policy.md 가 고정한 안정적인 error code.
+    code = "document.not_found"
 
 
 class DocumentRepository(ABC):

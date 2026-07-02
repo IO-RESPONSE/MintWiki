@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "description": "대칭 등호 개수를 요구하는 제목 정규식(HEADING_PATTERN)이 수준 1 제목과 뒤이은 문단을 올바르게 분리한다.",
+  "input": { "source": "= Title =\n\nContent here." },
+  "expected": {
+    "blocks": [
+      { "type": "heading", "level": 1, "content": "Title" },
+      { "type": "paragraph", "content": "Content here." }
+    ],
+    "metadata": {
+      "links": [],
+      "categories": [],
+      "headings": [{ "level": 1, "text": "Title" }]
+    }
+  },
+  "errors": []
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "description": "문서 ACL의 ALLOW 규칙이 일치하면 allowed=true, reason=acl.matched_rule 이다.",
+  "input": {
+    "permission": "read",
+    "subject_type": "all",
+    "subject_id": null,
+    "namespace": "*",
+    "document_acl": {
+      "document_id": "fixture-doc",
+      "rules": [
+        {
+          "id": "all-read-allow",
+          "subject_type": "all",
+          "subject_id": null,
+          "permission": "read",
+          "effect": "allow"
+        }
+      ]
+    }
+  },
+  "expected": {
+    "allowed": true,
+    "reason": "acl.matched_rule",
+    "matched_rule_id": "all-read-allow"
+  },
+  "errors": []
+}

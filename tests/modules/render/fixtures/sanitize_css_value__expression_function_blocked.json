@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "description": "IE expression() 함수는 None 을 반환한다.",
+  "input": {
+    "value": "width: expression(alert(1))"
+  },
+  "expected": {
+    "value": null
+  },
+  "errors": []
+}

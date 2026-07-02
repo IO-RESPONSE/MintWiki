@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "description": "실패 케이스 예시: 빈 제목은 거부된다.",
+  "input": { "title": "" },
+  "expected": null,
+  "errors": ["document.empty_title"]
+}

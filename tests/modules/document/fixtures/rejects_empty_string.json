@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "description": "빈 문자열 제목은 거부된다.",
+  "input": { "title": "" },
+  "expected": null,
+  "errors": ["document.empty_title"]
+}

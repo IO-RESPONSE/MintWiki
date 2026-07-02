@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "description": "여는 대괄호가 중첩되고 닫는 대괄호가 하나만 있을 때 INTERNAL_LINK_PATTERN의 비탐욕 매칭이 첫 ]] 까지를 링크 대상으로 캡처하는 경계 사례.",
+  "input": { "source": "[[Link1 and [[Link2]] only one closed." },
+  "expected": {
+    "blocks": [
+      { "type": "paragraph", "content": "[[Link1 and [[Link2]] only one closed." }
+    ],
+    "metadata": {
+      "links": ["Link1 and [[Link2"],
+      "categories": [],
+      "headings": []
+    }
+  },
+  "errors": []
+}

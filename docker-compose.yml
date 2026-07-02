@@ -23,5 +23,20 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  mariadb:
+    image: mariadb:10.6-lts
+    profiles:
+      - mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: wiki_engine
+      MARIADB_USER: wiki
+      MARIADB_PASSWORD: wiki
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
 volumes:
   postgres_data:
+  mariadb_data:

@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "module": "audit",
+  "summary": "Owns immutable, append-only event logs (document, permission, admin, auth, and job logs) that other modules write through a small audit service.",
+  "port": {
+    "source_path": "src/modules/audit",
+    "target_namespace": "MintWiki\\Audit",
+    "status": "not_started"
+  },
+  "service": {
+    "path": "src/modules/audit/service.py",
+    "public_methods": [
+      "record",
+      "list_events"
+    ]
+  },
+  "repository": {
+    "port_path": "src/modules/audit/repository.py",
+    "interface": "AuditRepository"
+  },
+  "fixtures": {
+    "path": "tests/modules/audit/fixtures",
+    "format": "json"
+  },
+  "contract_notes": [
+    "audit 모듈은 아직 Python 구현이 없다 — src/modules/audit 에는 README.md 만 존재하며 service.py/repository.py 는 이 manifest 가 선언하는 계획된 위치일 뿐 파일이 실제로 생성되어 있지 않다. jobs manifest 와 마찬가지로 이 문서는 기존 코드를 서술하는 것이 아니라, docs/modules.md 가 audit 의 책임으로 명시한 'append-only audit storage'를 이후 태스크(0413 PHP audit event value object, 0457 audit 저장소 portability 계획, 0467 audit table portable SQL, 0515 audit append portability 테스트 등)가 구현할 때 지켜야 할 목표 계약을 고정한다.",
+    "append-only 계약: record() 는 새 이벤트를 추가하는 단일 쓰기 경로이며, service 계약에는 이벤트를 수정하거나 삭제하는 메서드를 두지 않는다(update/delete 없음). 한 번 기록된 이벤트는 이후 어떤 호출로도 변경되거나 제거될 수 없다 — docs/architecture.md 와 docs/persistence-boundaries.md 가 document revision 에 적용하는 append-only 원칙과 동일한 제약을 audit 이벤트에도 적용한다.",
+    "실패 정책: record() 저장이 실패하면(저장소 오류 등) 예외를 호출자에게 그대로 전파해야 한다. 다른 저장 경로로 조용히 폴백하거나, 실패를 삼켜 호출자에게 성공처럼 보이게 하는 것은 금지된다 — 감사 기록은 '성공적으로 append 되었거나, 실패가 명확히 예외로 보고되거나' 둘 중 하나만 허용되며 silent no-op 은 허용되지 않는다.",
+    "acl/discussion 모듈은 이미 각자 자체 AclAuditRecorder(acl/audit_recorder.py)/DiscussionAuditRecorder(discussion/audit_recorder.py)를 갖고 있으며, 두 recorder 모두 이벤트를 메모리에만 누적할 뿐 이 중앙 audit 모듈을 호출하지 않는다. docs/modules.md 는 'Audit records should be written by modules through a small audit service'라고 선언하지만, 현재 어떤 모듈도 modules.audit 를 import 하지 않는다 — 이 manifest 가 선언하는 서비스는 아직 어떤 호출자와도 연결되지 않은 독립 계약이다.",
+    "docs/modules.md 의 Dependency Rules 는 'audit 은 business module 을 호출하지 않아야 한다'고 명시한다. 즉 audit/service.py 는 acl, discussion, document, user 등 다른 도메인 모듈을 import 하지 않아야 하며, 호출 방향은 항상 다른 모듈 → audit 이다.",
+    "list_events 는 이후 관리자용 감사 로그 뷰어(docs/roadmap.md 의 'audit viewer', docs/ui-micro-job-prompts-0351-0420.md 의 0390 'Add audit log viewer shell')가 사용할 조회 진입점 후보이며, 페이지네이션·필터링 시그니처는 이 manifest 가 아직 고정하지 않는다.",
+    "fixtures 디렉터리(tests/modules/audit/fixtures)는 아직 존재하지 않으며, 실제 구현 태스크가 채운다.",
+    "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
+  ]
+}

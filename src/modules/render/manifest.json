@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "module": "render",
+  "summary": "Owns transformation from parsed document to safe HTML, XSS-safe escaping, URL/CSS sanitization, and render cache key construction.",
+  "port": {
+    "source_path": "src/modules/render",
+    "target_namespace": "MintWiki\\Render",
+    "status": "not_started"
+  },
+  "service": {
+    "path": "src/modules/render/__init__.py",
+    "public_methods": [
+      "escape_html",
+      "sanitize_url",
+      "sanitize_css_value",
+      "render_plain_paragraph",
+      "render_heading",
+      "generate_heading_id",
+      "render_internal_link",
+      "render_external_link",
+      "render_bold",
+      "render_italic",
+      "render_strike",
+      "render_unordered_list",
+      "render_ordered_list",
+      "render_line_break",
+      "render_redirect_notice",
+      "render_categories_metadata",
+      "render_simple_table",
+      "render_footnotes_section",
+      "render_nowiki",
+      "render_code_block"
+    ]
+  },
+  "repository": {
+    "port_path": "src/modules/render/__init__.py",
+    "interface": "render"
+  },
+  "fixtures": {
+    "path": "tests/modules/render/fixtures",
+    "format": "json"
+  },
+  "contract_notes": [
+    "render 는 docs/modules.md 에 따라 데이터베이스를 직접 읽지 않는 database-free 순수 로직 모듈이므로 별도의 저장소 포트(ABC)를 갖지 않는다. parser 와 달리 단일 진입 클래스도 없으며, 공개 계약은 src/modules/render/__init__.py 가 재노출하는 순수 함수 집합(escape_html, sanitize_url, sanitize_css_value, render_* 등)이다. repository 필드는 이 재노출 지점을 가리킬 뿐 영속성 어댑터를 의미하지 않는다.",
+    "XSS 이스케이프 책임 경계: 사용자 제공 텍스트를 HTML 로 안전하게 만드는 책임은 render 모듈에만 있다. parser 는 이스케이프하지 않고 원본 텍스트를 그대로 blocks 에 담아 넘기며, revision/document 는 저장/조회 과정에서 이스케이프하지 않는다. render 의 호출자는 render_*() 가 반환한 HTML 문자열을 그대로 사용해야 하며, 이를 다시 이스케이프하면 이중 이스케이프(double-escaping) 버그가 발생한다. escape_html, sanitize_url, sanitize_css_value 세 함수가 render 모듈이 소유한 유일한 살균 경계이며, PHP 전환 시 src/modules/render/README.md 의 Render Safety Rules(허용 URL 스킴, CSS 차단 키워드, HTML 엔티티 치환표)를 그대로 재현해야 한다.",
+    "docs/modules.md 의 의존 규칙에 따라 render 는 parser 와 cache 만 호출할 수 있다. render 는 parser 가 만든 blocks 구조를 신뢰하며(parser 는 trusted), blocks 자체의 구조적 유효성을 재검증하지 않고 텍스트 내용만 이스케이프한다.",
+    "fixtures 디렉터리(tests/modules/render/fixtures)는 태스크 0372 에서 살균 경계 함수(escape_html/sanitize_url/sanitize_css_value)와 generate_heading_id/render_bold/render_heading 을 다루는 공용 JSON fixture 로 부분 채워졌으며, tests/modules/render/test_shared_fixtures.py 가 이를 검증한다. 기존 *.html 스냅샷 fixture 와 FixtureRunner 는 그대로 유지되며, 나머지 render 함수는 이후 태스크에서 필요에 따라 추가 변환될 수 있다.",
+    "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
+  ]
+}

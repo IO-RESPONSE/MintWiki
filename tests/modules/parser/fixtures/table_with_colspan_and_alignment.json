@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "description": "테이블 셀 옵션 정규식이 colspan(^N)과 정렬(<, >) 지시자가 같은 셀에 결합될 때도 각 옵션을 올바르게 분리 파싱한다.",
+  "input": { "source": "!!^2 Wide Header!!Normal!!\n||^2 >Right||<Left<||" },
+  "expected": {
+    "blocks": [
+      {
+        "type": "table",
+        "rows": [
+          {
+            "type": "header",
+            "cells": [
+              { "content": "Wide Header", "colspan": 2 },
+              "Normal"
+            ]
+          },
+          {
+            "type": "data",
+            "cells": [
+              { "content": "Right", "colspan": 2, "align": "right" },
+              { "content": "Left", "align": "center" }
+            ]
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "links": [],
+      "categories": [],
+      "headings": []
+    }
+  },
+  "errors": []
+}

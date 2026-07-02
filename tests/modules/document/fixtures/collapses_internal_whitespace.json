@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "description": "제목 내부의 연속된 공백을 단일 공백으로 축소한다.",
+  "input": { "title": "hello   world" },
+  "expected": { "title": "hello world" },
+  "errors": []
+}

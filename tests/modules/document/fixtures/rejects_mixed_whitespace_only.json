@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "description": "탭과 개행만 섞인 제목도 거부된다.",
+  "input": { "title": "\t\n\t" },
+  "expected": null,
+  "errors": ["document.empty_title"]
+}

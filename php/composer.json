@@ -1,0 +1,19 @@
+{
+    "name": "mintwiki/wiki-engine",
+    "description": "MintWiki PHP runtime (module-by-module replacement of the Python wiki engine)",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "MintWiki\\": "src/"
+        },
+        "classmap": [
+            "src/Modules/"
+        ]
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "description": "쿼리 문자열이 있는 https URL 은 그대로 반환한다.",
+  "input": {
+    "url": "https://example.com/page?x=1&y=2"
+  },
+  "expected": {
+    "url": "https://example.com/page?x=1&y=2"
+  },
+  "errors": []
+}

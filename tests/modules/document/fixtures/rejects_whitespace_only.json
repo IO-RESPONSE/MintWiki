@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "description": "공백만 있는 제목은 거부된다.",
+  "input": { "title": "   " },
+  "expected": null,
+  "errors": ["document.empty_title"]
+}

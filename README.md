@@ -15,36 +15,37 @@
 - 모든 구현을 명시적 인수기준을 가진 작은 잡(job)으로 나눈다.
 - 각 잡을 자동 QA로 독립 검증할 수 있게 한다.
 
-## 초기 스택
+## 현재 목표 스택
 
-- 백엔드: Python + FastAPI
-- 데이터베이스: PostgreSQL
-- 캐시: Redis (초기 로컬 개발에서는 선택)
-- 검색: 어댑터 우선, 이후 Meilisearch/OpenSearch
-- 큐: 동기 폴백 우선, 이후 워커 백엔드
-- 테스트: pytest
-- 배포: Docker Compose 우선
-- 스케줄러: 러너 스크립트를 호출하는 systemd 타이머
+- 런타임: PHP 8.1+ (`php/`)
+- 데이터베이스: MariaDB 호환 portable SQL (`db/schema/`)
+- DB 접근: PDO 기반 persistence skeleton
+- 설치/호스팅: shared hosting 배포를 목표로 한 installer/diagnostics 단계
+- 참조 구현: Python + FastAPI 코어는 계약 검증용 reference로 유지
+- 테스트: PHP framework-free smoke tests, Python portability/reference tests
+- 배포: PHP + MariaDB 패키징 우선
 
 ## 로컬 환경
 
-로컬 실행 전 `.env.example`을 `.env`로 복사한 뒤, 로컬 서비스에 맞게
-데이터베이스·Redis URL 플레이스홀더를 조정합니다.
+로컬 실행 전 `.env.example`을 `.env`로 복사한 뒤, PHP/MariaDB 환경에 맞게
+DSN 값을 조정합니다.
 
 ### 부트스트랩
 
-Docker Compose로 로컬 앱과 PostgreSQL 서비스를 기동합니다:
+Docker Compose의 MariaDB 프로필로 로컬 DB를 기동합니다:
 
 ```bash
-docker compose up --build
+docker compose --profile mariadb up -d mariadb
 ```
 
 ### 테스트
 
-로컬에서 테스트 스위트를 실행합니다:
+PHP 런타임 테스트를 실행합니다:
 
 ```bash
-scripts/test.sh
+cd php
+composer install
+scripts/qa.sh
 ```
 
 ### 커밋 전 QA
@@ -55,12 +56,16 @@ scripts/test.sh
 scripts/qa.sh
 ```
 
-테스트 실행과 코드 포맷 검증을 수행합니다. 커밋 전에 QA가 통과해야 합니다.
+기본 QA는 PHP 런타임과 MariaDB portable SQL 산출물을 검증합니다. Python
+reference 테스트까지 함께 실행하려면 `RUN_PYTHON_REFERENCE_QA=1 scripts/qa.sh`
+를 사용합니다.
 
 ## 저장소 구조
 
 ```text
 docs/              아키텍처 및 모듈 설계
+db/                MariaDB 호환 portable SQL 원본
+php/               PHP 런타임, installer, PDO persistence skeleton
 tasks/             10분 잡 큐
 src/app/           애플리케이션 부트스트랩 및 공용 설정
 src/modules/       엔진 모듈
@@ -75,14 +80,15 @@ ops/systemd/       systemd 서비스 및 타이머 예시
 자동 갱신**됩니다.
 
 <!-- PROGRESS:START -->
-**진행률: 350 / 670 (52.2%)**
+**진행률: 518 / 670 (77.3%)**
 
-`██████████████████████████░░░░░░░░░░░░░░░░░░░░░░░░`
+`███████████████████████████████████████░░░░░░░░░░░`
 
 | 구분 | 개수 |
 |---|---|
-| ✅ 완료 | 350 |
-| ⏳ 대기 | 320 |
+| ✅ 완료 | 518 |
+| ❌ 실패 | 2 |
+| ⏳ 대기 | 150 |
 
-- 갱신: 2026-07-02 19:22 KST
+- 갱신: 2026-07-02 23:19 KST
 <!-- PROGRESS:END -->

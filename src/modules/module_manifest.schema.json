@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wiki-engine.local/schema/module-contract-manifest.json",
+  "title": "Module Contract Manifest",
+  "description": "src/modules/<module>/manifest.json 이 따라야 하는 스키마. PHP 전환 대상 모듈 하나의 언어 독립 계약 위치(port, service, repository, fixtures)를 선언한다. 자세한 설명은 docs/module-contract-manifest-schema.md 참고.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "module",
+    "summary",
+    "port",
+    "service",
+    "repository",
+    "fixtures"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "이 문서가 따르는 manifest 스키마 버전. 현재 값은 \"1.0\" 고정.",
+      "const": "1.0"
+    },
+    "module": {
+      "type": "string",
+      "description": "모듈 이름. src/modules/<module> 디렉터리 이름과 정확히 일치해야 한다.",
+      "pattern": "^[a-z][a-z_]*$"
+    },
+    "summary": {
+      "type": "string",
+      "description": "모듈 책임에 대한 한 줄 요약. docs/modules.md 의 설명과 모순되지 않아야 한다."
+    },
+    "port": {
+      "type": "object",
+      "description": "이 모듈을 PHP 로 옮기는 port 작업 자체의 상태와 대응 위치를 선언한다.",
+      "required": ["source_path", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "source_path": {
+          "type": "string",
+          "description": "Python 구현 루트 경로. 보통 \"src/modules/<module>\".",
+          "pattern": "^src/modules/[a-z_]+$"
+        },
+        "target_namespace": {
+          "type": "string",
+          "description": "PHP 대응 네임스페이스 후보(선택). 아직 확정되지 않았으면 생략한다."
+        },
+        "status": {
+          "type": "string",
+          "description": "port 진행 상태. readiness gate(docs/php-replacement-strategy.md)를 통과하기 전까지 ready 를 쓰지 않는다.",
+          "enum": ["not_started", "in_progress", "ready"]
+        }
+      }
+    },
+    "service": {
+      "type": "object",
+      "description": "도메인 서비스 계층 위치와 공개 메서드 목록. 여기 선언되지 않은 메서드는 다른 모듈이나 adapter 가 의존할 수 없다(계약 외 결합 금지).",
+      "required": ["path", "public_methods"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "서비스 구현 파일 경로. 보통 \"src/modules/<module>/service.py\"."
+        },
+        "public_methods": {
+          "type": "array",
+          "description": "PHP 구현이 이름·입력·출력 의미를 그대로 재현해야 하는 공개 메서드 이름 목록.",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "description": "저장소 포트(ABC 인터페이스)와 구현 어댑터 위치. AGENTS.md 의 포트+어댑터 패턴을 그대로 반영한다.",
+      "required": ["port_path", "interface"],
+      "additionalProperties": false,
+      "properties": {
+        "port_path": {
+          "type": "string",
+          "description": "저장소 포트 인터페이스가 정의된 파일 경로. 보통 \"src/modules/<module>/repository.py\"."
+        },
+        "interface": {
+          "type": "string",
+          "description": "저장소 포트 ABC 클래스 이름 (예: \"DocumentRepository\")."
+        },
+        "adapter_path": {
+          "type": "string",
+          "description": "구체 구현(SQLAlchemy 등) 위치(선택). port_path 와 같은 파일이면 생략 가능."
+        }
+      }
+    },
+    "fixtures": {
+      "type": "object",
+      "description": "이 모듈의 언어 독립 parity fixture 위치. Python/PHP 구현이 공유하는 JSON 입력/기대출력 데이터가 있는 디렉터리를 가리킨다.",
+      "required": ["path", "format"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "fixture 디렉터리 경로. 보통 \"tests/modules/<module>/fixtures\"."
+        },
+        "format": {
+          "type": "string",
+          "description": "fixture 파일 형식. 언어 독립성을 위해 json 을 기본으로 한다.",
+          "const": "json"
+        }
+      }
+    },
+    "contract_notes": {
+      "type": "array",
+      "description": "모듈별 계약 세부사항(예: shared hosting fallback 정책, append-only 실패 정책 등) 자유 서술. 새 스키마 필드를 추가하지 않고도 모듈 고유 사항을 기록하기 위한 확장 지점.",
+      "items": { "type": "string" }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "1.0",
+      "module": "example",
+      "summary": "이 항목은 실제 모듈이 아니라 필드 사용법을 보여주는 템플릿이다.",
+      "port": {
+        "source_path": "src/modules/example",
+        "status": "not_started"
+      },
+      "service": {
+        "path": "src/modules/example/service.py",
+        "public_methods": ["do_something"]
+      },
+      "repository": {
+        "port_path": "src/modules/example/repository.py",
+        "interface": "ExampleRepository"
+      },
+      "fixtures": {
+        "path": "tests/modules/example/fixtures",
+        "format": "json"
+      }
+    }
+  ]
+}

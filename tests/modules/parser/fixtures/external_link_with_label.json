@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "description": "외부 링크 정규식(EXTERNAL_LINK_PATTERN)이 [URL label] 형태에서 공백 구분 라벨을 제외한 URL만 external_links 로 추출한다.",
+  "input": { "source": "Visit [https://example.com our site] for details." },
+  "expected": {
+    "blocks": [
+      { "type": "paragraph", "content": "Visit [https://example.com our site] for details." }
+    ],
+    "metadata": {
+      "links": [],
+      "categories": [],
+      "headings": [],
+      "external_links": ["https://example.com"]
+    }
+  },
+  "errors": []
+}

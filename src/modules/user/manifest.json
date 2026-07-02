@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "module": "user",
+  "summary": "Owns users, sessions, groups, credentials, and IP identity representation.",
+  "port": {
+    "source_path": "src/modules/user",
+    "target_namespace": "MintWiki\\User",
+    "status": "not_started"
+  },
+  "service": {
+    "path": "src/modules/user/block_check_service.py",
+    "public_methods": [
+      "is_blocked"
+    ]
+  },
+  "repository": {
+    "port_path": "src/modules/user/repository.py",
+    "interface": "UserRepository"
+  },
+  "fixtures": {
+    "path": "tests/modules/user/fixtures",
+    "format": "json"
+  },
+  "contract_notes": [
+    "user 모듈은 세션, 그룹, 차단 세 하위 계약을 각각 독립적으로 소유한다. module_manifest.schema.json 은 manifest 하나당 service/repository 를 각 한 개씩만 허용하므로, 이 두 최상위 필드는 module 이름과 같은 사용자 정체성 계약(UserRepository, BlockCheckService)만 대표로 가리키고, 나머지 두 계약(세션, 그룹)은 아래 항목에서 별도로 기술한다.",
+    "세션 계약: Session(session.py)은 id/user_id/created_at/expires_at 을 가지며 is_expired(now) 로 만료 여부를 판단한다. 저장소 포트는 SessionRepository(session_repository.py)이며 create/get/delete 세 메서드로 구성된다. 세션 발급·갱신을 담당하는 별도 서비스 계층은 아직 없다.",
+    "그룹 계약: Group(group.py)은 id/name/member_ids 를 가지며 has_member/add_member/remove_member 로 구성원을 관리한다. group 은 저장소 포트(repository)를 아직 갖지 않는다 — 그룹 영속화 계약은 이후 태스크에서 정의한다.",
+    "차단 계약: Block(block.py)은 id/user_id/created_at/expires_at(선택)/reason(선택)/blocked_by(선택)를 가지며 is_active(now)로 유효성을 판단한다. 저장소 포트는 BlockRepository(block_repository.py)이며 create/get/get_by_user_id/delete 로 구성된다. BlockCheckService(block_check_service.py)가 이 모듈에서 유일하게 존재하는 서비스 계층이며 is_blocked(user_id, now) 하나로 구성된다. 이 서비스를 편집 등의 권한 검사에 실제로 연결하는 작업은 이후 태스크에서 다룬다.",
+    "User(model.py)는 id/username/display_name 만 가지며 is_anonymous 속성이 없다. AnonymousIdentity(anonymous.py)와 IpIdentity(ip_identity.py)만 is_anonymous=True 를 정의하며, 이 둘은 Session/Block/Group 어디에도 연결되지 않는다. 자세한 경계는 src/modules/user/README.md 참고.",
+    "PasswordHasher(password.py)는 해시 알고리즘(bcrypt, argon2 등)을 감추는 포트이며, 구체 구현은 아직 이 모듈에 없다.",
+    "fixtures 디렉터리(tests/modules/user/fixtures)는 아직 채워지지 않았으며, 공용 fixture 변환은 태스크 0370 에서 진행한다.",
+    "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
+  ]
+}

@@ -1,0 +1,23 @@
+# php/scripts
+
+`php/` 트리 전용 QA 명령을 모아 두는 디렉터리. Phase B: PHP Runtime
+Skeleton, 0391-0440 의 0430 산출물이다
+(`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
+
+- `test.sh` — `php/tests/` 아래 모든 `*Test.php`를 찾아 `php` CLI로
+  하나씩 실행하고(`docs/php-test-bootstrap.md`가 정한 실행 방식과 동일),
+  파일별 `PASS`/`FAIL`과 전체 통과 개수를 출력한다. 하나라도 실패하면
+  실패한 파일의 stderr/stdout을 함께 출력하고 exit code 1로 끝난다.
+  `vendor/autoload.php`가 없으면(=`composer install` 미실행) 바로 안내
+  메시지와 함께 exit code 1로 끝난다. `php/`에서
+  `scripts/test.sh`로, 저장소 루트에서 `php/scripts/test.sh`로 실행할 수
+  있다(스크립트가 자기 위치 기준으로 `php/`로 이동한다).
+- `qa.sh` — `test.sh`를 호출하는 단일 진입점. 정적 분석 도구(PHPStan/
+  Psalm)는 아직 도입 전이므로(`docs/php-static-analysis-plan.md`) 지금은
+  테스트 실행만 하지만, 그 문서의 도입 트리거 조건이 성립하면 정적
+  분석 단계를 이 스크립트에 추가한다. "test/static check 명령을 한 곳에
+  둔다"는 0430 Notes 요구사항을 충족하는 지점이다.
+
+저장소 루트의 `scripts/qa.sh`가 이 스크립트를 선택 실행하도록 연결하는
+것은 이 태스크의 범위가 아니다 — 0431(Add root QA hook for optional PHP)
+이 담당한다.

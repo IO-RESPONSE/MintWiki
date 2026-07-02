@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "description": "앞뒤 공백과 연속 공백을 하이픈 하나로 축약한다.",
+  "input": {
+    "text": "  Hello   World  "
+  },
+  "expected": {
+    "id": "hello-world"
+  },
+  "errors": []
+}

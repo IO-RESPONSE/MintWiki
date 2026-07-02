@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "module": "admin",
+  "summary": "Owns administrative workflows: blocks, protections, reports, moderation actions, admin dashboards, and operational switches.",
+  "port": {
+    "source_path": "src/modules/admin",
+    "target_namespace": "MintWiki\\Admin",
+    "status": "not_started"
+  },
+  "service": {
+    "path": "src/modules/admin/service.py",
+    "public_methods": [
+      "block_user",
+      "unblock_user",
+      "protect_page",
+      "unprotect_page",
+      "submit_report",
+      "resolve_report"
+    ]
+  },
+  "repository": {
+    "port_path": "src/modules/admin/repository.py",
+    "interface": "AdminRepository"
+  },
+  "fixtures": {
+    "path": "tests/modules/admin/fixtures",
+    "format": "json"
+  },
+  "contract_notes": [
+    "admin 모듈은 아직 Python 구현이 없다 — src/modules/admin 에는 README.md 만 존재하며 service.py/repository.py 는 이 manifest 가 선언하는 계획된 위치일 뿐 파일이 실제로 생성되어 있지 않다. jobs/audit manifest 와 마찬가지로 이 문서는 기존 코드를 서술하는 것이 아니라, docs/modules.md 가 admin 의 책임으로 명시한 blocks/protections/reports/moderation actions/admin dashboards/operational switches 를 이후 태스크가 구현할 때 지켜야 할 목표 계약을 고정한다.",
+    "audit hook 통과 의무: block_user/unblock_user/protect_page/unprotect_page/submit_report/resolve_report 등 이 서비스가 노출하는 모든 관리자 액션(admin action)은 변경을 확정하기 전에 audit 모듈(modules.audit.service.record, 태스크 0363 manifest 참고)을 통해 감사 이벤트를 기록해야 한다. audit 기록이 실패하면 audit 모듈의 실패 정책(예외 전파)에 따라 관리자 액션 자체도 실패로 처리되어야 하며, audit 기록을 건너뛰고 조용히 관리자 액션만 성공시키는 경로는 금지된다. 이는 docs/modules.md 의 'Audit records should be written by modules through a small audit service' 요구사항을 admin 에 구체화한 것이다.",
+    "docs/modules.md 의 Dependency Rules 에 따라 admin 은 acl, user, document, discussion, audit 을 호출할 수 있다. 이 중 audit 호출은 위 audit hook 통과 의무에 따라 선택이 아니라 각 관리자 액션의 필수 마지막 단계다. acl/user/document/discussion 호출은 차단 대상 검증, 문서 보호 상태 반영, 신고 대상 논의 조회 등에 사용될 예정이며 구체적인 호출 시점은 실제 구현 태스크에서 정한다.",
+    "blocks 책임과 기존 구현의 관계: docs/modules.md 는 blocks 를 admin 의 책임으로 명시하지만, 현재 Block 도메인 모델과 저장소는 이미 src/modules/user/block.py, src/modules/user/block_repository.py 에 존재하고 src/modules/user/block_check_service.py 가 차단 여부 조회만 담당한다. 이 manifest 의 block_user/unblock_user 는 차단을 생성/해제하는 쓰기 경로의 목표 계약이며, user.block_check_service 의 읽기 전용 조회 책임과 충돌하지 않는다 — 실제 구현 태스크가 Block 도메인 모델을 admin 이 소유할지 user 의 기존 모델을 재사용할지 정리해야 한다.",
+    "fixtures 디렉터리(tests/modules/admin/fixtures)는 아직 존재하지 않으며, 실제 구현 태스크가 채운다.",
+    "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
+  ]
+}

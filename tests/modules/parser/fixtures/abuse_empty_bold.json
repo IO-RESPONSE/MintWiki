@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "description": "따옴표 6개가 연속될 때 비탐욕적(non-greedy) BOLD_PATTERN이 빈 캡처를 어떻게 처리하는지 확인하는 경계 사례.",
+  "input": { "source": "This has ''''''empty bold." },
+  "expected": {
+    "blocks": [
+      { "type": "paragraph", "content": "This has ''''''empty bold." }
+    ],
+    "metadata": {
+      "links": [],
+      "categories": [],
+      "headings": []
+    }
+  },
+  "errors": []
+}

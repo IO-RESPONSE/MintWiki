@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "description": "script 태그 삽입 시도를 HTML 엔티티로 이스케이프한다.",
+  "input": {
+    "text": "<script>alert('xss')</script>"
+  },
+  "expected": {
+    "html": "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;"
+  },
+  "errors": []
+}
