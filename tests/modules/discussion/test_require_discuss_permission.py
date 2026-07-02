@@ -77,6 +77,15 @@ class TestRequireDiscussPermissionDeniesByDefault:
         assert response.status_code == 403
         assert "detail" in response.json()
 
+    def test_authenticated_request_is_denied_without_rules(self):
+        # 로그인 사용자도 일치하는 규칙이 없으면 익명 사용자와 동일하게 거부되어야 한다.
+        client = _build_client(AclService())
+
+        response = client.get("/discussion", headers={"X-User-Id": "user-1"})
+
+        assert response.status_code == 403
+        assert "detail" in response.json()
+
 
 class TestRequireDiscussPermissionAllowsAnonymous:
     """익명 대상 토론 허용 규칙이 있으면 통과하는지 확인한다."""
