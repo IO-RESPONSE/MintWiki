@@ -1,5 +1,7 @@
 """동기 잡 실행기 테스트."""
 from modules.jobs import (
+    JobAuditAction,
+    JobAuditRecorder,
     JobHandler,
     JobPayload,
     JobResult,
@@ -144,3 +146,45 @@ class TestSyncJobRunnerFailure:
         SyncJobRunner().run(handler, payload)
 
         assert handler.received_payload is payload
+
+
+class TestSyncJobRunnerAuditOnFailure:
+    """run()이 실패 시 audit_recorder에 감사 이벤트를 남기는지 검증한다."""
+
+    def test_run_records_audit_event_when_handler_returns_failed_result(self):
+        recorder = JobAuditRecorder()
+        runner = SyncJobRunner(audit_recorder=recorder)
+
+        runner.run(FailingHandler(), SamplePayload())
+
+        events = recorder.events()
+        assert len(events) == 1
+        assert events[0].action is JobAuditAction.JOB_FAILED
+        assert events[0].job_type == "sample.job"
+        assert events[0].error == "처리 실패"
+
+    def test_run_records_audit_event_when_handler_raises(self):
+        recorder = JobAuditRecorder()
+        runner = SyncJobRunner(audit_recorder=recorder)
+
+        runner.run(RaisingHandler(), SamplePayload())
+
+        events = recorder.events()
+        assert len(events) == 1
+        assert events[0].action is JobAuditAction.JOB_FAILED
+        assert events[0].error == "예상치 못한 오류"
+
+    def test_run_does_not_record_audit_event_on_success(self):
+        recorder = JobAuditRecorder()
+        runner = SyncJobRunner(audit_recorder=recorder)
+
+        runner.run(SucceedingHandler(), SamplePayload())
+
+        assert recorder.events() == []
+
+    def test_run_uses_default_audit_recorder_when_not_given(self):
+        runner = SyncJobRunner()
+
+        runner.run(FailingHandler(), SamplePayload())
+
+        assert len(runner.audit_recorder.events()) == 1

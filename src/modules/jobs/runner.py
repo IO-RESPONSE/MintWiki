@@ -1,6 +1,7 @@
 """동기 잡 실행기."""
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
+from modules.jobs.audit_recorder import JobAuditRecorder
 from modules.jobs.handler import JobHandler
 from modules.jobs.payload import JobPayload
 from modules.jobs.result import JobResult
@@ -21,8 +22,20 @@ class SyncJobRunner:
     큐 적재, 재시도 정책, 레지스트리를 통한 핸들러 조회는 다루지 않으며,
     호출자가 이미 알고 있는 핸들러와 페이로드 쌍을 한 번 실행해 상태
     전이(RUNNING -> SUCCEEDED/FAILED)를 계산하는 최소 계약만 담당한다.
-    나머지 계약은 후속 태스크(재시도 정책, 잡 레지스트리 등)에서 다룬다.
+    잡이 실패로 끝나면 audit_recorder를 통해 감사 이벤트도 함께 남긴다.
+    성공 시점의 감사 기록 등 나머지 계약은 후속 태스크(재시도 정책, 잡
+    레지스트리 등)에서 다룬다.
     """
+
+    def __init__(self, audit_recorder: Optional[JobAuditRecorder] = None):
+        """
+        실행기를 초기화한다.
+
+        Args:
+            audit_recorder: 감사 이벤트 기록기 (선택사항, 생략하면 새로
+                생성한다)
+        """
+        self.audit_recorder = audit_recorder or JobAuditRecorder()
 
     def run(self, handler: JobHandler, payload: JobPayload) -> JobRunOutcome:
         """
@@ -44,6 +57,10 @@ class SyncJobRunner:
             result = JobResult.fail(str(exc))
 
         status = JobStatus.SUCCEEDED if result.success else JobStatus.FAILED
+        if status is JobStatus.FAILED:
+            self.audit_recorder.record_job_failed(
+                job_type=payload.job_type, error=result.error
+            )
         return JobRunOutcome(status=status, result=result)
 
 
