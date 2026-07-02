@@ -1,5 +1,5 @@
-"""문서 단위 편집/읽기/토론 제한 정책(restrict_document_edit, restrict_document_read,
-restrict_document_discuss) 테스트."""
+"""문서 단위 편집/읽기/토론/이동 제한 정책(restrict_document_edit, restrict_document_read,
+restrict_document_discuss, restrict_document_move) 테스트."""
 from modules.acl.default_policy import (
     LOGGED_IN_EDIT_RULE_ID,
     PUBLIC_READ_RULE_ID,
@@ -8,9 +8,11 @@ from modules.acl.default_policy import (
 from modules.acl.document_policy import (
     DOCUMENT_DISCUSS_RESTRICTION_RULE_ID,
     DOCUMENT_EDIT_RESTRICTION_RULE_ID,
+    DOCUMENT_MOVE_RESTRICTION_RULE_ID,
     DOCUMENT_READ_RESTRICTION_RULE_ID,
     restrict_document_discuss,
     restrict_document_edit,
+    restrict_document_move,
     restrict_document_read,
 )
 from modules.acl.permission import Permission
@@ -298,6 +300,93 @@ class TestRestrictDocumentDiscussWithAclService:
 
         decision = service.check(
             permission=Permission.DISCUSS,
+            subject_type=SubjectType.USER,
+            subject_id="user-1",
+        )
+
+        assert decision.is_denied() is True
+
+
+class TestRestrictDocumentMove:
+    """restrict_document_move가 지정한 대상에게만 이동 규칙을 부여하는지 확인한다."""
+
+    def test_returns_document_acl_with_single_move_rule(self):
+        acl = restrict_document_move(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="movers",
+        )
+
+        assert acl.document_id == "doc-1"
+        rules = acl.rules()
+        assert len(rules) == 1
+        rule = rules[0]
+        assert rule.id == DOCUMENT_MOVE_RESTRICTION_RULE_ID
+        assert rule.permission is Permission.MOVE
+        assert rule.subject_type is SubjectType.GROUP
+        assert rule.subject_id == "movers"
+        assert rule.is_allow() is True
+
+
+class TestRestrictDocumentMoveWithAclService:
+    """제한된 문서 ACL이 AclService 검사에서 실제로 이동을 제한하는지 확인한다."""
+
+    def test_allows_the_designated_group_to_move(self):
+        service = AclService()
+        acl = restrict_document_move(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="movers",
+        )
+
+        decision = service.check(
+            permission=Permission.MOVE,
+            subject_type=SubjectType.GROUP,
+            subject_id="movers",
+            document_acl=acl,
+        )
+
+        assert decision.is_allowed() is True
+        assert decision.matched_rule_id == DOCUMENT_MOVE_RESTRICTION_RULE_ID
+
+    def test_denies_a_different_group_from_moving(self):
+        service = AclService()
+        acl = restrict_document_move(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="movers",
+        )
+
+        decision = service.check(
+            permission=Permission.MOVE,
+            subject_type=SubjectType.GROUP,
+            subject_id="visitors",
+            document_acl=acl,
+        )
+
+        assert decision.is_denied() is True
+
+    def test_denies_anonymous_users_from_moving(self):
+        service = AclService()
+        acl = restrict_document_move(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="movers",
+        )
+
+        decision = service.check(
+            permission=Permission.MOVE,
+            subject_type=SubjectType.ANONYMOUS,
+            document_acl=acl,
+        )
+
+        assert decision.is_denied() is True
+
+    def test_move_is_denied_by_default_without_document_acl(self):
+        service = AclService(namespace_defaults=build_default_namespace_acl_defaults())
+
+        decision = service.check(
+            permission=Permission.MOVE,
             subject_type=SubjectType.USER,
             subject_id="user-1",
         )

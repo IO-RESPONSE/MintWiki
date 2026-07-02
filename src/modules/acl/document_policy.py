@@ -1,4 +1,4 @@
-"""문서 단위 읽기/편집/토론 제한 정책 정의."""
+"""문서 단위 읽기/편집/토론/이동 제한 정책 정의."""
 from typing import Optional
 
 from modules.acl.document_acl import DocumentAcl
@@ -8,6 +8,7 @@ from modules.acl.rule import Effect, Rule, SubjectType
 DOCUMENT_EDIT_RESTRICTION_RULE_ID = "document-edit-restricted"
 DOCUMENT_READ_RESTRICTION_RULE_ID = "document-read-restricted"
 DOCUMENT_DISCUSS_RESTRICTION_RULE_ID = "document-discuss-restricted"
+DOCUMENT_MOVE_RESTRICTION_RULE_ID = "document-move-restricted"
 
 
 def restrict_document_edit(
@@ -100,6 +101,38 @@ def restrict_document_discuss(
         id=DOCUMENT_DISCUSS_RESTRICTION_RULE_ID,
         subject_type=subject_type,
         permission=Permission.DISCUSS,
+        effect=Effect.ALLOW,
+        subject_id=subject_id,
+    )
+    return DocumentAcl(document_id=document_id, rules=[rule])
+
+
+def restrict_document_move(
+    document_id: str,
+    subject_type: SubjectType,
+    subject_id: Optional[str] = None,
+) -> DocumentAcl:
+    """
+    지정한 대상만 이동을 허용하도록 제한된 문서 ACL을 생성한다.
+
+    문서 ACL에는 지정한 대상에 대한 이동 허용 규칙 하나만 등록된다. 다른
+    대상은 이 문서 ACL 안에서 일치하는 규칙이 없으므로 AclService에 의해
+    기본적으로 이동이 거부된다. 기본 정책(default_policy)에는 이동에 대한
+    규칙이 없어 문서 ACL이 없는 문서는 누구도 이동할 수 없으므로, 이
+    함수는 특정 대상에게 이동 권한을 부여하는 유일한 수단이다.
+
+    Args:
+        document_id: 이동을 제한할 문서의 고유 식별자
+        subject_type: 이동이 허용되는 대상의 종류
+        subject_id: 대상이 사용자 또는 그룹일 때의 id (선택사항)
+
+    Returns:
+        이동 허용 규칙 하나만 담긴 DocumentAcl
+    """
+    rule = Rule(
+        id=DOCUMENT_MOVE_RESTRICTION_RULE_ID,
+        subject_type=subject_type,
+        permission=Permission.MOVE,
         effect=Effect.ALLOW,
         subject_id=subject_id,
     )

@@ -37,6 +37,8 @@ def test_acl_package_exports_rule():
         "restrict_document_read",
         "DOCUMENT_DISCUSS_RESTRICTION_RULE_ID",
         "restrict_document_discuss",
+        "DOCUMENT_MOVE_RESTRICTION_RULE_ID",
+        "restrict_document_move",
     ]
     assert modules.acl.Rule is Rule
 
@@ -148,3 +150,19 @@ def test_acl_package_exports_document_discuss_restriction():
         is DOCUMENT_DISCUSS_RESTRICTION_RULE_ID
     )
     assert modules.acl.restrict_document_discuss is restrict_document_discuss
+
+
+def test_acl_package_exports_document_move_restriction():
+    # 0164에서 문서 단위 이동 제한 정책이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.document_policy import (
+        DOCUMENT_MOVE_RESTRICTION_RULE_ID,
+        restrict_document_move,
+    )
+
+    assert "DOCUMENT_MOVE_RESTRICTION_RULE_ID" in modules.acl.__all__
+    assert "restrict_document_move" in modules.acl.__all__
+    assert (
+        modules.acl.DOCUMENT_MOVE_RESTRICTION_RULE_ID
+        is DOCUMENT_MOVE_RESTRICTION_RULE_ID
+    )
+    assert modules.acl.restrict_document_move is restrict_document_move

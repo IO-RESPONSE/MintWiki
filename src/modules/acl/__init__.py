@@ -10,9 +10,11 @@ from modules.acl.document_acl import DocumentAcl, EmptyDocumentIdError
 from modules.acl.document_policy import (
     DOCUMENT_DISCUSS_RESTRICTION_RULE_ID,
     DOCUMENT_EDIT_RESTRICTION_RULE_ID,
+    DOCUMENT_MOVE_RESTRICTION_RULE_ID,
     DOCUMENT_READ_RESTRICTION_RULE_ID,
     restrict_document_discuss,
     restrict_document_edit,
+    restrict_document_move,
     restrict_document_read,
 )
 from modules.acl.namespace_defaults import DEFAULT_NAMESPACE, NamespaceAclDefaults
@@ -49,4 +51,6 @@ __all__ = [
     "restrict_document_read",
     "DOCUMENT_DISCUSS_RESTRICTION_RULE_ID",
     "restrict_document_discuss",
+    "DOCUMENT_MOVE_RESTRICTION_RULE_ID",
+    "restrict_document_move",
 ]
