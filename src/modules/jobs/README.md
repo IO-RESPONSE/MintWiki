@@ -85,3 +85,16 @@ record the entry, so `handle()` only validates the payload type and returns
 `summary`. It returns `JobResult.fail(...)` if given a payload that isn't a
 `RecentChangesJobPayload`. The real recent changes recording logic replaces
 this placeholder in a later task once a recent changes module exists.
+
+`JobAuditEvent` (`audit_event.py`) is a domain model recording the outcome
+of a job run: it carries `id`, `action` (a `JobAuditAction` of
+`JOB_SUCCEEDED` or `JOB_FAILED`), `job_type` (mirroring `JobPayload.job_type`
+/ `DeadLetter.job_type`), `occurred_at`, and an optional `error`. `id` and
+`job_type` are required and cannot be empty/whitespace-only, raising
+`EmptyJobAuditEventIdError` / `MissingJobTypeError` otherwise. `error` is
+required when `action` is `JOB_FAILED` and forbidden when `action` is
+`JOB_SUCCEEDED`, raising `InvalidJobAuditEventError` otherwise (mirroring the
+success/error contract of `JobResult`). `is_succeeded()` / `is_failed()`
+report which outcome the event records. Recording events at job run time and
+persisting them are left to a later task's job audit recorder, once the
+runner integration exists.

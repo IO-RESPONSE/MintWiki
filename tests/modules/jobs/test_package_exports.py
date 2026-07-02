@@ -17,9 +17,15 @@ class TestJobsPackageExports:
         동기 잡 실행기, 재시도 정책, 데드레터 모델, 잡 레지스트리, 캐시
         퍼지 페이로드/핸들러, 검색 색인 핸들러, 백링크 갱신 페이로드/
         placeholder 핸들러, 카테고리 갱신 페이로드/placeholder 핸들러,
-        최근 변경 내역 페이로드/placeholder 핸들러만 검증한다.
+        최근 변경 내역 페이로드/placeholder 핸들러, 잡 감사 이벤트
+        모델만 검증한다.
         """
         assert jobs.__all__ == [
+            "JobAuditAction",
+            "JobAuditEvent",
+            "EmptyJobAuditEventIdError",
+            "MissingJobTypeError",
+            "InvalidJobAuditEventError",
             "JobPayload",
             "JobResult",
             "InvalidJobResultError",
