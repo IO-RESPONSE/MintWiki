@@ -105,6 +105,13 @@ is returned unchanged. It is not yet wired into `SearchResult`,
 down to the matched context), multi-term highlighting, and morphological
 match support are filled in by later tasks.
 
+`SearchFixtureLoader` (`fixtures.py`) provides a small set of reusable
+`SearchDocument` fixture documents for adapter/service/reindex tests:
+title-only, title+body, redirect, categorized, and a "full" document with
+title/body/categories together. `load_all()` returns every fixture
+document; `load_by_id(document_id)` looks one up by its fixture id and
+raises `ValueError` for an unknown id.
+
 `SearchServiceError` (`errors.py`) is the search service error handling
 model: it wraps an exception raised by a `SearchAdapter` implementation
 (e.g. an external search engine client) together with the name of the

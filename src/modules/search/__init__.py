@@ -25,6 +25,7 @@ from modules.search.config import SearchAdapterConfig, InvalidSearchAdapterBacke
 from modules.search.normalization import normalize_korean_text
 from modules.search.highlighting import highlight_search_term
 from modules.search.errors import SearchServiceError
+from modules.search.fixtures import SearchFixtureLoader
 
 __all__ = [
     "SearchDocument",
@@ -48,4 +49,5 @@ __all__ = [
     "normalize_korean_text",
     "highlight_search_term",
     "SearchServiceError",
+    "SearchFixtureLoader",
 ]

@@ -25,7 +25,9 @@ class TestSearchPackageExports:
         (SearchAdapterConfig), 한국어 텍스트 정규화 자리표시자
         (normalize_korean_text), 검색 결과 하이라이팅 자리표시자
         (highlight_search_term), 검색 서비스 오류 모델
-        (SearchServiceError), 그리고 그 오류 타입들만 export한다.
+        (SearchServiceError), 그리고 어댑터/서비스/재색인 테스트에서 재사용할
+        고정 문서(fixture)를 제공하는 로더(SearchFixtureLoader)와 그 오류
+        타입들만 export한다.
         """
         assert search.__all__ == [
             "SearchDocument",
@@ -49,6 +51,7 @@ class TestSearchPackageExports:
             "normalize_korean_text",
             "highlight_search_term",
             "SearchServiceError",
+            "SearchFixtureLoader",
         ]
         for name in search.__all__:
             assert hasattr(search, name)
