@@ -42,6 +42,19 @@ PHP test suite.
   scenarios as `tests/modules/document/fixtures/`. Run it with
   `php tests/Modules/Document/TitleTest.php` from `php/` after
   `composer install`.
+- `Modules/Document/TitleFixtureRunnerTest.php` (0426) — reads every
+  cross-language JSON fixture under the repository root's
+  `tests/modules/document/fixtures/` via `Support/FixtureLoader.php`
+  (0425) and runs it against `MintWiki\Document\Title::normalize()`,
+  matching Python's `tests/modules/document/test_title_fixtures.py`:
+  success fixtures compare the return value to `expected.title`,
+  failure fixtures confirm `EmptyTitleError` is thrown and its `CODE`
+  is in the fixture's `errors` list. Unlike `TitleTest.php`, this file
+  reads the fixture files directly instead of hand-copying scenario
+  values, so future fixture edits are picked up without touching PHP
+  code. Run it with
+  `php tests/Modules/Document/TitleFixtureRunnerTest.php` from `php/`
+  after `composer install`.
 
 - `Modules/Document/RepositoryTest.php` (0402) — confirms
   `MintWiki\Document\Repository` is an interface implementable with the
