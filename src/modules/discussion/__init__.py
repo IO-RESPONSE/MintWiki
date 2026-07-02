@@ -6,7 +6,11 @@ from modules.discussion.comment import (
     EmptyCommentIdError,
     EmptyCommentThreadIdError,
 )
-from modules.discussion.repository import DiscussionRepository
+from modules.discussion.repository import (
+    DiscussionRepository,
+    DiscussionThreadNotFoundError,
+    InMemoryDiscussionRepository,
+)
 from modules.discussion.state import ThreadState
 from modules.discussion.thread import (
     DiscussionThread,
@@ -29,4 +33,6 @@ __all__ = [
     "EmptyCommentCreatedByError",
     "ThreadState",
     "DiscussionRepository",
+    "DiscussionThreadNotFoundError",
+    "InMemoryDiscussionRepository",
 ]

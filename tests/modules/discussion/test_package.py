@@ -20,6 +20,8 @@ def test_discussion_package_exports_thread_model():
         "EmptyCommentCreatedByError",
         "ThreadState",
         "DiscussionRepository",
+        "DiscussionThreadNotFoundError",
+        "InMemoryDiscussionRepository",
     ]
     assert modules.discussion.DiscussionThread is not None
     assert modules.discussion.EmptyThreadIdError is not None
@@ -42,3 +44,8 @@ def test_discussion_package_exports_thread_state_enum():
 
 def test_discussion_package_exports_repository_interface():
     assert modules.discussion.DiscussionRepository is not None
+
+
+def test_discussion_package_exports_in_memory_repository():
+    assert modules.discussion.InMemoryDiscussionRepository is not None
+    assert modules.discussion.DiscussionThreadNotFoundError is not None
