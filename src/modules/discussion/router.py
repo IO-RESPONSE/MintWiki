@@ -14,6 +14,7 @@ from modules.discussion.schema import (
     AddCommentRequest,
     CommentResponse,
     CreateThreadRequest,
+    ListThreadsResponse,
     ThreadResponse,
 )
 from modules.discussion.service import DiscussionService
@@ -79,6 +80,36 @@ async def create_thread(
         title=thread.title,
         created_by=thread.created_by,
         status=thread.status,
+    )
+
+
+@router.get("/threads", tags=["discussion"])
+async def list_threads(
+    document_id: str,
+    service: DiscussionService = Depends(get_discussion_service),
+) -> ListThreadsResponse:
+    """
+    주어진 문서의 토론 스레드 목록을 생성 순서대로 반환한다.
+
+    Args:
+        document_id: 조회할 문서의 id (쿼리 파라미터)
+        service: 토론 서비스
+
+    Returns:
+        문서의 토론 스레드 목록 (생성 순서)
+    """
+    threads = await service.list_threads_by_document_id(document_id)
+    return ListThreadsResponse(
+        threads=[
+            ThreadResponse(
+                id=thread.id,
+                document_id=thread.document_id,
+                title=thread.title,
+                created_by=thread.created_by,
+                status=thread.status,
+            )
+            for thread in threads
+        ]
     )
 
 

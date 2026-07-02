@@ -20,6 +20,12 @@ class ThreadResponse(BaseModel):
     status: str
 
 
+class ListThreadsResponse(BaseModel):
+    """스레드 목록 응답 스키마."""
+
+    threads: list[ThreadResponse]
+
+
 class AddCommentRequest(BaseModel):
     """댓글 추가 요청 스키마."""
 

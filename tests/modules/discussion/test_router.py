@@ -89,6 +89,45 @@ class TestCreateThread:
         assert response.status_code == 422
 
 
+class TestListThreads:
+    """스레드 목록 조회 엔드포인트 테스트."""
+
+    def test_list_threads_returns_threads_for_document(self, client: TestClient):
+        """엔드포인트는 지정한 문서의 스레드 목록을 생성 순서대로 반환한다."""
+        client.post(
+            "/threads",
+            json={"document_id": "doc1", "title": "첫 번째", "created_by": "user1"},
+        )
+        client.post(
+            "/threads",
+            json={"document_id": "doc1", "title": "두 번째", "created_by": "user1"},
+        )
+        client.post(
+            "/threads",
+            json={"document_id": "doc2", "title": "다른 문서", "created_by": "user1"},
+        )
+
+        response = client.get("/threads", params={"document_id": "doc1"})
+
+        assert response.status_code == 200
+        data = response.json()
+        titles = [thread["title"] for thread in data["threads"]]
+        assert titles == ["첫 번째", "두 번째"]
+
+    def test_list_threads_with_no_threads_returns_empty_list(self, client: TestClient):
+        """엔드포인트는 스레드가 없는 문서에 대해 빈 목록을 반환한다."""
+        response = client.get("/threads", params={"document_id": "doc-without-threads"})
+
+        assert response.status_code == 200
+        assert response.json()["threads"] == []
+
+    def test_list_threads_requires_document_id(self, client: TestClient):
+        """엔드포인트는 document_id 없이 요청하면 422를 반환한다."""
+        response = client.get("/threads")
+
+        assert response.status_code == 422
+
+
 class TestAddComment:
     """댓글 추가 엔드포인트 테스트."""
 
