@@ -26,6 +26,12 @@ manifest 는 `src/modules/document/manifest.json` 이다.
   섹션이 정본이다. 구현 없이 시그니처만 두며, `create`/`get`/
   `getByNormalizedTitle`/`update` 네 메서드를 선언한다. 실제 구현체는
   이후 태스크(0435 등)에서 추가된다.
+- `InMemoryRepository.php` (0435) — Python `InMemoryDocumentRepository`
+  (`src/modules/document/repository.py`)와 동작을 맞춘 `Repository`의
+  메모리 기반 구현체. id -> `Document` 맵과 normalizedTitle -> id 맵을
+  함께 유지해 `create()`가 중복된 normalizedTitle을
+  `DuplicateNormalizedTitleError`로 거부하고, `update()`는 없는 id에
+  `NotFoundError`를 던진다. DB 전 단계의 테스트/개발용이다.
 - `DuplicateNormalizedTitleError.php` (0402) — Python
   `DuplicateNormalizedTitleError`와 안정적인 error code를 맞춘 예외.
   `DuplicateNormalizedTitleError::CODE`가 `document.duplicate_title`을
