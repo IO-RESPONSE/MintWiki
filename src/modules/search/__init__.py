@@ -23,6 +23,7 @@ from modules.search.job_payload import IndexDocumentJobPayload
 from modules.search.config import SearchAdapterConfig, InvalidSearchAdapterBackendError
 from modules.search.normalization import normalize_korean_text
 from modules.search.highlighting import highlight_search_term
+from modules.search.errors import SearchServiceError
 
 __all__ = [
     "SearchDocument",
@@ -44,4 +45,5 @@ __all__ = [
     "InvalidSearchAdapterBackendError",
     "normalize_korean_text",
     "highlight_search_term",
+    "SearchServiceError",
 ]

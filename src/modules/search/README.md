@@ -93,6 +93,15 @@ is returned unchanged. It is not yet wired into `SearchResult`,
 down to the matched context), multi-term highlighting, and morphological
 match support are filled in by later tasks.
 
+`SearchServiceError` (`errors.py`) is the search service error handling
+model: it wraps an exception raised by a `SearchAdapter` implementation
+(e.g. an external search engine client) together with the name of the
+operation that failed (`index`, `search`, or `delete`), so callers can
+handle a single error type regardless of which adapter is in use. It stores
+`operation` and `original_error` and formats both into the exception
+message. `SearchService` does not yet catch adapter exceptions and raise
+this error in their place; that mapping is filled in by a later task.
+
 `router` (`router.py`) is an `APIRouter`, not yet registered in `main.py`.
 It exposes `GET /title` and `GET /body`, each reading a required query
 parameter (`title` or `body`, respectively) plus optional `limit`/`offset`
