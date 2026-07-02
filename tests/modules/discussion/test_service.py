@@ -549,6 +549,54 @@ class TestDiscussionServiceComments:
         assert result[0].body == "댓글1"
 
     @pytest.mark.asyncio
+    async def test_list_comments_by_thread_id_applies_limit_only(self):
+        """서비스는 offset 없이 limit만 지정해도 저장소에 그대로 전달한다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        for i in range(3):
+            await service.add_comment(
+                thread_id=thread.id, body=f"댓글{i}", created_by="user1"
+            )
+
+        result = await service.list_comments_by_thread_id(thread.id, limit=2)
+
+        assert [c.body for c in result] == ["댓글0", "댓글1"]
+
+    @pytest.mark.asyncio
+    async def test_list_comments_by_thread_id_applies_offset_only(self):
+        """서비스는 limit 없이 offset만 지정해도 저장소에 그대로 전달한다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        for i in range(3):
+            await service.add_comment(
+                thread_id=thread.id, body=f"댓글{i}", created_by="user1"
+            )
+
+        result = await service.list_comments_by_thread_id(thread.id, offset=1)
+
+        assert [c.body for c in result] == ["댓글1", "댓글2"]
+
+    @pytest.mark.asyncio
+    async def test_list_comments_by_thread_id_with_offset_beyond_total_returns_empty(self):
+        """서비스는 offset이 전체 개수를 넘으면 빈 목록을 반환한다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        await service.add_comment(thread_id=thread.id, body="댓글", created_by="user1")
+
+        result = await service.list_comments_by_thread_id(thread.id, offset=10)
+
+        assert result == []
+
+    @pytest.mark.asyncio
     async def test_list_comments_for_nonexistent_thread(self):
         """서비스는 없는 스레드의 댓글을 조회하면 빈 목록을 반환한다."""
         repo = InMemoryDiscussionRepository()

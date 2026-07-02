@@ -354,6 +354,48 @@ class TestListComments:
         bodies = [comment["body"] for comment in response.json()["comments"]]
         assert bodies == ["댓글1"]
 
+    def test_list_comments_applies_limit_only(self, client: TestClient):
+        """엔드포인트는 offset 없이 limit만 지정해도 댓글 목록을 제한한다."""
+        for i in range(3):
+            client.post(
+                "/threads/thread1/comments",
+                json={"body": f"댓글{i}", "created_by": "user1"},
+            )
+
+        response = client.get("/threads/thread1/comments", params={"limit": 2})
+
+        assert response.status_code == 200
+        bodies = [comment["body"] for comment in response.json()["comments"]]
+        assert bodies == ["댓글0", "댓글1"]
+
+    def test_list_comments_applies_offset_only(self, client: TestClient):
+        """엔드포인트는 limit 없이 offset만 지정해도 그만큼 건너뛴 댓글 목록을 반환한다."""
+        for i in range(3):
+            client.post(
+                "/threads/thread1/comments",
+                json={"body": f"댓글{i}", "created_by": "user1"},
+            )
+
+        response = client.get("/threads/thread1/comments", params={"offset": 1})
+
+        assert response.status_code == 200
+        bodies = [comment["body"] for comment in response.json()["comments"]]
+        assert bodies == ["댓글1", "댓글2"]
+
+    def test_list_comments_with_offset_beyond_total_returns_empty_list(
+        self, client: TestClient
+    ):
+        """엔드포인트는 offset이 전체 개수를 넘으면 빈 목록을 반환한다."""
+        client.post(
+            "/threads/thread1/comments",
+            json={"body": "댓글", "created_by": "user1"},
+        )
+
+        response = client.get("/threads/thread1/comments", params={"offset": 10})
+
+        assert response.status_code == 200
+        assert response.json()["comments"] == []
+
     def test_list_comments_with_invalid_limit_returns_422(self, client: TestClient):
         """엔드포인트는 0 이하의 limit으로 요청하면 422를 반환한다."""
         response = client.get("/threads/thread1/comments", params={"limit": 0})

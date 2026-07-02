@@ -415,6 +415,46 @@ class TestInMemoryDiscussionRepository:
         assert [c.id for c in result] == ["comment1", "comment2"]
 
     @pytest.mark.asyncio
+    async def test_list_comments_by_thread_id_with_offset_beyond_total_returns_empty(self):
+        """인메모리 저장소는 offset이 전체 개수를 넘으면 빈 목록을 반환한다."""
+        repo = InMemoryDiscussionRepository()
+        for i in range(3):
+            await repo.create_comment(
+                DiscussionComment(
+                    id=f"comment{i}",
+                    thread_id="thread1",
+                    body=f"댓글{i}",
+                    created_by="user1",
+                    created_at=datetime(2026, 1, i + 1, 0, 0, 0),
+                )
+            )
+
+        result = await repo.list_comments_by_thread_id("thread1", offset=10)
+
+        assert result == []
+
+    @pytest.mark.asyncio
+    async def test_list_comments_by_thread_id_with_limit_larger_than_remaining_returns_remaining(
+        self,
+    ):
+        """인메모리 저장소는 limit이 남은 개수보다 크면 남은 댓글만 반환한다."""
+        repo = InMemoryDiscussionRepository()
+        for i in range(3):
+            await repo.create_comment(
+                DiscussionComment(
+                    id=f"comment{i}",
+                    thread_id="thread1",
+                    body=f"댓글{i}",
+                    created_by="user1",
+                    created_at=datetime(2026, 1, i + 1, 0, 0, 0),
+                )
+            )
+
+        result = await repo.list_comments_by_thread_id("thread1", limit=10, offset=2)
+
+        assert [c.id for c in result] == ["comment2"]
+
+    @pytest.mark.asyncio
     async def test_can_get_comment_by_id(self):
         """인메모리 저장소는 id로 댓글을 조회할 수 있다."""
         repo = InMemoryDiscussionRepository()
