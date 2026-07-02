@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "module": "revision",
+  "summary": "Owns immutable document revisions.",
+  "port": {
+    "source_path": "src/modules/revision",
+    "target_namespace": "MintWiki\\Revision",
+    "status": "not_started"
+  },
+  "service": {
+    "path": "src/modules/revision/service.py",
+    "public_methods": [
+      "create",
+      "get",
+      "list_by_document_id"
+    ]
+  },
+  "repository": {
+    "port_path": "src/modules/revision/repository.py",
+    "interface": "RevisionRepository"
+  },
+  "fixtures": {
+    "path": "tests/modules/revision/fixtures",
+    "format": "json"
+  },
+  "contract_notes": [
+    "revision 은 docs/modules.md 의 의존 규칙에 따라 parser 를 테스트나 검증 헬퍼에서만 호출할 수 있으며, 저장 경로(storage path)에서는 호출하지 않는다.",
+    "revision 은 사용자가 편집할 수 있는지 여부를 판단하지 않는다. ACL 이 revision 호출 이전에 이를 결정한다.",
+    "fixtures 디렉터리(tests/modules/revision/fixtures)는 아직 채워지지 않았으며, 공용 fixture 변환은 태스크 0370 에서 진행한다.",
+    "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
+  ]
+}
