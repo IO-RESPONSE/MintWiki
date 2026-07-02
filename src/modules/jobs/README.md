@@ -39,5 +39,13 @@ as `BACKLINK_REFRESH_JOB_TYPE` (`"backlink.refresh"`). It carries
 `page_name`, the document whose links changed and whose targets' backlink
 entries need recomputing. `page_name` is required and cannot be
 empty/whitespace-only, raising `InvalidBacklinkRefreshJobPayloadError`
-otherwise. The handler that performs the actual backlink index update is
-added in a later task; this payload only defines the data contract.
+otherwise.
+
+`BacklinkRefreshJobHandler` (`backlink_refresh_handler.py`) is a placeholder
+`JobHandler` for `BacklinkRefreshJobPayload`, exposing `job_type` as
+`BACKLINK_REFRESH_JOB_TYPE`. There is no backlinks module yet to actually
+recompute backlink index entries, so `handle()` only validates the payload
+type and returns `JobResult.ok(data={"page_name": payload.page_name})`. It
+returns `JobResult.fail(...)` if given a payload that isn't a
+`BacklinkRefreshJobPayload`. The real backlink index update logic replaces
+this placeholder in a later task once a backlinks module exists.
