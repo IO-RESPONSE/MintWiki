@@ -1,4 +1,10 @@
 """Discussion module package."""
+from modules.discussion.audit_event import (
+    DiscussionAuditAction,
+    DiscussionAuditEvent,
+    EmptyDiscussionAuditEventIdError,
+    MissingDiscussionThreadIdError,
+)
 from modules.discussion.comment import (
     DiscussionComment,
     EmptyCommentBodyError,
@@ -22,6 +28,10 @@ from modules.discussion.thread import (
 )
 
 __all__ = [
+    "DiscussionAuditAction",
+    "DiscussionAuditEvent",
+    "EmptyDiscussionAuditEventIdError",
+    "MissingDiscussionThreadIdError",
     "DiscussionThread",
     "EmptyThreadIdError",
     "EmptyThreadDocumentIdError",

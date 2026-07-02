@@ -8,6 +8,10 @@ def test_discussion_package_is_importable():
 
 def test_discussion_package_exports_thread_model():
     assert modules.discussion.__all__ == [
+        "DiscussionAuditAction",
+        "DiscussionAuditEvent",
+        "EmptyDiscussionAuditEventIdError",
+        "MissingDiscussionThreadIdError",
         "DiscussionThread",
         "EmptyThreadIdError",
         "EmptyThreadDocumentIdError",
@@ -54,3 +58,10 @@ def test_discussion_package_exports_in_memory_repository():
 
 def test_discussion_package_exports_service():
     assert modules.discussion.DiscussionService is not None
+
+
+def test_discussion_package_exports_audit_event_model():
+    assert modules.discussion.DiscussionAuditAction is not None
+    assert modules.discussion.DiscussionAuditEvent is not None
+    assert modules.discussion.EmptyDiscussionAuditEventIdError is not None
+    assert modules.discussion.MissingDiscussionThreadIdError is not None
