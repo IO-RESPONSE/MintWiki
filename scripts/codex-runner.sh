@@ -31,7 +31,7 @@ Repository rules:
 - Keep the change narrowly scoped to the task.
 - Prefer existing project patterns.
 - Add or update tests required by the task.
-- Run scripts/test.sh before finishing if possible.
+- Run scripts/qa.sh before finishing if possible.
 - Do not implement work listed as Out of Scope.
 - Do NOT run git commit or git push. The runner owns committing and pushing.
 - Do NOT create, move, rename, or delete any file under the tasks/ directory. The runner manages the task queue; touching tasks/ will break the runner.

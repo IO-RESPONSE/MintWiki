@@ -129,7 +129,6 @@ if [ "$agent_rc" -ne 0 ]; then
   exit 0
 fi
 trap 'finish_failed $?' ERR
-scripts/test.sh
 scripts/qa.sh
 
 mv "$ACTIVE_TASK" "$DONE_DIR/$TASK_NAME"
