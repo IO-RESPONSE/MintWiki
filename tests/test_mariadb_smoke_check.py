@@ -25,6 +25,7 @@ def test_schema_order_matches_smoke_plan_fk_dependency_order():
     """SCHEMA_ORDER가 smoke plan 문서(§2)가 정한 FK 의존 순서와 일치하는지 확인한다."""
     assert mariadb_smoke_check.SCHEMA_ORDER == [
         "schema_migration.sql",
+        "schema_version.sql",
         "account.sql",
         "document.sql",
         "revision.sql",

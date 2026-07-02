@@ -2,7 +2,7 @@
 """MariaDB portable schema smoke 테스트 (선택 실행).
 
 docs/mariadb-migration-smoke-plan.md가 세운 계획을 그대로 구현한다:
-db/schema/*.sql 을 FK 의존 순서대로 실제 MariaDB 서버에 적용해 보고, 11개
+db/schema/*.sql 을 FK 의존 순서대로 실제 MariaDB 서버에 적용해 보고, 12개
 테이블이 모두 생성되는지만 확인하는 가장 얕은 확인이다.
 
 실행 조건(선택 실행/skip):
@@ -29,6 +29,7 @@ DSN_ENV_VAR = "WIKI_MARIADB_DSN"
 # docs/mariadb-migration-smoke-plan.md §2 가 정한 FK 의존 순서.
 SCHEMA_ORDER = [
     "schema_migration.sql",
+    "schema_version.sql",
     "account.sql",
     "document.sql",
     "revision.sql",
@@ -182,7 +183,7 @@ def main() -> int:
     finally:
         cleanup_smoke_database(client, conn)
 
-    print("✅ MariaDB smoke 테스트 통과: 11개 테이블 모두 생성 확인")
+    print("✅ MariaDB smoke 테스트 통과: 12개 테이블 모두 생성 확인")
     return 0
 
 

@@ -3,7 +3,7 @@
 
 MariaDB 쪽 [scripts/mariadb_smoke_check.py](mariadb_smoke_check.py)와 같은
 얕은 확인을 PostgreSQL에 대해서도 반복한다: db/schema/*.sql 을 FK 의존
-순서대로 실제 PostgreSQL 서버에 적용해 보고, 11개 테이블이 모두 생성되는지만
+순서대로 실제 PostgreSQL 서버에 적용해 보고, 12개 테이블이 모두 생성되는지만
 확인한다.
 
 MariaDB 스크립트와의 차이: PostgreSQL은 이 저장소가 이미 쓰고 있는 "기존
@@ -36,6 +36,7 @@ DSN_ENV_VAR = "WIKI_DATABASE_URL"
 # (docs/mariadb-migration-smoke-plan.md §2 — db/schema는 두 DB가 공유한다).
 SCHEMA_ORDER = [
     "schema_migration.sql",
+    "schema_version.sql",
     "account.sql",
     "document.sql",
     "revision.sql",
@@ -138,7 +139,7 @@ def apply_schema_files(client: str, conn: dict) -> None:
 
 
 def verify_tables_exist(client: str, conn: dict) -> None:
-    """11개 테이블이 모두 생성됐는지 카탈로그 조회로 확인한다."""
+    """12개 테이블이 모두 생성됐는지 카탈로그 조회로 확인한다."""
     result = _run_psql(
         client,
         conn,
@@ -193,7 +194,7 @@ def main() -> int:
     finally:
         cleanup_smoke_database(client, conn)
 
-    print("✅ PostgreSQL smoke 테스트 통과: 11개 테이블 모두 생성 확인")
+    print("✅ PostgreSQL smoke 테스트 통과: 12개 테이블 모두 생성 확인")
     return 0
 
 
