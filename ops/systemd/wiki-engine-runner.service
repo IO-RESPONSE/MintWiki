@@ -8,7 +8,7 @@ Type=oneshot
 WorkingDirectory=/root/wiki-engine-blueprint
 Environment=WIKI_ENGINE_REPO=/root/wiki-engine-blueprint
 Environment=WIKI_ENGINE_LOCK=/tmp/wiki-engine-runner.lock
-Environment=WIKI_ENGINE_TASK_MAX=0350
+Environment=WIKI_ENGINE_TASK_MAX=0670
 Environment=HOME=/root
 Environment=WIKI_ENGINE_AGENT=claude
 Environment=CLAUDE_BIN=/root/.local/bin/claude
