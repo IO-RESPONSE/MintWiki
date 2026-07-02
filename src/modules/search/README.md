@@ -13,3 +13,8 @@ update a document, and `search()` to run a query and return results.
 implementation: it keeps indexed `SearchDocument`s in a dict and matches a
 query against the title, body, redirect target, or categories with a
 case-insensitive substring check.
+
+`SearchService` (`service.py`) is the service-layer skeleton other modules
+depend on: it wraps a `SearchAdapter` and delegates `index_document()` and
+`search()` to it. Converting source documents into `SearchDocument`s and
+shaping query results (ranking, pagination) are filled in by later tasks.
