@@ -144,6 +144,35 @@ PHP test suite.
   `php tests/Modules/User/IpIdentityTest.php` from `php/` after
   `composer install`.
 
+- `Modules/Discussion/ThreadTest.php` (0410) — confirms
+  `MintWiki\Discussion\Thread` returns the `id`/`documentId`/`title`/
+  `createdBy`/`createdAt`/`status`/`closedAt`/`pausedAt` passed to (or
+  defaulted by) its constructor, that `title` is trimmed/collapsed like
+  `Document\Title::normalize`, that `close()`/`reopen()`/`pause()` update
+  `status` unconditionally and that `closedAt`/`pausedAt` are not
+  mutually reset (`reopen()` only clears `closedAt`), and that a blank
+  `id`/`documentId`/`title`/`createdBy` raises the matching
+  `EmptyThread*Error`. Run it with
+  `php tests/Modules/Discussion/ThreadTest.php` from `php/` after
+  `composer install`.
+- `Modules/Discussion/CommentTest.php` (0410) — confirms
+  `MintWiki\Discussion\Comment` returns the `id`/`threadId`/`body`/
+  `createdBy`/`createdAt`/`isHidden`/`hiddenAt` passed to (or defaulted
+  by) its constructor, that `body` is stored verbatim (no
+  trim/normalization), that `hide()` is idempotent and never clears
+  `body`, that `toPublicView()` masks `body` to `null` only while hidden
+  and `toModeratorView()` never does, and that a blank
+  `id`/`threadId`/`body`/`createdBy` raises the matching
+  `EmptyComment*Error`. Run it with
+  `php tests/Modules/Discussion/CommentTest.php` from `php/` after
+  `composer install`.
+- `Modules/Discussion/ThreadStateTest.php` (0410) — confirms
+  `MintWiki\Discussion\ThreadState` is a string-backed enum with
+  `Open`/`Closed`/`Paused` cases whose values are `'open'`/`'closed'`/
+  `'paused'`. Run it with
+  `php tests/Modules/Discussion/ThreadStateTest.php` from `php/` after
+  `composer install`.
+
 Further fixture runners (...) are added by later Phase B tasks and must
 likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
