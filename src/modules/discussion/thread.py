@@ -77,7 +77,8 @@ class DiscussionThread:
 
         self.id = id
         self.document_id = document_id
-        self.title = title
+        # 주변 공백을 제거하고 내부 공백을 단일 공백으로 축소하여 저장한다.
+        self.title = " ".join(title.split())
         self.created_by = created_by
         self.created_at = created_at
         self.status = status

@@ -111,6 +111,54 @@ class TestDiscussionThreadConstruction:
             )
 
 
+class TestDiscussionThreadTitleNormalization:
+    """스레드 제목 정규화 테스트."""
+
+    def test_trims_surrounding_whitespace(self):
+        """제목 주변의 공백을 제거한다."""
+        thread = DiscussionThread(
+            id="thread1",
+            document_id="doc1",
+            title="  제목  ",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1),
+        )
+        assert thread.title == "제목"
+
+    def test_collapses_internal_whitespace(self):
+        """제목 내부의 연속된 공백을 하나로 축소한다."""
+        thread = DiscussionThread(
+            id="thread1",
+            document_id="doc1",
+            title="제목에   대한\t이견",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1),
+        )
+        assert thread.title == "제목에 대한 이견"
+
+    def test_preserves_already_normalized_title(self):
+        """이미 정규화된 제목은 그대로 유지된다."""
+        thread = DiscussionThread(
+            id="thread1",
+            document_id="doc1",
+            title="제목에 대한 이견",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1),
+        )
+        assert thread.title == "제목에 대한 이견"
+
+    def test_rejects_whitespace_only_title_after_normalization(self):
+        """정규화 후에도 공백만 남는 제목은 거부한다."""
+        with pytest.raises(EmptyThreadTitleError):
+            DiscussionThread(
+                id="thread1",
+                document_id="doc1",
+                title="\t\n  \t",
+                created_by="user1",
+                created_at=datetime(2026, 1, 1),
+            )
+
+
 class TestDiscussionThreadState:
     """스레드 상태 전이 테스트."""
 
