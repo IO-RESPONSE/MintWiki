@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from modules.discussion.comment import DiscussionComment
-from modules.discussion.repository import DiscussionRepository
+from modules.discussion.repository import DiscussionRepository, DiscussionThreadNotFoundError
 from modules.discussion.thread import DiscussionThread
 
 
@@ -74,6 +74,25 @@ class DiscussionService:
             문서의 토론 스레드 목록 (생성 순서)
         """
         return await self.repository.list_threads_by_document_id(document_id)
+
+    async def close_thread(self, thread_id: str) -> DiscussionThread:
+        """
+        토론 스레드를 닫는다.
+
+        Args:
+            thread_id: 닫을 스레드의 id
+
+        Returns:
+            닫힌 토론 스레드
+
+        Raises:
+            DiscussionThreadNotFoundError: 스레드가 없는 경우
+        """
+        thread = await self.repository.get_thread(thread_id)
+        if thread is None:
+            raise DiscussionThreadNotFoundError(f"스레드 id '{thread_id}'를 찾을 수 없습니다")
+        thread.close(datetime.now(timezone.utc))
+        return await self.repository.update_thread(thread)
 
     async def add_comment(
         self, thread_id: str, body: str, created_by: str

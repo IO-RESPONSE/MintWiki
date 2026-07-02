@@ -6,7 +6,10 @@ from modules.discussion.comment import (
     EmptyCommentCreatedByError,
     EmptyCommentThreadIdError,
 )
-from modules.discussion.repository import InMemoryDiscussionRepository
+from modules.discussion.repository import (
+    DiscussionThreadNotFoundError,
+    InMemoryDiscussionRepository,
+)
 from modules.discussion.service import DiscussionService
 from modules.discussion.thread import (
     EmptyThreadCreatedByError,
@@ -156,6 +159,44 @@ class TestDiscussionServiceThreads:
             await service.create_thread(document_id="doc1", title="", created_by="user1")
 
         assert await service.list_threads_by_document_id("doc1") == []
+
+    @pytest.mark.asyncio
+    async def test_close_thread(self):
+        """서비스는 열려 있는 스레드를 닫을 수 있다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+
+        closed = await service.close_thread(thread.id)
+
+        assert closed.id == thread.id
+        assert closed.is_open() is False
+        assert closed.closed_at is not None
+
+    @pytest.mark.asyncio
+    async def test_close_thread_delegates_to_repository(self):
+        """서비스는 저장소에 스레드 닫기를 위임한다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+
+        await service.close_thread(thread.id)
+
+        retrieved = await repo.get_thread(thread.id)
+        assert retrieved.is_open() is False
+
+    @pytest.mark.asyncio
+    async def test_close_nonexistent_thread_raises(self):
+        """서비스는 존재하지 않는 스레드를 닫으려 하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(DiscussionThreadNotFoundError):
+            await service.close_thread("nonexistent-id")
 
 
 class TestDiscussionServiceComments:
