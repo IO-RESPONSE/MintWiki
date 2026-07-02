@@ -29,7 +29,7 @@ if ! git diff --quiet || ! git diff --cached --quiet; then
   exit 2
 fi
 
-if git remote get-url origin >/dev/null 2>&1; then
+if [ "${WIKI_ENGINE_GIT_SYNC:-1}" != "0" ] && git remote get-url origin >/dev/null 2>&1; then
   git pull --ff-only
 fi
 
@@ -112,7 +112,9 @@ scripts/qa.sh
 
 mv "$ACTIVE_TASK" "$DONE_DIR/$TASK_NAME"
 
-scripts/update-progress.sh || true
+if [ "${WIKI_ENGINE_SKIP_PROGRESS:-0}" != "1" ]; then
+  scripts/update-progress.sh || true
+fi
 
 if [ "$(git rev-parse HEAD)" != "$BASE_COMMIT" ]; then
   git reset --soft "$BASE_COMMIT"
@@ -121,7 +123,7 @@ fi
 git add -A
 git commit -m "태스크 ${TASK_NAME%.md} 완료"
 
-if git remote get-url origin >/dev/null 2>&1; then
+if [ "${WIKI_ENGINE_GIT_SYNC:-1}" != "0" ] && git remote get-url origin >/dev/null 2>&1; then
   git push
 fi
 
