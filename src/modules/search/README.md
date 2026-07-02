@@ -83,6 +83,16 @@ adapters. It is not yet wired into `InMemorySearchAdapter` or any other
 adapter. Real Korean-specific normalization (josa/eomi stripping, initial
 consonant (초성) search support, etc.) is filled in by later tasks.
 
+`highlight_search_term` (`highlighting.py`) is a search result highlighting
+placeholder: it wraps every case-insensitive substring match of a query term
+in a body of text with `<mark>` tags, using the same case-insensitive
+substring matching rule `InMemorySearchAdapter` uses to decide matches.
+Matched text keeps its original casing; an empty term or text with no match
+is returned unchanged. It is not yet wired into `SearchResult`,
+`SearchService`, or the router. Snippet extraction (trimming long bodies
+down to the matched context), multi-term highlighting, and morphological
+match support are filled in by later tasks.
+
 `router` (`router.py`) is an `APIRouter`, not yet registered in `main.py`.
 It exposes `GET /title` and `GET /body`, each reading a required query
 parameter (`title` or `body`, respectively) plus optional `limit`/`offset`
