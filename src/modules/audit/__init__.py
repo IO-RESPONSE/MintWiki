@@ -6,6 +6,10 @@ from modules.audit.model import (
     MissingEventTypeError,
     MissingResourceIdError,
 )
+from modules.audit.repository import (
+    AuditRepository,
+    InMemoryAuditRepository,
+)
 
 __all__ = [
     "AuditEvent",
@@ -13,4 +17,6 @@ __all__ = [
     "MissingEventTypeError",
     "MissingActionError",
     "MissingResourceIdError",
+    "AuditRepository",
+    "InMemoryAuditRepository",
 ]
