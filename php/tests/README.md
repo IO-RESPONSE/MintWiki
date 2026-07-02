@@ -65,6 +65,14 @@ PHP test suite.
   `php tests/Modules/Document/ServiceTest.php` from `php/` after
   `composer install`.
 
+- `Modules/Revision/RevisionTest.php` (0404) — confirms
+  `MintWiki\Revision\Revision` returns the `id`, `documentId`, `source`,
+  `authorId`, `summary`, and `parentRevisionId` passed to its constructor
+  (with `parentRevisionId` defaulting to `null`), and that `source` is
+  stored verbatim (no normalization, including multi-line values). Run
+  it with `php tests/Modules/Revision/RevisionTest.php` from `php/`
+  after `composer install`.
+
 Fixture runners (0406, 0407, ...) are added by later Phase B tasks and
 must likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
