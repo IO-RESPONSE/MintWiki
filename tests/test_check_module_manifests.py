@@ -2,8 +2,8 @@
 
 manifest 필수 필드 검증(스키마 위반)뿐 아니라, manifest.json 자체가 없는
 모듈도 위반으로 잡아내는지 확인한다. 태스크 0365 의 산출물이다. QA 파이프
-라인(scripts/qa.sh) 에 연결하는 작업은 태스크 0366 이 담당하므로 여기서는
-스크립트 단독 동작만 검증한다.
+라인(scripts/qa.sh) 연결 여부는 tests/test_qa_script.py(태스크 0366)가
+검증하므로 여기서는 스크립트 단독 동작만 검증한다.
 """
 import importlib.util
 import json
