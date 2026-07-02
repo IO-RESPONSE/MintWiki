@@ -277,6 +277,76 @@ class TestDiscussionServiceThreads:
         with pytest.raises(DiscussionThreadNotFoundError):
             await service.pause_thread("nonexistent-id")
 
+    @pytest.mark.asyncio
+    async def test_pause_then_reopen_thread(self):
+        """서비스는 일시정지된 스레드를 다시 열 수 있다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        await service.pause_thread(thread.id)
+
+        reopened = await service.reopen_thread(thread.id)
+
+        assert reopened.is_open() is True
+        assert reopened.is_paused() is False
+
+    @pytest.mark.asyncio
+    async def test_pause_then_close_thread(self):
+        """서비스는 일시정지된 스레드를 닫을 수 있다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        await service.pause_thread(thread.id)
+
+        closed = await service.close_thread(thread.id)
+
+        assert closed.is_open() is False
+        assert closed.is_paused() is False
+        assert closed.closed_at is not None
+
+    @pytest.mark.asyncio
+    async def test_close_then_pause_thread(self):
+        """서비스는 닫힌 스레드를 일시정지할 수 있다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        await service.close_thread(thread.id)
+
+        paused = await service.pause_thread(thread.id)
+
+        assert paused.is_paused() is True
+        assert paused.is_open() is False
+
+    @pytest.mark.asyncio
+    async def test_full_state_cycle_through_service(self):
+        """서비스를 통한 open -> paused -> closed -> open 순환 전이가 저장소에 반영된다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+
+        await service.pause_thread(thread.id)
+        paused = await service.get_thread(thread.id)
+        assert paused.is_paused() is True
+
+        await service.close_thread(thread.id)
+        closed = await service.get_thread(thread.id)
+        assert closed.is_open() is False
+        assert closed.is_paused() is False
+
+        await service.reopen_thread(thread.id)
+        reopened = await service.get_thread(thread.id)
+        assert reopened.is_open() is True
+        assert reopened.is_paused() is False
+        assert reopened.closed_at is None
+
 
 class TestDiscussionServiceComments:
     """토론 서비스의 댓글 추가/조회 테스트."""
