@@ -10,8 +10,7 @@ class SearchServiceError(Exception):
     처리할 수 있도록 감싸는 역할을 한다. 어느 작업에서 실패했는지(operation)와
     원인이 된 원본 예외(original_error)를 함께 보관한다.
 
-    SearchService가 실제로 어댑터 호출을 이 오류로 감싸 다시 던지는 동작은
-    후속 태스크에서 구현한다.
+    SearchService는 어댑터 호출을 이 오류로 감싸 다시 던진다.
     """
 
     def __init__(self, operation: str, original_error: Exception):

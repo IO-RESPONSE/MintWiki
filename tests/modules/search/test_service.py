@@ -1,10 +1,28 @@
 """SearchService 골격 테스트."""
 import pytest
 
+from modules.search.adapter import SearchAdapter
 from modules.search.document import SearchDocument
+from modules.search.errors import SearchServiceError
 from modules.search.in_memory_adapter import InMemorySearchAdapter
 from modules.search.query import SearchQuery
 from modules.search.service import SearchService
+
+
+class FailingSearchAdapter(SearchAdapter):
+    """모든 작업에서 지정된 예외를 던지는 어댑터. 오류 매핑 테스트용."""
+
+    def __init__(self, error: Exception):
+        self._error = error
+
+    async def index(self, document: SearchDocument) -> None:
+        raise self._error
+
+    async def search(self, query: SearchQuery):
+        raise self._error
+
+    async def delete(self, document_id: str) -> None:
+        raise self._error
 
 
 class TestSearchServiceIndexDocument:
@@ -225,3 +243,58 @@ class TestSearchServiceRankingPlaceholder:
 
         scores = {result.document.document_id: result.score for result in results}
         assert scores == {"doc1": 1.0, "doc2": 1.0}
+
+
+class TestSearchServiceAdapterFailureMapping:
+    """어댑터 예외가 SearchServiceError로 매핑되는 동작 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_index_document_wraps_adapter_error(self):
+        """색인 중 어댑터가 던진 예외는 SearchServiceError로 감싸진다."""
+        original = ConnectionError("색인 서버에 연결할 수 없음")
+        adapter = FailingSearchAdapter(original)
+        service = SearchService(adapter)
+
+        with pytest.raises(SearchServiceError) as exc_info:
+            await service.index_document(SearchDocument(document_id="doc1", title="Hello"))
+
+        assert exc_info.value.operation == "index"
+        assert exc_info.value.original_error is original
+
+    @pytest.mark.asyncio
+    async def test_search_wraps_adapter_error(self):
+        """검색 중 어댑터가 던진 예외는 SearchServiceError로 감싸진다."""
+        original = RuntimeError("검색 서버 오류")
+        adapter = FailingSearchAdapter(original)
+        service = SearchService(adapter)
+
+        with pytest.raises(SearchServiceError) as exc_info:
+            await service.search(SearchQuery(term="Hello"))
+
+        assert exc_info.value.operation == "search"
+        assert exc_info.value.original_error is original
+
+    @pytest.mark.asyncio
+    async def test_delete_document_wraps_adapter_error(self):
+        """삭제 중 어댑터가 던진 예외는 SearchServiceError로 감싸진다."""
+        original = TimeoutError("삭제 요청 시간 초과")
+        adapter = FailingSearchAdapter(original)
+        service = SearchService(adapter)
+
+        with pytest.raises(SearchServiceError) as exc_info:
+            await service.delete_document("doc1")
+
+        assert exc_info.value.operation == "delete"
+        assert exc_info.value.original_error is original
+
+    @pytest.mark.asyncio
+    async def test_wrapped_error_chains_original_as_cause(self):
+        """감싸진 오류는 원본 예외를 __cause__로 보존해 원인을 추적할 수 있다."""
+        original = ValueError("잘못된 색인 데이터")
+        adapter = FailingSearchAdapter(original)
+        service = SearchService(adapter)
+
+        with pytest.raises(SearchServiceError) as exc_info:
+            await service.index_document(SearchDocument(document_id="doc1", title="Hello"))
+
+        assert exc_info.value.__cause__ is original
