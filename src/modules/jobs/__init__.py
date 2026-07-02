@@ -57,6 +57,7 @@ from modules.jobs.search_index_handler import SEARCH_INDEX_JOB_TYPE, SearchIndex
 from modules.jobs.status import JobStatus
 from modules.jobs.timeout_config import InvalidTimeoutConfigError, TimeoutConfig
 from modules.jobs.indexing_orchestration_service import IndexingOrchestrationService
+from modules.jobs.edit_indexing_service import EditIndexingService
 
 # 실행기와 큐를 잇는 로직 등 나머지 계약은 후속 태스크에서 추가되므로,
 # 현재는 공통 페이로드 기반 클래스, 결과 값 객체, 상태 열거형, 핸들러
@@ -121,4 +122,5 @@ __all__ = [
     "InvalidRecentChangesJobPayloadError",
     "RecentChangesJobHandler",
     "IndexingOrchestrationService",
+    "EditIndexingService",
 ]

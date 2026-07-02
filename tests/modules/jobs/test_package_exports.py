@@ -19,8 +19,8 @@ class TestJobsPackageExports:
         구현, 캐시 퍼지 페이로드/핸들러, 검색 색인 핸들러, 백링크 갱신
         페이로드/placeholder 핸들러, 카테고리 갱신 페이로드/placeholder 핸들러,
         최근 변경 내역 페이로드/placeholder 핸들러, 잡 감사 이벤트 모델, 잡
-        감사 기록기, 잡 메트릭 훅 모델, 잡 ID 생성기, 색인 조율 서비스를
-        검증한다.
+        감사 기록기, 잡 메트릭 훅 모델, 잡 ID 생성기, 색인 조율 서비스, 편집
+        색인 서비스를 검증한다.
         """
         assert jobs.__all__ == [
             "generate_job_id",
@@ -76,6 +76,7 @@ class TestJobsPackageExports:
             "InvalidRecentChangesJobPayloadError",
             "RecentChangesJobHandler",
             "IndexingOrchestrationService",
+            "EditIndexingService",
         ]
         for name in jobs.__all__:
             assert hasattr(jobs, name)
