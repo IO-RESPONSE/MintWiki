@@ -168,13 +168,13 @@ retried:
 - `backoff_multiplier`: exponential backoff multiplier (default: 2.0). The delay
   before retry N is calculated as:
   ```
-  delay_ms(attempt) = base_delay_seconds * (backoff_multiplier ** (attempt - 1))
+  next_delay(attempt) = base_delay_seconds * (backoff_multiplier ** (attempt - 1))
   ```
 
   For example, with `base_delay_seconds=1.0` and `backoff_multiplier=2.0`:
-  - After attempt 1: wait 1.0 second
-  - After attempt 2: wait 2.0 seconds
-  - After attempt 3: wait 4.0 seconds
+  - After attempt 1 (first retry): wait 1.0 second
+  - After attempt 2 (second retry): wait 2.0 seconds
+  - After attempt 3 (third retry): wait 4.0 seconds
 
   This pattern ensures transient failures (network glitches, temporary lock
   contention) have time to recover without overwhelming the system with
@@ -183,6 +183,112 @@ retried:
 The `RetryPolicy` object itself only computes delay and checks whether retries
 remain; the actual retry loop and state transitions are implemented in the
 queued runner (a later task).
+
+#### RetryPolicy Usage
+
+`RetryPolicy` is a value object that stores retry configuration and provides
+two core methods:
+
+1. **`should_retry(attempt: int) -> bool`**: Determines whether a retry is
+   allowed after a given attempt count. Returns `True` if `attempt <
+   max_attempts`, `False` otherwise.
+
+   ```python
+   policy = RetryPolicy(max_attempts=3, base_delay_seconds=1.0)
+   policy.should_retry(1)  # True — can retry after first attempt
+   policy.should_retry(2)  # True — can retry after second attempt
+   policy.should_retry(3)  # False — max_attempts reached, no more retries
+   ```
+
+2. **`next_delay(attempt: int) -> float`**: Computes the wait time (in seconds)
+   before the next retry. Uses exponential backoff with the formula:
+   ```
+   wait_seconds = base_delay_seconds * (backoff_multiplier ^ (attempt - 1))
+   ```
+
+   ```python
+   policy = RetryPolicy(
+       max_attempts=4,
+       base_delay_seconds=1.0,
+       backoff_multiplier=2.0
+   )
+   policy.next_delay(1)  # 1.0 seconds (before retry after 1st attempt)
+   policy.next_delay(2)  # 2.0 seconds (before retry after 2nd attempt)
+   policy.next_delay(3)  # 4.0 seconds (before retry after 3rd attempt)
+   ```
+
+#### Common Retry Patterns
+
+**Fast Retries (Transient Network Issues)**
+```python
+RetryPolicy(
+    max_attempts=3,
+    base_delay_seconds=0.5,
+    backoff_multiplier=2.0
+)
+```
+Waits: 0.5s, 1.0s before giving up. Use for temporary network glitches or
+brief service outages.
+
+**Moderate Retries (Service Recovery)**
+```python
+RetryPolicy(
+    max_attempts=4,
+    base_delay_seconds=2.0,
+    backoff_multiplier=2.0
+)
+```
+Waits: 2s, 4s, 8s before giving up. Use for operations that depend on external
+services recovering.
+
+**Long-Running Tasks (Database Lock Contention)**
+```python
+RetryPolicy(
+    max_attempts=5,
+    base_delay_seconds=5.0,
+    backoff_multiplier=1.5
+)
+```
+Waits: 5s, 7.5s, 11.25s, 16.875s before giving up. Use for heavy operations
+that may need time to acquire locks or resources.
+
+**No Backoff (Constant Interval)**
+```python
+RetryPolicy(
+    max_attempts=3,
+    base_delay_seconds=2.0,
+    backoff_multiplier=1.0
+)
+```
+Waits: 2s, 2s before giving up. Use when you want a fixed retry interval
+regardless of attempt count.
+
+#### Retry Policy Best Practices
+
+1. **Choose max_attempts based on failure tolerance**: How many retries is
+   acceptable before giving up? For transient errors, 3–5 is typical. For
+   resilience-critical jobs, 10+ is reasonable.
+
+2. **Set base_delay_seconds according to recovery time**: If a service is
+   down for 2–5 seconds on average, start with `base_delay_seconds=2.0` or
+   `3.0`. Immediate retries (`base_delay_seconds=0`) can overwhelm a
+   recovering system.
+
+3. **Use exponential backoff for safety**: A `backoff_multiplier` of 2.0 or
+   1.5 prevents retry storms that could hammer an overloaded dependency. A
+   multiplier of 1.0 is only appropriate when you know fixed-interval retries
+   are safe.
+
+4. **Consider the total timeout budget**: With `max_attempts=5`,
+   `base_delay_seconds=1.0`, and `backoff_multiplier=2.0`, the worst-case
+   total wait is 1 + 2 + 4 + 8 = 15 seconds before all retries are exhausted.
+   Ensure this fits your timeout budget (e.g., HTTP request timeout, job
+   deadline).
+
+5. **Document why a job retries**: Retries are only useful for transient
+   failures. If a failure is permanent (invalid input, missing dependency),
+   retries won't help. Use explicit `JobResult.fail()` for permanent errors
+   instead of relying on retry exhaustion.
 
 ### Dead Letter Handling
 
@@ -519,8 +625,8 @@ runner, retries, and indexing jobs — 가 회귀 없이 동작하는지 확인�
       `test_retry_policy.py`.
 - [ ] `RetryPolicy.should_retry(attempt)`는 시도 횟수가 최대값 이하이면
       True를 반환한다. See `test_retry_policy.py::TestRetryPolicyShouldRetry`.
-- [ ] `RetryPolicy.delay_ms(attempt)`는 attempt별로 지수 백오프 지연을
-      계산한다. See `test_retry_policy.py::TestRetryPolicyDelayCalculation`.
+- [ ] `RetryPolicy.next_delay(attempt)`는 attempt별로 지수 백오프 지연을
+      계산한다. See `test_retry_policy.py::TestRetryPolicyNextDelay`.
 
 ### 11. Dead letter handling
 
