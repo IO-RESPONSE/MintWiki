@@ -48,10 +48,18 @@
   주석으로만 설명한다(collation 등 컬럼 단위 강제가 필요 없는 이유는 파일
   안의 주석 참고).
 
+## 0462가 채우는 것
+
+- `revision.sql`: `src/persistence/models.py`의 `RevisionORM`,
+  `migrations/versions/0003_add_revision_table.py`와 동일한 결과를 내는
+  portable `CREATE TABLE` 문. `document_id`는 `document.sql`(0461)이 만든
+  `document` 테이블을 참조하는 `fk_revision_document_id` FK를 갖는다.
+  `parent_revision_id`는 ORM/마이그레이션 원본과 동일하게 FK 없이 둔다.
+
 ## 이후 채워질 파일
 
-- **0462~0468**: `revision`, `account`, `user_session`, ACL, discussion,
-  audit, jobs 테이블.
+- **0463~0468**: `account`, `user_session`, ACL, discussion, audit, jobs
+  테이블.
 - **0469**: 이 디렉터리 전체에 대한 SQL feature 금지 목록 자동 검사(lint
   테스트).
 - **0493**: PHP 웹호스팅 installer가 참조할 별도의 schema version 테이블.

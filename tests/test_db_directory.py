@@ -82,6 +82,45 @@ def test_db_schema_document_sql_separates_dialect_differences_in_comments():
     assert "SERIAL" not in create_table_stmt
 
 
+def test_db_schema_revision_sql_exists():
+    """0462가 추가한 revision.sql이 존재하는지 확인한다."""
+    revision_sql = _db_dir() / "schema" / "revision.sql"
+    assert revision_sql.exists(), "db/schema/revision.sql should exist"
+
+
+def test_db_schema_revision_sql_matches_orm_spec():
+    """revision.sql이 RevisionORM/0003 마이그레이션과 같은 컬럼·제약을 갖는지 확인한다."""
+    content = (_db_dir() / "schema" / "revision.sql").read_text()
+
+    assert "CREATE TABLE revision" in content
+    assert "id VARCHAR(255) NOT NULL" in content
+    assert "document_id VARCHAR(255) NOT NULL" in content
+    assert "source TEXT NOT NULL" in content
+    assert "author_id VARCHAR(255) NOT NULL" in content
+    assert "summary VARCHAR(500) NOT NULL" in content
+    assert "parent_revision_id VARCHAR(255) NULL" in content
+    assert "created_at TIMESTAMP NOT NULL" in content
+    assert "CONSTRAINT pk_revision PRIMARY KEY (id)" in content
+    assert (
+        "CONSTRAINT fk_revision_document_id FOREIGN KEY (document_id) "
+        "REFERENCES document (id)" in content
+    )
+
+
+def test_db_schema_revision_sql_separates_dialect_differences_in_comments():
+    """PostgreSQL/MariaDB 차이가 주석으로 분리되어 있는지 확인한다(0461과 동일 패턴)."""
+    content = (_db_dir() / "schema" / "revision.sql").read_text()
+
+    assert "PostgreSQL" in content
+    assert "MariaDB" in content
+    # 실제 CREATE TABLE 문에는 방언 전용 문법이 섞이지 않는다.
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    assert "WITH TIME ZONE" not in create_table_stmt
+    assert "COLLATE" not in create_table_stmt
+    assert "AUTO_INCREMENT" not in create_table_stmt
+    assert "SERIAL" not in create_table_stmt
+
+
 def test_db_readme_confirms_migration_history_table():
     """README가 checklist §6이 보류한 적용 이력 테이블 이름/방식을 확정하는지 확인한다."""
     content = (_db_dir() / "README.md").read_text()
