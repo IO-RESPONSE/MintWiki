@@ -22,6 +22,7 @@ class IndexDocumentJobPayload:
         body: str = "",
         redirect_target: Optional[str] = None,
         categories: Optional[List[str]] = None,
+        index_version: Optional[str] = None,
     ):
         """
         문서 색인 작업 페이로드를 생성한다.
@@ -32,6 +33,8 @@ class IndexDocumentJobPayload:
             body: 색인 대상 본문 텍스트 (기본값 빈 문자열)
             redirect_target: 리다이렉트 대상 문서의 id (선택사항)
             categories: 문서가 속한 카테고리명 목록 (선택사항, 기본값 빈 목록)
+            index_version: 이 페이로드가 대상으로 하는 색인 스키마 버전
+                (선택사항, 기본값은 SEARCH_INDEX_VERSION)
 
         Raises:
             EmptySearchDocumentIdError: document_id가 비어있거나 공백만 있는 경우
@@ -44,6 +47,13 @@ class IndexDocumentJobPayload:
             redirect_target=redirect_target,
             categories=categories,
         )
+        if index_version is None:
+            # 패키지 __init__ 완료 이후에만 존재하는 상수이므로 순환 import를
+            # 피하기 위해 지연 import한다.
+            from modules.search import SEARCH_INDEX_VERSION
+
+            index_version = SEARCH_INDEX_VERSION
+        self._index_version = index_version
 
     @property
     def document_id(self) -> str:
@@ -64,6 +74,10 @@ class IndexDocumentJobPayload:
     @property
     def categories(self) -> List[str]:
         return self._document.categories
+
+    @property
+    def index_version(self) -> str:
+        return self._index_version
 
     def to_search_document(self) -> SearchDocument:
         """이 페이로드로부터 색인 대상 SearchDocument를 생성한다."""

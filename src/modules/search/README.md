@@ -61,10 +61,12 @@ Unlike `IndexDocumentRequest`, it is a plain domain class (no `pydantic`)
 that delegates field validation to `SearchDocument`, keeping the job
 payload framework-free per the portability layering rules. Its
 `to_search_document()` method returns the underlying `SearchDocument` so a
-future job handler can hand it straight to a `SearchAdapter`. The `jobs`
-module's shared job payload base class and the actual job handler are
-added in later tasks; this payload is defined standalone here in the
-meantime.
+future job handler can hand it straight to a `SearchAdapter`. It also
+carries an `index_version` field, defaulting to the package's
+`SEARCH_INDEX_VERSION` constant, so a job handler can tell which index
+schema version a queued job targets. The `jobs` module's shared job
+payload base class and the actual job handler are added in later tasks;
+this payload is defined standalone here in the meantime.
 
 `SearchReindexCommand` (`reindex.py`) is the search reindex command
 skeleton: it wraps a `SearchService` and a `document_source` (any iterable
@@ -259,6 +261,9 @@ result looks wrong.
 - [ ] `IndexDocumentJobPayload.to_search_document()` produces a
   `SearchDocument` with all fields carried over, including when only the
   required fields are set. (`test_job_payload.py::TestIndexDocumentJobPayloadToSearchDocument`)
+- [ ] `IndexDocumentJobPayload.index_version` defaults to
+  `SEARCH_INDEX_VERSION` and can be overridden explicitly.
+  (`test_job_payload.py::TestIndexDocumentJobPayloadIndexVersion`)
 - [ ] `SearchReindexCommand.run()` indexes every document from its
   `document_source` iterable, returns the count indexed, and makes each
   document searchable afterward; an empty source indexes nothing.
