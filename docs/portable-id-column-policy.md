@@ -96,7 +96,7 @@ DB별 전용 타입은 쓰지 않는다.
   생성"이라는 대체 방식을 구체화한다.
 - SQLAlchemy `Column` 정의에 이 기능들에 대응하는 `server_default`나
   `autoincrement=True`를 ID 컬럼에 설정하지 않는다. `created_at`/
-  `updated_at`(0445 portable timestamp 정책 대상)처럼 DB가 값을 채우는
+  `updated_at`([0445 portable timestamp 정책](portable-timestamp-column-policy.md) 대상)처럼 DB가 값을 채우는
   `server_default=func.now()` 패턴은 ID 컬럼에는 적용되지 않는다 — ID는
   항상 애플리케이션이 INSERT 이전에 값을 정한다.
 
@@ -114,9 +114,11 @@ DB별 전용 타입은 쓰지 않는다.
 
 ## 이 문서 이후 단계
 
-- **0445**: timestamp 컬럼 정책(`created_at`/`updated_at`의 타입과
-  타임존 처리)을 이 문서와 별개로 확정한다 — ID는 애플리케이션 생성,
-  timestamp는 DB `server_default` 허용이라는 차이를 그대로 유지한다.
+- **0445**([portable-timestamp-column-policy.md](portable-timestamp-column-policy.md)):
+  timestamp 컬럼 정책(`created_at`/`updated_at`의 타입과 타임존 처리)을
+  이 문서와 별개로 확정한다 — ID는 항상 애플리케이션 생성이라는 원칙을
+  timestamp에도 확장하되, `server_default` 의존은 신규 컬럼부터 최소화하는
+  방향으로 정리한다.
 - **0446**: text collation 정책. ID 문자열은 UUID 형식(소문자 hex +
   하이픈)만 쓰므로 대소문자 비교 이슈가 실질적으로 발생하지 않지만,
   0446이 그 전제를 명시적으로 확인한다.

@@ -48,7 +48,7 @@ ID, timestamp, collation)은 후속 문서(0443~0446)에서 확정한다.
 | 정수 | `INTEGER` | `INTEGER` | 공통 | |
 | 큰 정수 | `BIGINT` | `BIGINT` | 공통 | |
 | 불리언 | `BOOLEAN` | `BOOLEAN`(`TINYINT(1)` 별칭) | 대체 필요 | MariaDB `BOOLEAN`은 `TINYINT(1)`의 별칭일 뿐 진짜 불리언 타입이 아니다. `True`/`False` 리터럴은 양쪽에서 동작하므로 SQLAlchemy 표준 `Boolean` 타입만 쓰면 이식에 문제 없다 |
-| 타임스탬프(tz) | `TIMESTAMP WITH TIME ZONE` | `TIMESTAMP`(세션 타임존 기준, 별도 tz 오프셋 저장 안 함) | 대체 필요 | MariaDB는 타임존을 컬럼에 저장하지 않는다. 애플리케이션이 항상 UTC로 정규화해 저장/조회한다(0445 portable timestamp 정책에서 확정) |
+| 타임스탬프(tz) | `TIMESTAMP WITH TIME ZONE` | `TIMESTAMP`(세션 타임존 기준, 별도 tz 오프셋 저장 안 함) | 대체 필요 | MariaDB는 타임존을 컬럼에 저장하지 않는다. 애플리케이션이 항상 UTC로 정규화해 저장/조회한다([portable-timestamp-column-policy.md](portable-timestamp-column-policy.md)에서 확정) |
 | JSON 문서 | `JSONB` | `JSON`(`LONGTEXT` 기반, 자체 연산자 없음) | 금지(정책) | [ansi-sql-persistence-policy.md](ansi-sql-persistence-policy.md#postgresql-전용-기능-금지-목록) 금지 목록의 `JSONB` 항목 참고 — 구조화 컬럼 또는 비질의 `TEXT`로 대체 |
 | 배열 | `ARRAY` | 없음 | 금지(정책) | 연결 테이블로 정규화 |
 | 열거형 | `ENUM`(네이티브 타입) | `ENUM`(컬럼 속성, 타입 아님) | 금지(정책) | `VARCHAR` + 애플리케이션 검증으로 대체 |
@@ -93,7 +93,8 @@ ID, timestamp, collation)은 후속 문서(0443~0446)에서 확정한다.
 ## 이 문서 이후 단계
 
 - **0443**([portable-schema-naming-policy.md](portable-schema-naming-policy.md)),
-  **0444**([portable-id-column-policy.md](portable-id-column-policy.md))**~0446**:
+  **0444**([portable-id-column-policy.md](portable-id-column-policy.md)),
+  **0445**([portable-timestamp-column-policy.md](portable-timestamp-column-policy.md))**~0446**:
   이 매트릭스의 개별 항목(naming, ID, timestamp, collation)을 실행 가능한
   정책으로 확정한다.
 - **0447**: 금지 목록(타입/인덱스/트랜잭션 표의 "금지(정책)" 항목)을
