@@ -35,6 +35,8 @@ def test_acl_package_exports_rule():
         "restrict_document_edit",
         "DOCUMENT_READ_RESTRICTION_RULE_ID",
         "restrict_document_read",
+        "DOCUMENT_DISCUSS_RESTRICTION_RULE_ID",
+        "restrict_document_discuss",
     ]
     assert modules.acl.Rule is Rule
 
@@ -130,3 +132,19 @@ def test_acl_package_exports_document_read_restriction():
         is DOCUMENT_READ_RESTRICTION_RULE_ID
     )
     assert modules.acl.restrict_document_read is restrict_document_read
+
+
+def test_acl_package_exports_document_discuss_restriction():
+    # 0163에서 문서 단위 토론 제한 정책이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.document_policy import (
+        DOCUMENT_DISCUSS_RESTRICTION_RULE_ID,
+        restrict_document_discuss,
+    )
+
+    assert "DOCUMENT_DISCUSS_RESTRICTION_RULE_ID" in modules.acl.__all__
+    assert "restrict_document_discuss" in modules.acl.__all__
+    assert (
+        modules.acl.DOCUMENT_DISCUSS_RESTRICTION_RULE_ID
+        is DOCUMENT_DISCUSS_RESTRICTION_RULE_ID
+    )
+    assert modules.acl.restrict_document_discuss is restrict_document_discuss

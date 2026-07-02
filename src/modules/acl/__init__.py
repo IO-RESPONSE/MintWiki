@@ -8,8 +8,10 @@ from modules.acl.default_policy import (
 )
 from modules.acl.document_acl import DocumentAcl, EmptyDocumentIdError
 from modules.acl.document_policy import (
+    DOCUMENT_DISCUSS_RESTRICTION_RULE_ID,
     DOCUMENT_EDIT_RESTRICTION_RULE_ID,
     DOCUMENT_READ_RESTRICTION_RULE_ID,
+    restrict_document_discuss,
     restrict_document_edit,
     restrict_document_read,
 )
@@ -45,4 +47,6 @@ __all__ = [
     "restrict_document_edit",
     "DOCUMENT_READ_RESTRICTION_RULE_ID",
     "restrict_document_read",
+    "DOCUMENT_DISCUSS_RESTRICTION_RULE_ID",
+    "restrict_document_discuss",
 ]

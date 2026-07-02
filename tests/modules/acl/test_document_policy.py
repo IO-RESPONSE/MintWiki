@@ -1,12 +1,15 @@
-"""문서 단위 편집/읽기 제한 정책(restrict_document_edit, restrict_document_read) 테스트."""
+"""문서 단위 편집/읽기/토론 제한 정책(restrict_document_edit, restrict_document_read,
+restrict_document_discuss) 테스트."""
 from modules.acl.default_policy import (
     LOGGED_IN_EDIT_RULE_ID,
     PUBLIC_READ_RULE_ID,
     build_default_namespace_acl_defaults,
 )
 from modules.acl.document_policy import (
+    DOCUMENT_DISCUSS_RESTRICTION_RULE_ID,
     DOCUMENT_EDIT_RESTRICTION_RULE_ID,
     DOCUMENT_READ_RESTRICTION_RULE_ID,
+    restrict_document_discuss,
     restrict_document_edit,
     restrict_document_read,
 )
@@ -210,6 +213,93 @@ class TestRestrictDocumentReadWithAclService:
             permission=Permission.READ,
             subject_type=SubjectType.ANONYMOUS,
             document_acl=acl,
+        )
+
+        assert decision.is_denied() is True
+
+
+class TestRestrictDocumentDiscuss:
+    """restrict_document_discuss가 지정한 대상에게만 토론 규칙을 부여하는지 확인한다."""
+
+    def test_returns_document_acl_with_single_discuss_rule(self):
+        acl = restrict_document_discuss(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="discussants",
+        )
+
+        assert acl.document_id == "doc-1"
+        rules = acl.rules()
+        assert len(rules) == 1
+        rule = rules[0]
+        assert rule.id == DOCUMENT_DISCUSS_RESTRICTION_RULE_ID
+        assert rule.permission is Permission.DISCUSS
+        assert rule.subject_type is SubjectType.GROUP
+        assert rule.subject_id == "discussants"
+        assert rule.is_allow() is True
+
+
+class TestRestrictDocumentDiscussWithAclService:
+    """제한된 문서 ACL이 AclService 검사에서 실제로 토론을 제한하는지 확인한다."""
+
+    def test_allows_the_designated_group_to_discuss(self):
+        service = AclService()
+        acl = restrict_document_discuss(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="discussants",
+        )
+
+        decision = service.check(
+            permission=Permission.DISCUSS,
+            subject_type=SubjectType.GROUP,
+            subject_id="discussants",
+            document_acl=acl,
+        )
+
+        assert decision.is_allowed() is True
+        assert decision.matched_rule_id == DOCUMENT_DISCUSS_RESTRICTION_RULE_ID
+
+    def test_denies_a_different_group_from_discussing(self):
+        service = AclService()
+        acl = restrict_document_discuss(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="discussants",
+        )
+
+        decision = service.check(
+            permission=Permission.DISCUSS,
+            subject_type=SubjectType.GROUP,
+            subject_id="visitors",
+            document_acl=acl,
+        )
+
+        assert decision.is_denied() is True
+
+    def test_denies_anonymous_users_from_discussing(self):
+        service = AclService()
+        acl = restrict_document_discuss(
+            document_id="doc-1",
+            subject_type=SubjectType.GROUP,
+            subject_id="discussants",
+        )
+
+        decision = service.check(
+            permission=Permission.DISCUSS,
+            subject_type=SubjectType.ANONYMOUS,
+            document_acl=acl,
+        )
+
+        assert decision.is_denied() is True
+
+    def test_discuss_is_denied_by_default_without_document_acl(self):
+        service = AclService(namespace_defaults=build_default_namespace_acl_defaults())
+
+        decision = service.check(
+            permission=Permission.DISCUSS,
+            subject_type=SubjectType.USER,
+            subject_id="user-1",
         )
 
         assert decision.is_denied() is True
