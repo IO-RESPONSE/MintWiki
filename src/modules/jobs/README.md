@@ -200,3 +200,211 @@ when the handler returns a successful `JobResult`, or
 `run()` produces a `FAILED` outcome, whether the handler returned a failed
 `JobResult` or raised an exception. Persisting events to storage is left to
 a later task.
+
+## QA Checklist
+
+로드맵 **Jobs and Indexing MVP** 범위 — background job abstraction, sync
+runner, retries, and indexing jobs — 가 회귀 없이 동작하는지 확인하기 위한
+체크리스트다. 이 Phase에 속한 태스크를 새로 추가·수정한 뒤, 또는 커밋 전
+`scripts/qa.sh`와는 별개로 job 동작 자체를 사람이 다시 훑어볼 때 사용한다.
+
+각 항목은 "무엇을 확인하는가"와 "어떤 자동화 테스트가 이미 이를 커버하는가"를
+함께 적는다. 자동화 테스트가 있다고 해서 항목을 건너뛰어도 된다는 뜻은
+아니다 — 새 규칙/모듈을 추가할 때 아래 동작 각각이 여전히 성립하는지 의도를
+가지고 재확인하라는 목적이다.
+
+### 사용법
+
+```bash
+.venv/bin/python -m pytest tests/modules/jobs -v
+```
+
+위 명령으로 아래 체크리스트가 참조하는 테스트를 한 번에 실행할 수 있다.
+개별 실행 후에는 반드시 `scripts/test.sh`와 `scripts/qa.sh`도 통과해야 한다.
+
+### 1. Core job interfaces
+
+- [ ] `JobPayload`는 추상 기본 클래스이고, `job_type` 속성은 구현체에서
+      정의한 `job_type` 상수를 반환한다. See `test_payload.py::TestJobPayloadJobType`.
+- [ ] `JobHandler`는 추상 기본 클래스이고, `handle(payload)` 메서드는 하나의
+      `JobPayload`를 받아 `JobResult`를 반환한다. See `test_handler.py`.
+- [ ] `JobStatus`는 `PENDING`, `SUCCEEDED`, `FAILED` 열거형이고, 각 상태는
+      정확히 구분된다. See `test_status.py`.
+- [ ] `JobResult.ok(data=None)`은 `JobStatus.SUCCEEDED` 상태의 결과를 생성하고,
+      `JobResult.fail(error)`은 `JobStatus.FAILED` 상태의 결과를 생성한다. See
+      `test_result.py::TestJobResultConstruction`.
+- [ ] `JobResult`는 성공 시 error 필드를 갖지 않고, 실패 시 error를 필수로
+      포함한다. See `test_result.py::TestJobResultErrorHandling`.
+
+### 2. SyncJobRunner
+
+- [ ] `SyncJobRunner.run(handler, payload)`는 `handler.handle(payload)`를
+      직접 호출하고 결과를 `JobRunOutcome`으로 감싸서 반환한다. See
+      `test_runner.py::TestSyncJobRunnerSuccessfulExecution`.
+- [ ] 핸들러가 성공 결과를 반환하면 `JobRunOutcome`의 상태는 `SUCCEEDED`이다.
+      See `test_runner.py::TestSyncJobRunnerSuccessfulExecution`.
+- [ ] 핸들러가 실패 결과를 반환하면 `JobRunOutcome`의 상태는 `FAILED`이고,
+      error는 결과의 error를 그대로 전달한다. See
+      `test_runner.py::TestSyncJobRunnerFailedHandlerResult`.
+- [ ] 핸들러가 예외를 던지면 `SyncJobRunner`는 이를 catch하여
+      `JobStatus.FAILED`인 `JobRunOutcome`으로 변환한다. See
+      `test_runner.py::TestSyncJobRunnerCatchesHandlerException`.
+- [ ] `SyncJobRunner`에 `audit_recorder`를 전달하면, `run()` 후 성공/실패
+      이벤트가 정확히 하나씩 기록된다. See
+      `test_runner.py::TestSyncJobRunnerAuditRecording`.
+
+### 3. Job Registry
+
+- [ ] `JobRegistry.register(handler)`는 `handler.job_type`을 키로 하는
+      핸들러를 등록한다. See `test_registry.py::TestJobRegistryRegister`.
+- [ ] 등록된 핸들러는 `registry.get(job_type)`으로 조회할 수 있다. See
+      `test_registry.py::TestJobRegistryRegister::test_register_makes_handler_retrievable`.
+- [ ] 같은 `job_type`으로 두 번 등록하려 하면 `DuplicateJobTypeError`가
+      발생한다. See `test_registry.py::TestJobRegistryDuplicateRegistration`.
+- [ ] 등록되지 않은 `job_type`을 조회하면 `UnknownJobTypeError`가 발생한다.
+      See `test_registry.py::TestJobRegistryLookup`.
+- [ ] `JobRegistry`의 각 인스턴스는 독립적인 등록 목록을 유지한다. See
+      `test_registry.py::TestJobRegistryMultipleInstances`.
+
+### 4. Cache purge job
+
+- [ ] `CachePurgeJobPayload(source="...", parser_version="...")` 생성 시
+      source는 빈 문자열이나 공백만으로 거부된다. See
+      `test_cache_purge_payload.py::TestCachePurgeJobPayloadConstruction`.
+- [ ] `CachePurgeJobPayload(purge_all=True)` 생성 시 source 없이도 페이로드가
+      생성되며, 제공된 source가 있어도 무시된다. See
+      `test_cache_purge_payload.py::TestCachePurgeJobPayloadConstruction`.
+- [ ] `CachePurgeJobPayload.job_type`은 `"cache.purge"`이다. See
+      `test_cache_purge_payload.py::TestCachePurgeJobPayloadJobType`.
+- [ ] `CachePurgeJobHandler.handle(payload)`는 `purge_all=False`일 때
+      `cache.invalidate_render_cache(source, parser_version)`를 호출한다. See
+      `test_cache_purge_handler.py::TestCachePurgeJobHandlerScopedPurge`.
+- [ ] `CachePurgeJobHandler.handle(payload)`는 `purge_all=True`일 때
+      `cache.clear_all()`을 호출한다. See
+      `test_cache_purge_handler.py::TestCachePurgeJobHandlerPurgeAll`.
+- [ ] 핸들러가 `CachePurgeJobPayload`가 아닌 다른 타입의 페이로드를 받으면
+      실패 결과를 반환한다. See `test_cache_purge_handler.py::TestCachePurgeJobHandlerPayloadValidation`.
+
+### 5. Search indexing job
+
+- [ ] `SearchIndexJobHandler.handle(payload)`는
+      `IndexDocumentJobPayload`를 받아 `search_adapter.index(search_document)`를
+      호출한다. See `test_search_index_handler.py`.
+- [ ] 페이로드의 모든 필드가 `SearchDocument`로 올바르게 변환된다. See
+      `test_search_index_handler.py::TestSearchIndexJobHandlerIndexing`.
+- [ ] 핸들러가 `IndexDocumentJobPayload`가 아닌 다른 타입의 페이로드를 받으면
+      실패 결과를 반환한다. See
+      `test_search_index_handler.py::TestSearchIndexJobHandlerPayloadValidation`.
+
+### 6. Backlink refresh job
+
+- [ ] `BacklinkRefreshJobPayload(page_name="...")`는 page_name이 빈 문자열이나
+      공백만으로 거부된다. See
+      `test_backlink_refresh_payload.py::TestBacklinkRefreshJobPayloadConstruction`.
+- [ ] `BacklinkRefreshJobPayload.job_type`은 `"backlink.refresh"`이다. See
+      `test_backlink_refresh_payload.py::TestBacklinkRefreshJobPayloadJobType`.
+- [ ] `BacklinkRefreshJobHandler.handle(payload)`는 페이로드의 page_name을
+      검증하고, `JobResult.ok(data={"page_name": ...})`을 반환한다. 실제
+      백링크 갱신 로직은 backlinks 모듈이 존재하는 후속 태스크에서
+      구현된다. See `test_backlink_refresh_handler.py`.
+
+### 7. Category refresh job
+
+- [ ] `CategoryRefreshJobPayload(category_name="...")`는 category_name이 빈
+      문자열이나 공백만으로 거부된다. See
+      `test_category_refresh_payload.py::TestCategoryRefreshJobPayloadConstruction`.
+- [ ] `CategoryRefreshJobPayload.job_type`은 `"category.refresh"`이다. See
+      `test_category_refresh_payload.py::TestCategoryRefreshJobPayloadJobType`.
+- [ ] `CategoryRefreshJobHandler.handle(payload)`는 페이로드의 category_name을
+      검증하고, `JobResult.ok(data={"category_name": ...})`을 반환한다. 실제
+      카테고리 갱신 로직은 categories 모듈이 존재하는 후속 태스크에서
+      구현된다. See `test_category_refresh_handler.py`.
+
+### 8. Recent changes job
+
+- [ ] `RecentChangesJobPayload`는 `page_name`, `author_id`, `occurred_at`를
+      필수로 요구하며, 이들이 비어있으면 생성할 수 없다. See
+      `test_recent_changes_payload.py::TestRecentChangesJobPayloadConstruction`.
+- [ ] `RecentChangesJobPayload.job_type`은 `"recent_changes.record"`이다. See
+      `test_recent_changes_payload.py::TestRecentChangesJobPayloadJobType`.
+- [ ] `RecentChangesJobHandler.handle(payload)`는 페이로드를 검증하고,
+      `JobResult.ok(data={...})`을 반환한다. 실제 recent changes 기록 로직은
+      후속 태스크에서 구현된다. See `test_recent_changes_handler.py`.
+
+### 9. Job audit events
+
+- [ ] `JobAuditEvent`는 `id`, `action`, `job_type`, `occurred_at`를 필수로
+      요구한다. See `test_audit_event.py::TestJobAuditEventConstruction`.
+- [ ] `action`이 `JOB_FAILED`이면 `error`는 필수이고, `JOB_SUCCEEDED`이면
+      `error`는 금지된다. See `test_audit_event.py::TestJobAuditEventErrorRequirement`.
+- [ ] `JobAuditEvent.is_succeeded()` / `is_failed()`는 action을 반영한다. See
+      `test_audit_event.py::TestJobAuditEventStatusMethods`.
+- [ ] `JobAuditRecorder.record_job_succeeded(job_type)`은 `action=JOB_SUCCEEDED`인
+      이벤트를 생성하고, `occurred_at`은 현재 UTC 시간으로 설정된다. See
+      `test_audit_recorder.py::TestJobAuditRecorderSuccessRecording`.
+- [ ] `JobAuditRecorder.record_job_failed(job_type, error)`는
+      `action=JOB_FAILED`인 이벤트를 생성하고 주어진 error를 포함한다. See
+      `test_audit_recorder.py::TestJobAuditRecorderFailureRecording`.
+- [ ] `JobAuditRecorder.events()`는 기록된 이벤트의 copy를 등록 순서대로
+      반환한다. See `test_audit_recorder.py::TestJobAuditRecorderEventsOrdering`.
+
+### 10. Retry policy
+
+- [ ] `RetryPolicy`는 최대 재시도 횟수, 초기 지연, 백오프 인수를 정의한다. See
+      `test_retry_policy.py`.
+- [ ] `RetryPolicy.should_retry(attempt)`는 시도 횟수가 최대값 이하이면
+      True를 반환한다. See `test_retry_policy.py::TestRetryPolicyShouldRetry`.
+- [ ] `RetryPolicy.delay_ms(attempt)`는 attempt별로 지수 백오프 지연을
+      계산한다. See `test_retry_policy.py::TestRetryPolicyDelayCalculation`.
+
+### 11. Dead letter handling
+
+- [ ] `DeadLetter`는 실패한 잡의 메타데이터를 기록한다: `id`, `payload`,
+      `job_type`, `attempt`, `error`, `last_failed_at`. See `test_dead_letter.py`.
+- [ ] `DeadLetter.is_beyond_max_retries(retry_policy)`는 시도 횟수가 정책의
+      최대값을 초과하면 True를 반환한다. See `test_dead_letter_max_retries.py`.
+
+### 12. Queue backend interface
+
+- [ ] `QueueBackend.enqueue(payload)`는 `JobPayload`를 큐에 추가한다. See
+      `test_queue_backend.py`.
+- [ ] `QueueBackend.dequeue()`는 다음 `JobPayload`를 FIFO 순서로 반환하거나
+      큐가 비어있으면 None을 반환한다. See `test_queue_backend.py`.
+- [ ] `QueueBackend.size()`는 큐에 남은 페이로드의 개수를 반환한다. See
+      `test_queue_backend.py`.
+- [ ] `RQQueueBackend`는 Redis Queue 클라이언트로 job을 enqueue/dequeue한다.
+      See `test_rq_backend.py`.
+- [ ] `CeleryQueueBackend`는 Celery 클라이언트로 job을 enqueue/dequeue한다.
+      See `test_celery_backend.py`.
+
+### 13. Job run context & timeout config
+
+- [ ] `JobRunContext`는 job 실행 중 필요한 메타데이터를 제공한다. See
+      `test_job_run_context.py`.
+- [ ] `TimeoutConfig`는 job 타입별 타임아웃 값을 정의한다. See
+      `test_timeout_config.py`.
+
+### 14. Job metrics hook
+
+- [ ] `JobMetricsHook`는 job 실행 결과를 기록할 수 있는 플레이스홀더다. See
+      `test_job_metrics_hook.py`.
+
+### 15. Job fixtures
+
+- [ ] `JobFixtureSet`는 다양한 job 타입을 테스트하기 위한 fixture 데이터를
+      제공한다. See `test_fixture_set.py` (또는 관련 fixture 파일).
+
+### 16. Package exports
+
+- [ ] 메인 모듈의 `__init__.py`는 공개 인터페이스를 정의하고, 주요 클래스와
+      상수들을 export한다. See `test_package_exports.py`.
+
+### 이 체크리스트가 다루지 않는 것
+
+- 실제 Redis/RabbitMQ 브로커 배포 — queue backend adapters는 골격 상태이며
+  프로덕션 통합은 후속 태스크에서 다룬다.
+- Queued runner 구현 — `QueueBackend`는 인터페이스만 정의되어 있고, 실제
+  dequeue→run→record→retry 루프는 후속 태스크에서 구현된다.
+- 감사 이벤트 저장소 — `JobAuditEvent`는 메모리에만 축적되며, DB 저장은
+  후속 태스크에서 다룬다.
+- Job 성능/부하 특성 — 이 체크리스트는 기능적 정확성만 다룬다.
