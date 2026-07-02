@@ -26,6 +26,10 @@ class ConcreteSearchAdapter(SearchAdapter):
             if query.term in doc.title
         ]
 
+    async def delete(self, document_id: str) -> None:
+        """주어진 id의 문서를 색인에서 삭제한다."""
+        self.indexed_documents.pop(document_id, None)
+
 
 class TestSearchAdapterInterface:
     """검색 어댑터 인터페이스 테스트."""
@@ -42,6 +46,10 @@ class TestSearchAdapterInterface:
     def test_search_method_exists(self):
         """검색 어댑터는 search 메서드를 정의한다."""
         assert hasattr(SearchAdapter, "search")
+
+    def test_delete_method_exists(self):
+        """검색 어댑터는 delete 메서드를 정의한다."""
+        assert hasattr(SearchAdapter, "delete")
 
     @pytest.mark.asyncio
     async def test_concrete_implementation_can_index_document(self):
@@ -111,3 +119,21 @@ class TestSearchAdapterInterface:
         results = await adapter.search(SearchQuery(term="Anything"))
 
         assert results == []
+
+    @pytest.mark.asyncio
+    async def test_concrete_implementation_can_delete_indexed_document(self):
+        """구체적인 구현은 색인된 문서를 삭제할 수 있다."""
+        adapter = ConcreteSearchAdapter()
+        document = SearchDocument(document_id="doc1", title="Test Document")
+        await adapter.index(document)
+
+        await adapter.delete("doc1")
+
+        assert "doc1" not in adapter.indexed_documents
+
+    @pytest.mark.asyncio
+    async def test_concrete_implementation_delete_ignores_missing_document(self):
+        """구체적인 구현은 존재하지 않는 id를 삭제해도 오류를 내지 않는다."""
+        adapter = ConcreteSearchAdapter()
+
+        await adapter.delete("nonexistent")

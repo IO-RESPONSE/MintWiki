@@ -46,6 +46,54 @@ class TestInMemorySearchAdapterIndex:
         assert new_title_results[0].document.document_id == "doc1"
 
 
+class TestInMemorySearchAdapterDelete:
+    """삭제 기능 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_delete_removes_document(self):
+        """delete는 색인에서 문서를 제거한다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(document_id="doc1", title="Hello World")
+        await adapter.index(document)
+
+        await adapter.delete("doc1")
+
+        assert "doc1" not in adapter._documents
+
+    @pytest.mark.asyncio
+    async def test_delete_removes_document_from_search_results(self):
+        """삭제된 문서는 더 이상 검색 결과에 포함되지 않는다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(document_id="doc1", title="Hello World")
+        await adapter.index(document)
+
+        await adapter.delete("doc1")
+
+        results = await adapter.search(SearchQuery(term="Hello"))
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_delete_only_removes_target_document(self):
+        """다른 문서를 삭제해도 나머지 문서는 색인에 남아있다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(SearchDocument(document_id="doc1", title="Apple Pie"))
+        await adapter.index(SearchDocument(document_id="doc2", title="Apple Juice"))
+
+        await adapter.delete("doc1")
+
+        assert "doc1" not in adapter._documents
+        assert adapter._documents["doc2"].title == "Apple Juice"
+
+    @pytest.mark.asyncio
+    async def test_delete_nonexistent_document_does_not_raise(self):
+        """존재하지 않는 id를 삭제해도 오류를 내지 않는다."""
+        adapter = InMemorySearchAdapter()
+
+        await adapter.delete("nonexistent")
+
+        assert adapter._documents == {}
+
+
 class TestInMemorySearchAdapterSearch:
     """검색 기능 테스트."""
 

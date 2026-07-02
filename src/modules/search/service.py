@@ -46,3 +46,12 @@ class SearchService:
             질의와 관련된 검색 결과 목록
         """
         return await self.adapter.search(query)
+
+    async def delete_document(self, document_id: str) -> None:
+        """
+        주어진 id의 문서를 색인에서 삭제한다.
+
+        Args:
+            document_id: 삭제할 검색 문서의 고유 식별자
+        """
+        await self.adapter.delete(document_id)

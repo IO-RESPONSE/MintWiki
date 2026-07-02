@@ -50,3 +50,14 @@ class InMemorySearchAdapter(SearchAdapter):
             or (document.redirect_target is not None and term in document.redirect_target.lower())
             or any(term in category.lower() for category in document.categories)
         ]
+
+    async def delete(self, document_id: str) -> None:
+        """
+        주어진 id의 문서를 메모리 색인에서 삭제한다.
+
+        색인에 존재하지 않는 id가 주어져도 오류 없이 무시한다.
+
+        Args:
+            document_id: 삭제할 검색 문서의 고유 식별자
+        """
+        self._documents.pop(document_id, None)

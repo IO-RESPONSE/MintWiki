@@ -49,6 +49,43 @@ class TestSearchServiceIndexDocument:
         assert adapter._documents["doc2"] is second
 
 
+class TestSearchServiceDeleteDocument:
+    """삭제 위임 동작 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_delete_document_delegates_to_adapter(self):
+        """delete_document는 어댑터의 delete를 호출해 문서를 삭제한다."""
+        adapter = InMemorySearchAdapter()
+        service = SearchService(adapter)
+        document = SearchDocument(document_id="doc1", title="Hello World")
+        await service.index_document(document)
+
+        await service.delete_document("doc1")
+
+        assert "doc1" not in adapter._documents
+
+    @pytest.mark.asyncio
+    async def test_delete_document_removes_document_from_search_results(self):
+        """삭제된 문서는 더 이상 검색 결과에 포함되지 않는다."""
+        adapter = InMemorySearchAdapter()
+        service = SearchService(adapter)
+        document = SearchDocument(document_id="doc1", title="Hello World")
+        await service.index_document(document)
+
+        await service.delete_document("doc1")
+
+        results = await service.search(SearchQuery(term="Hello"))
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_delete_document_ignores_missing_document(self):
+        """존재하지 않는 id를 삭제해도 오류를 내지 않는다."""
+        adapter = InMemorySearchAdapter()
+        service = SearchService(adapter)
+
+        await service.delete_document("nonexistent")
+
+
 class TestSearchServiceSearch:
     """검색 위임 동작 테스트."""
 
