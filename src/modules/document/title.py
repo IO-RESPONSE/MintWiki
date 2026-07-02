@@ -4,7 +4,8 @@
 class EmptyTitleError(Exception):
     """제목이 비어있을 때 발생."""
 
-    pass
+    # docs/portable-exception-code-policy.md 가 고정한 안정적인 error code.
+    code = "document.empty_title"
 
 
 def normalize_title(title: str) -> str:
