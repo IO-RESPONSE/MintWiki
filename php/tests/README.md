@@ -109,6 +109,25 @@ PHP test suite.
   `php tests/Modules/Parser/FixtureRunnerTest.php` from `php/` after
   `composer install`.
 
+- `Modules/Parser/ParityPlaceholderTest.php` (0428) — documents the
+  **expected-failure policy** for parity tests of modules whose PHP port
+  hasn't started (`docs/php-parity-test-plan.md` section 4, left open for
+  0428/0429 to decide). Since `src/modules/parser/manifest.json`'s
+  `port.status` is still `not_started` and no `MintWiki\Parser\*` class
+  exists, this placeholder does not attempt a real parity comparison.
+  Instead it (1) guards that `port.status` is still `not_started`
+  (fails loudly if the port starts, signalling this file must be
+  replaced with a real fixture-comparison test like 0426/0427), (2)
+  asserts the future target class
+  (`MintWiki\Parser\PlainTextBlockParser`, per
+  `docs/php-namespace-mapping.md`) does not exist yet — the "expected
+  failure" itself is the assertion, and (3) checks every fixture under
+  `tests/modules/parser/fixtures/` (via 0425's `Support/FixtureLoader`)
+  matches the cross-language fixture schema, without comparing parse
+  output. `render`'s 0429 placeholder follows the same three-step
+  idiom. Run it with `php tests/Modules/Parser/ParityPlaceholderTest.php`
+  from `php/` after `composer install`.
+
 - `Modules/Acl/DecisionTest.php` (0408) — confirms
   `MintWiki\Acl\Decision` returns the `permission`, `allowed`, `reason`,
   and `matchedRuleId` passed to its constructor (with `matchedRuleId`
