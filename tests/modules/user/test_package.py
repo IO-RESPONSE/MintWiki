@@ -15,6 +15,8 @@ def test_user_package_exports_domain_model():
         "InvalidIpAddressError",
         "Group",
         "EmptyGroupNameError",
+        "UserRepository",
+        "InMemoryUserRepository",
     ]
     assert modules.user.User is not None
     assert modules.user.EmptyUsernameError is not None
@@ -23,3 +25,5 @@ def test_user_package_exports_domain_model():
     assert modules.user.InvalidIpAddressError is not None
     assert modules.user.Group is not None
     assert modules.user.EmptyGroupNameError is not None
+    assert modules.user.UserRepository is not None
+    assert modules.user.InMemoryUserRepository is not None
