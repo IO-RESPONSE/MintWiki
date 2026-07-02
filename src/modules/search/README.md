@@ -118,6 +118,14 @@ different key. It is not yet wired into `SearchService`, the router, or the
 `cache` module's backends — an actual search result cache is added by a
 later task.
 
+`SearchMetricsHook` (`metrics.py`) is a search metrics hook placeholder: its
+`record_search(term, result_count)` method appends a `SearchMetricsEvent`
+(`term`, `result_count`) to an in-memory `events` list on the instance,
+rather than sending anything to a real observability backend (Prometheus,
+StatsD, etc.). It is not yet called from `SearchService` or the router;
+that wiring, along with real metrics backend integration, is filled in by
+a later task.
+
 `SearchFixtureLoader` (`fixtures.py`) provides a small set of reusable
 `SearchDocument` fixture documents for adapter/service/reindex tests:
 title-only, title+body, redirect, categorized, and a "full" document with
@@ -305,6 +313,11 @@ result looks wrong.
   returns the input unchanged when the term is empty or has no match.
   Confirm it is **not** called from `SearchService`, `SearchResult`, or the
   router yet. (`test_highlighting.py::TestHighlightSearchTerm`)
+- [ ] `SearchMetricsHook.record_search()` appends a `SearchMetricsEvent`
+  (`term`, `result_count`) to its `events` list in call order, and each hook
+  instance has its own independent `events` list. Confirm it is **not**
+  called from `SearchService` or the router yet.
+  (`test_metrics.py::TestSearchMetricsHookRecordSearch`)
 
 ### Fixtures
 
