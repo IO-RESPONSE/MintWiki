@@ -36,6 +36,12 @@ PHP test suite.
   PostgreSQL and MariaDB transparently. Run it with
   `php tests/Persistence/SeedLoaderTest.php` from `php/` after
   `composer install`.
+- `Persistence/InstallerDBCheckTest.php` (0519) — confirms
+  `MintWiki\Installer\DBCheck` validates database connection, charset
+  (utf8mb4 for MariaDB, UTF8 for PostgreSQL), and schema version presence.
+  Uses an in-memory `pdo_sqlite` connection so the test stays network-free.
+  Run it with `php tests/Persistence/InstallerDBCheckTest.php` from `php/`
+  after `composer install`.
 - `Modules/Document/DocumentRepositoryTest.php` (0487) — confirms
   `MintWiki\Modules\Document\DocumentRepository` skeleton and `Document`
   domain model are correctly structured. Uses an in-memory `pdo_sqlite`
