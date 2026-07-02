@@ -91,3 +91,34 @@ class TestInMemoryUserRepository:
         result_bob = await repo.get_by_username("bob")
         assert result_alice.id == "user1"
         assert result_bob.id == "user2"
+
+    @pytest.mark.asyncio
+    async def test_create_preserves_display_name(self):
+        """인메모리 저장소는 조회 시 표시 이름을 유지한다."""
+        repo = InMemoryUserRepository()
+        user = User(id="user1", username="alice", display_name="Alice Kim")
+        await repo.create(user)
+
+        by_id = await repo.get("user1")
+        by_username = await repo.get_by_username("alice")
+        assert by_id.display_name == "Alice Kim"
+        assert by_username.display_name == "Alice Kim"
+
+    @pytest.mark.asyncio
+    async def test_create_with_same_id_overwrites_existing_user(self):
+        """인메모리 저장소는 동일한 id로 생성 시 기존 사용자를 덮어쓴다."""
+        repo = InMemoryUserRepository()
+        await repo.create(User(id="user1", username="alice"))
+        await repo.create(User(id="user1", username="alice2"))
+
+        result = await repo.get("user1")
+        assert result.username == "alice2"
+
+    @pytest.mark.asyncio
+    async def test_username_lookup_is_case_sensitive(self):
+        """인메모리 저장소의 사용자명 조회는 대소문자를 구분한다."""
+        repo = InMemoryUserRepository()
+        await repo.create(User(id="user1", username="alice"))
+
+        result = await repo.get_by_username("Alice")
+        assert result is None
