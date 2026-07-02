@@ -13,6 +13,11 @@ from modules.discussion.comment import (
     EmptyCommentIdError,
     EmptyCommentThreadIdError,
 )
+from modules.discussion.recent_activity import (
+    DiscussionRecentActivity,
+    EmptyRecentActivityIdError,
+    MissingRecentActivityThreadIdError,
+)
 from modules.discussion.repository import (
     DiscussionCommentNotFoundError,
     DiscussionRepository,
@@ -51,4 +56,7 @@ __all__ = [
     "DiscussionCommentNotFoundError",
     "InMemoryDiscussionRepository",
     "DiscussionService",
+    "DiscussionRecentActivity",
+    "EmptyRecentActivityIdError",
+    "MissingRecentActivityThreadIdError",
 ]

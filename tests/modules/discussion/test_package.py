@@ -29,6 +29,9 @@ def test_discussion_package_exports_thread_model():
         "DiscussionCommentNotFoundError",
         "InMemoryDiscussionRepository",
         "DiscussionService",
+        "DiscussionRecentActivity",
+        "EmptyRecentActivityIdError",
+        "MissingRecentActivityThreadIdError",
     ]
     assert modules.discussion.DiscussionThread is not None
     assert modules.discussion.EmptyThreadIdError is not None
@@ -72,3 +75,9 @@ def test_discussion_package_exports_audit_event_model():
 
 def test_discussion_package_exports_audit_recorder():
     assert modules.discussion.DiscussionAuditRecorder is not None
+
+
+def test_discussion_package_exports_recent_activity_model():
+    assert modules.discussion.DiscussionRecentActivity is not None
+    assert modules.discussion.EmptyRecentActivityIdError is not None
+    assert modules.discussion.MissingRecentActivityThreadIdError is not None
