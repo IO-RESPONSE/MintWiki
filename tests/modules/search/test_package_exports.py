@@ -27,7 +27,8 @@ class TestSearchPackageExports:
         (highlight_search_term), 검색 서비스 오류 모델
         (SearchServiceError), 그리고 어댑터/서비스/재색인 테스트에서 재사용할
         고정 문서(fixture)를 제공하는 로더(SearchFixtureLoader)와 그 오류
-        타입들만 export한다.
+        타입들, 그리고 검색 색인 스키마 버전 상수(SEARCH_INDEX_VERSION)만
+        export한다.
         """
         assert search.__all__ == [
             "SearchDocument",
@@ -52,6 +53,7 @@ class TestSearchPackageExports:
             "highlight_search_term",
             "SearchServiceError",
             "SearchFixtureLoader",
+            "SEARCH_INDEX_VERSION",
         ]
         for name in search.__all__:
             assert hasattr(search, name)

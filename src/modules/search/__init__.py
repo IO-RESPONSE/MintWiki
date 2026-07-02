@@ -27,6 +27,9 @@ from modules.search.highlighting import highlight_search_term
 from modules.search.errors import SearchServiceError
 from modules.search.fixtures import SearchFixtureLoader
 
+# 검색 색인 스키마 버전 상수
+SEARCH_INDEX_VERSION = "1.0.0"
+
 __all__ = [
     "SearchDocument",
     "EmptySearchDocumentIdError",
@@ -50,4 +53,5 @@ __all__ = [
     "highlight_search_term",
     "SearchServiceError",
     "SearchFixtureLoader",
+    "SEARCH_INDEX_VERSION",
 ]
