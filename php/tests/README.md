@@ -72,6 +72,16 @@ PHP test suite.
   stored verbatim (no normalization, including multi-line values). Run
   it with `php tests/Modules/Revision/RevisionTest.php` from `php/`
   after `composer install`.
+- `Modules/Revision/RepositoryTest.php` (0405) — confirms
+  `MintWiki\Revision\Repository` is an interface implementable with the
+  `create`/`get`/`listByDocumentId` contract from
+  `docs/repository-port-contracts.md` (via an anonymous in-memory
+  implementation), and that `listByDocumentId` returns only the
+  revisions for the given document in creation order. No `update`/
+  `delete` methods exist — revisions are append-only. No concrete
+  repository implementation ships in this task — that lands in 0435.
+  Run it with `php tests/Modules/Revision/RepositoryTest.php` from
+  `php/` after `composer install`.
 
 Fixture runners (0406, 0407, ...) are added by later Phase B tasks and
 must likewise run without any network dependency
