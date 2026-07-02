@@ -18,6 +18,9 @@ def test_user_package_exports_domain_model():
         "UserRepository",
         "InMemoryUserRepository",
         "PasswordHasher",
+        "Session",
+        "EmptySessionIdError",
+        "EmptyUserIdError",
     ]
     assert modules.user.User is not None
     assert modules.user.EmptyUsernameError is not None
@@ -29,3 +32,6 @@ def test_user_package_exports_domain_model():
     assert modules.user.UserRepository is not None
     assert modules.user.InMemoryUserRepository is not None
     assert modules.user.PasswordHasher is not None
+    assert modules.user.Session is not None
+    assert modules.user.EmptySessionIdError is not None
+    assert modules.user.EmptyUserIdError is not None

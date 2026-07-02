@@ -5,6 +5,7 @@ from modules.user.ip_identity import InvalidIpAddressError, IpIdentity
 from modules.user.model import EmptyUsernameError, User
 from modules.user.password import PasswordHasher
 from modules.user.repository import InMemoryUserRepository, UserRepository
+from modules.user.session import EmptySessionIdError, EmptyUserIdError, Session
 
 __all__ = [
     "User",
@@ -17,4 +18,7 @@ __all__ = [
     "UserRepository",
     "InMemoryUserRepository",
     "PasswordHasher",
+    "Session",
+    "EmptySessionIdError",
+    "EmptyUserIdError",
 ]
