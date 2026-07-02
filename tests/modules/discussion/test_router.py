@@ -15,6 +15,43 @@ class TestDiscussionRouterSkeleton:
         assert isinstance(router, APIRouter)
 
 
+class TestDiscussionRouteRegistration:
+    """discussion 라우터에 스레드/댓글 관련 라우트가 모두 등록되어 있는지 확인한다."""
+
+    def _registered_routes(self):
+        return {
+            (route.path, method)
+            for route in router.routes
+            for method in route.methods
+        }
+
+    def test_create_thread_route_is_registered(self):
+        assert ("/threads", "POST") in self._registered_routes()
+
+    def test_list_threads_route_is_registered(self):
+        assert ("/threads", "GET") in self._registered_routes()
+
+    def test_close_thread_route_is_registered(self):
+        assert ("/threads/{thread_id}/close", "POST") in self._registered_routes()
+
+    def test_add_comment_route_is_registered(self):
+        assert ("/threads/{thread_id}/comments", "POST") in self._registered_routes()
+
+    def test_list_comments_route_is_registered(self):
+        assert ("/threads/{thread_id}/comments", "GET") in self._registered_routes()
+
+    def test_no_unexpected_routes_are_registered(self):
+        """의도하지 않은 라우트가 실수로 추가되지 않았는지 확인한다."""
+        expected = {
+            ("/threads", "POST"),
+            ("/threads", "GET"),
+            ("/threads/{thread_id}/close", "POST"),
+            ("/threads/{thread_id}/comments", "POST"),
+            ("/threads/{thread_id}/comments", "GET"),
+        }
+        assert self._registered_routes() == expected
+
+
 @pytest.fixture
 def client() -> TestClient:
     """토론 서비스가 준비된 테스트용 앱과 클라이언트를 생성한다.
