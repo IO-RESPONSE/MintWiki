@@ -25,6 +25,7 @@ def test_user_package_exports_domain_model():
         "EmptySessionIdError",
         "EmptyUserIdError",
         "SessionRepository",
+        "BlockRepository",
     ]
     assert modules.user.User is not None
     assert modules.user.EmptyUsernameError is not None
@@ -43,3 +44,4 @@ def test_user_package_exports_domain_model():
     assert modules.user.EmptySessionIdError is not None
     assert modules.user.EmptyUserIdError is not None
     assert modules.user.SessionRepository is not None
+    assert modules.user.BlockRepository is not None
