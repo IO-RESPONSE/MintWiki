@@ -26,12 +26,25 @@ def test_db_migrations_directory_exists():
     assert migrations_dir.is_dir(), "db/migrations should be a directory"
 
 
-def test_db_schema_directory_not_yet_created():
-    """db/schema는 0460 이후 태스크의 범위이므로 아직 만들지 않는다."""
+def test_db_schema_directory_exists():
+    """0460이 만든 db/schema 디렉터리와 base 테이블 초안을 확인한다."""
     schema_dir = _db_dir() / "schema"
-    assert not schema_dir.exists(), (
-        "db/schema is out of scope for this task (0460+)"
+    assert schema_dir.exists(), "db/schema directory should exist"
+    assert schema_dir.is_dir(), "db/schema should be a directory"
+    assert (schema_dir / "README.md").exists(), "db/schema/README.md should exist"
+    assert (schema_dir / "schema_migration.sql").exists(), (
+        "db/schema/schema_migration.sql should exist"
     )
+
+
+def test_db_schema_migration_sql_matches_readme_spec():
+    """schema_migration.sql이 db/README.md가 확정한 스펙과 일치하는지 확인한다."""
+    content = (_db_dir() / "schema" / "schema_migration.sql").read_text()
+
+    assert "CREATE TABLE schema_migration" in content
+    assert "version" in content
+    assert "created_at" in content
+    assert "CONSTRAINT pk_schema_migration PRIMARY KEY" in content
 
 
 def test_db_readme_confirms_migration_history_table():

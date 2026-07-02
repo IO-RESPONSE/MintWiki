@@ -22,12 +22,15 @@ Python과 PHP 양쪽이 같은 스키마 결과를 내도록 참고할 **portabl
 ```
 db/
 ├── README.md      # 이 문서
+├── schema/        # 테이블 단위 portable SQL 원본 (0460 이후)
 └── migrations/    # 순번이 매겨진 portable 마이그레이션 원본 자리
 ```
 
-- `db/schema/`는 아직 만들지 않는다 — base schema SQL draft를 추가하는
-  [0460](../docs/php-db-ui-micro-job-prompts-0351-0670.md) 이후 태스크의
-  범위다.
+- `db/schema/`는 [0460](../docs/php-db-ui-micro-job-prompts-0351-0670.md)이
+  만들었다. 자세한 파일 규칙은 [db/schema/README.md](schema/README.md)
+  참고. 지금은 이 문서가 확정한 `schema_migration` 테이블의 ANSI 초안만
+  들어 있고, 도메인 테이블(`document`, `revision` 등)은 0461 이후 태스크가
+  채운다.
 - `db/migrations/`는 지금 비어 있다. 실제 portable 마이그레이션 파일은
   `db/schema/`가 정의하는 테이블이 먼저 존재해야 의미가 있으므로, 내용은
   이후 태스크에서 채운다. 파일명은 `migrations/versions/`와 동일한 순번
