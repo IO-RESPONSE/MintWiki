@@ -31,6 +31,8 @@ def test_acl_package_exports_rule():
         "default_rules",
         "build_default_namespace_acl_defaults",
         "LOGGED_IN_EDIT_RULE_ID",
+        "DOCUMENT_EDIT_RESTRICTION_RULE_ID",
+        "restrict_document_edit",
     ]
     assert modules.acl.Rule is Rule
 
@@ -94,3 +96,19 @@ def test_acl_package_exports_logged_in_edit_rule_id():
 
     assert "LOGGED_IN_EDIT_RULE_ID" in modules.acl.__all__
     assert modules.acl.LOGGED_IN_EDIT_RULE_ID is LOGGED_IN_EDIT_RULE_ID
+
+
+def test_acl_package_exports_document_edit_restriction():
+    # 0161에서 문서 단위 편집 제한 정책이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.document_policy import (
+        DOCUMENT_EDIT_RESTRICTION_RULE_ID,
+        restrict_document_edit,
+    )
+
+    assert "DOCUMENT_EDIT_RESTRICTION_RULE_ID" in modules.acl.__all__
+    assert "restrict_document_edit" in modules.acl.__all__
+    assert (
+        modules.acl.DOCUMENT_EDIT_RESTRICTION_RULE_ID
+        is DOCUMENT_EDIT_RESTRICTION_RULE_ID
+    )
+    assert modules.acl.restrict_document_edit is restrict_document_edit

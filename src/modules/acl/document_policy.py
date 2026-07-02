@@ -1,0 +1,40 @@
+"""문서 단위 편집 제한 정책 정의."""
+from typing import Optional
+
+from modules.acl.document_acl import DocumentAcl
+from modules.acl.permission import Permission
+from modules.acl.rule import Effect, Rule, SubjectType
+
+DOCUMENT_EDIT_RESTRICTION_RULE_ID = "document-edit-restricted"
+
+
+def restrict_document_edit(
+    document_id: str,
+    subject_type: SubjectType,
+    subject_id: Optional[str] = None,
+) -> DocumentAcl:
+    """
+    지정한 대상만 편집을 허용하도록 제한된 문서 ACL을 생성한다.
+
+    문서 ACL에는 지정한 대상에 대한 편집 허용 규칙 하나만 등록된다. 다른
+    대상은 이 문서 ACL 안에서 일치하는 규칙이 없으므로 AclService에 의해
+    기본적으로 편집이 거부된다. 문서 ACL이 존재하면 네임스페이스 기본
+    편집 정책(로그인 사용자 허용)보다 우선 적용되므로, 지정한 대상 외에는
+    로그인 여부와 무관하게 편집이 거부된다.
+
+    Args:
+        document_id: 편집을 제한할 문서의 고유 식별자
+        subject_type: 편집이 허용되는 대상의 종류
+        subject_id: 대상이 사용자 또는 그룹일 때의 id (선택사항)
+
+    Returns:
+        편집 허용 규칙 하나만 담긴 DocumentAcl
+    """
+    rule = Rule(
+        id=DOCUMENT_EDIT_RESTRICTION_RULE_ID,
+        subject_type=subject_type,
+        permission=Permission.EDIT,
+        effect=Effect.ALLOW,
+        subject_id=subject_id,
+    )
+    return DocumentAcl(document_id=document_id, rules=[rule])

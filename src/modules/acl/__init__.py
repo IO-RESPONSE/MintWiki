@@ -7,6 +7,10 @@ from modules.acl.default_policy import (
     default_rules,
 )
 from modules.acl.document_acl import DocumentAcl, EmptyDocumentIdError
+from modules.acl.document_policy import (
+    DOCUMENT_EDIT_RESTRICTION_RULE_ID,
+    restrict_document_edit,
+)
 from modules.acl.namespace_defaults import DEFAULT_NAMESPACE, NamespaceAclDefaults
 from modules.acl.permission import Permission
 from modules.acl.rule import (
@@ -35,4 +39,6 @@ __all__ = [
     "default_rules",
     "build_default_namespace_acl_defaults",
     "LOGGED_IN_EDIT_RULE_ID",
+    "DOCUMENT_EDIT_RESTRICTION_RULE_ID",
+    "restrict_document_edit",
 ]
