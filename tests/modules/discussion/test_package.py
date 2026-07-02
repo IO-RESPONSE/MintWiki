@@ -12,6 +12,7 @@ def test_discussion_package_exports_thread_model():
         "DiscussionAuditEvent",
         "EmptyDiscussionAuditEventIdError",
         "MissingDiscussionThreadIdError",
+        "DiscussionAuditRecorder",
         "DiscussionThread",
         "EmptyThreadIdError",
         "EmptyThreadDocumentIdError",
@@ -65,3 +66,7 @@ def test_discussion_package_exports_audit_event_model():
     assert modules.discussion.DiscussionAuditEvent is not None
     assert modules.discussion.EmptyDiscussionAuditEventIdError is not None
     assert modules.discussion.MissingDiscussionThreadIdError is not None
+
+
+def test_discussion_package_exports_audit_recorder():
+    assert modules.discussion.DiscussionAuditRecorder is not None

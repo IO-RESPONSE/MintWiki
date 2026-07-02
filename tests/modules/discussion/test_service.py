@@ -1,6 +1,7 @@
 """토론 서비스 테스트."""
 import pytest
 
+from modules.discussion.audit_event import DiscussionAuditAction
 from modules.discussion.comment import (
     EmptyCommentBodyError,
     EmptyCommentCreatedByError,
@@ -159,6 +160,33 @@ class TestDiscussionServiceThreads:
             await service.create_thread(document_id="doc1", title="", created_by="user1")
 
         assert await service.list_threads_by_document_id("doc1") == []
+
+    @pytest.mark.asyncio
+    async def test_create_thread_records_audit_event(self):
+        """서비스는 스레드 생성 시 감사 이벤트를 남긴다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+
+        events = service.audit_recorder.events()
+        assert len(events) == 1
+        assert events[0].action is DiscussionAuditAction.THREAD_CREATED
+        assert events[0].thread_id == thread.id
+        assert events[0].actor_id == "user1"
+
+    @pytest.mark.asyncio
+    async def test_create_thread_does_not_record_audit_event_on_validation_error(self):
+        """서비스는 검증에 실패한 스레드 생성에 대해 감사 이벤트를 남기지 않는다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(EmptyThreadTitleError):
+            await service.create_thread(document_id="doc1", title="", created_by="user1")
+
+        assert service.audit_recorder.events() == []
 
     @pytest.mark.asyncio
     async def test_close_thread(self):

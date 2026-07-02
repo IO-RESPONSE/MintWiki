@@ -5,6 +5,7 @@ from modules.discussion.audit_event import (
     EmptyDiscussionAuditEventIdError,
     MissingDiscussionThreadIdError,
 )
+from modules.discussion.audit_recorder import DiscussionAuditRecorder
 from modules.discussion.comment import (
     DiscussionComment,
     EmptyCommentBodyError,
@@ -32,6 +33,7 @@ __all__ = [
     "DiscussionAuditEvent",
     "EmptyDiscussionAuditEventIdError",
     "MissingDiscussionThreadIdError",
+    "DiscussionAuditRecorder",
     "DiscussionThread",
     "EmptyThreadIdError",
     "EmptyThreadDocumentIdError",

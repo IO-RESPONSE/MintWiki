@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
+from modules.discussion.audit_recorder import DiscussionAuditRecorder
 from modules.discussion.comment import DiscussionComment
 from modules.discussion.repository import DiscussionRepository, DiscussionThreadNotFoundError
 from modules.discussion.thread import DiscussionThread
@@ -13,18 +14,26 @@ class DiscussionService:
     토론 스레드 및 댓글 생성과 조회를 담당하는 서비스.
 
     스레드/댓글 생성 시 id와 생성 시각을 부여하고 저장소에 위임한다.
-    스레드 상태 전환, 로그 기록 등의 세부 동작은 이후 태스크에서 채워지므로,
-    이 서비스는 생성과 조회만 제공하는 골격이다.
+    스레드 생성 시에는 audit_recorder를 통해 감사 이벤트도 함께 남긴다.
+    스레드 상태 전환, 댓글 관련 감사 기록 등의 세부 동작은 이후 태스크에서
+    채워지므로, 이 서비스는 그 외 생성과 조회만 제공하는 골격이다.
     """
 
-    def __init__(self, repository: DiscussionRepository):
+    def __init__(
+        self,
+        repository: DiscussionRepository,
+        audit_recorder: Optional[DiscussionAuditRecorder] = None,
+    ):
         """
         서비스를 초기화한다.
 
         Args:
             repository: 토론 저장소
+            audit_recorder: 감사 이벤트 기록기 (선택사항, 생략하면 새로
+                생성한다)
         """
         self.repository = repository
+        self.audit_recorder = audit_recorder or DiscussionAuditRecorder()
 
     async def create_thread(
         self, document_id: str, title: str, created_by: str
@@ -47,7 +56,9 @@ class DiscussionService:
             created_by=created_by,
             created_at=datetime.now(timezone.utc),
         )
-        return await self.repository.create_thread(thread)
+        created = await self.repository.create_thread(thread)
+        self.audit_recorder.record_thread_created(created, actor_id=created_by)
+        return created
 
     async def get_thread(self, id: str) -> Optional[DiscussionThread]:
         """
