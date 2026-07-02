@@ -198,3 +198,60 @@ class TestDiscussionCommentPublicView:
         assert view["created_by"] == "user1"
         assert view["created_at"] == created_at
         assert view["hidden_at"] == hidden_at
+
+
+class TestDiscussionCommentModeratorView:
+    """모더레이터에게 노출되는 댓글 뷰 테스트."""
+
+    def test_hidden_comment_includes_body_in_moderator_view(self):
+        """숨김 처리된 댓글도 모더레이터 뷰에서는 본문이 그대로 노출된다."""
+        comment = DiscussionComment(
+            id="comment1",
+            thread_id="thread1",
+            body="모더레이터만 볼 수 있어야 할 본문",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1),
+        )
+        comment.hide(datetime(2026, 1, 2, 0, 0, 0))
+
+        view = comment.to_moderator_view()
+
+        assert view["body"] == "모더레이터만 볼 수 있어야 할 본문"
+        assert view["is_hidden"] is True
+
+    def test_visible_comment_includes_body_in_moderator_view(self):
+        """숨김 처리되지 않은 댓글은 모더레이터 뷰에서도 본문이 노출된다."""
+        comment = DiscussionComment(
+            id="comment1",
+            thread_id="thread1",
+            body="공개된 본문",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1),
+        )
+
+        view = comment.to_moderator_view()
+
+        assert view["body"] == "공개된 본문"
+        assert view["is_hidden"] is False
+
+    def test_moderator_view_includes_all_fields(self):
+        """모더레이터 뷰에는 본문을 포함한 모든 필드가 포함된다."""
+        created_at = datetime(2026, 1, 1)
+        hidden_at = datetime(2026, 1, 2)
+        comment = DiscussionComment(
+            id="comment1",
+            thread_id="thread1",
+            body="본문",
+            created_by="user1",
+            created_at=created_at,
+            is_hidden=True,
+            hidden_at=hidden_at,
+        )
+
+        view = comment.to_moderator_view()
+
+        assert view["id"] == "comment1"
+        assert view["thread_id"] == "thread1"
+        assert view["created_by"] == "user1"
+        assert view["created_at"] == created_at
+        assert view["hidden_at"] == hidden_at
