@@ -17,6 +17,7 @@ from modules.search.result import (
 from modules.search.adapter import SearchAdapter
 from modules.search.in_memory_adapter import InMemorySearchAdapter
 from modules.search.service import SearchService
+from modules.search.job_payload import IndexDocumentJobPayload
 
 __all__ = [
     "SearchDocument",
@@ -31,4 +32,5 @@ __all__ = [
     "SearchAdapter",
     "InMemorySearchAdapter",
     "SearchService",
+    "IndexDocumentJobPayload",
 ]

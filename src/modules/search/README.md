@@ -34,6 +34,19 @@ mirrors the fields needed to construct a `SearchDocument` (`document_id`,
 route can accept it directly as a request body. It is not yet wired to a
 route.
 
+`IndexDocumentJobPayload` (`job_payload.py`) is the document indexing job
+payload: it mirrors the same fields as `IndexDocumentRequest`
+(`document_id`, `title`, `body`, `redirect_target`, `categories`) but is
+meant for a background indexing job queue rather than an HTTP request body.
+Unlike `IndexDocumentRequest`, it is a plain domain class (no `pydantic`)
+that delegates field validation to `SearchDocument`, keeping the job
+payload framework-free per the portability layering rules. Its
+`to_search_document()` method returns the underlying `SearchDocument` so a
+future job handler can hand it straight to a `SearchAdapter`. The `jobs`
+module's shared job payload base class and the actual job handler are
+added in later tasks; this payload is defined standalone here in the
+meantime.
+
 `router` (`router.py`) is an `APIRouter`, not yet registered in `main.py`.
 It exposes `GET /title` and `GET /body`, each reading a required query
 parameter (`title` or `body`, respectively) plus optional `limit`/`offset`
