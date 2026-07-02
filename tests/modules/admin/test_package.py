@@ -20,6 +20,8 @@ def test_admin_package_exports():
         "EmptyAdminProtectionAuditEventIdError",
         "MissingAdminProtectionAuditEventProtectionIdError",
         "AdminProtectionService",
+        "AdminReport",
+        "EmptyAdminReportIdError",
     ]
     assert modules.admin.__all__ == expected_exports
     for name in modules.admin.__all__:
