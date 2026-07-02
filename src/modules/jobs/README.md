@@ -49,3 +49,11 @@ type and returns `JobResult.ok(data={"page_name": payload.page_name})`. It
 returns `JobResult.fail(...)` if given a payload that isn't a
 `BacklinkRefreshJobPayload`. The real backlink index update logic replaces
 this placeholder in a later task once a backlinks module exists.
+
+`CategoryRefreshJobPayload` (`category_refresh_payload.py`) is a `JobPayload`
+subclass for a background category index refresh job: it exposes `job_type`
+as `CATEGORY_REFRESH_JOB_TYPE` (`"category.refresh"`). It carries
+`category_name`, the category whose membership changed and whose index needs
+recomputing. `category_name` is required and cannot be empty/whitespace-only,
+raising `InvalidCategoryRefreshJobPayloadError` otherwise. A handler for this
+payload is added in a later task.
