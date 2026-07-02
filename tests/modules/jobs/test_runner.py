@@ -148,6 +148,29 @@ class TestSyncJobRunnerFailure:
         assert handler.received_payload is payload
 
 
+class TestSyncJobRunnerAuditOnSuccess:
+    """run()이 성공 시 audit_recorder에 감사 이벤트를 남기는지 검증한다."""
+
+    def test_run_records_audit_event_when_handler_returns_succeeded_result(self):
+        recorder = JobAuditRecorder()
+        runner = SyncJobRunner(audit_recorder=recorder)
+
+        runner.run(SucceedingHandler(), SamplePayload())
+
+        events = recorder.events()
+        assert len(events) == 1
+        assert events[0].action is JobAuditAction.JOB_SUCCEEDED
+        assert events[0].job_type == "sample.job"
+        assert events[0].error is None
+
+    def test_run_uses_default_audit_recorder_when_not_given_on_success(self):
+        runner = SyncJobRunner()
+
+        runner.run(SucceedingHandler(), SamplePayload())
+
+        assert len(runner.audit_recorder.events()) == 1
+
+
 class TestSyncJobRunnerAuditOnFailure:
     """run()이 실패 시 audit_recorder에 감사 이벤트를 남기는지 검증한다."""
 
@@ -174,13 +197,16 @@ class TestSyncJobRunnerAuditOnFailure:
         assert events[0].action is JobAuditAction.JOB_FAILED
         assert events[0].error == "예상치 못한 오류"
 
-    def test_run_does_not_record_audit_event_on_success(self):
+    def test_run_does_not_record_success_event_on_failure(self):
         recorder = JobAuditRecorder()
         runner = SyncJobRunner(audit_recorder=recorder)
 
-        runner.run(SucceedingHandler(), SamplePayload())
+        runner.run(FailingHandler(), SamplePayload())
 
-        assert recorder.events() == []
+        assert all(
+            event.action is not JobAuditAction.JOB_SUCCEEDED
+            for event in recorder.events()
+        )
 
     def test_run_uses_default_audit_recorder_when_not_given(self):
         runner = SyncJobRunner()

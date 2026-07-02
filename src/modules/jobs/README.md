@@ -99,13 +99,16 @@ report which outcome the event records. Persisting events is left to a later
 task, once a storage-backed implementation exists.
 
 `JobAuditRecorder` (`audit_recorder.py`) is the service that creates and
-accumulates `JobAuditEvent`s in memory. It currently only records job
-failures: `record_job_failed(job_type, error)` builds a `JobAuditEvent` with
-a generated `id`, `action=JOB_FAILED`, and `occurred_at` set to the current
-UTC time, appends it, and returns it. `events()` returns a copy of the
-recorded events in order. `SyncJobRunner` (`runner.py`) is constructed with
-an optional `audit_recorder` (defaulting to a new `JobAuditRecorder()`) and
-calls `record_job_failed(job_type=payload.job_type, error=result.error)`
-whenever `run()` produces a `FAILED` outcome, whether the handler returned a
-failed `JobResult` or raised an exception. Recording on success is added in
+accumulates `JobAuditEvent`s in memory. `record_job_succeeded(job_type)`
+builds a `JobAuditEvent` with a generated `id`, `action=JOB_SUCCEEDED`, and
+`occurred_at` set to the current UTC time, appends it, and returns it.
+`record_job_failed(job_type, error)` does the same with `action=JOB_FAILED`
+and the given `error`. `events()` returns a copy of the recorded events in
+order. `SyncJobRunner` (`runner.py`) is constructed with an optional
+`audit_recorder` (defaulting to a new `JobAuditRecorder()`) and records an
+event on every `run()` outcome: `record_job_succeeded(job_type=payload.job_type)`
+when the handler returns a successful `JobResult`, or
+`record_job_failed(job_type=payload.job_type, error=result.error)` when
+`run()` produces a `FAILED` outcome, whether the handler returned a failed
+`JobResult` or raised an exception. Persisting events to storage is left to
 a later task.

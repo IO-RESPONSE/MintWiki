@@ -10,13 +10,31 @@ class JobAuditRecorder:
     """
     잡 실행 결과를 JobAuditEvent로 기록하는 서비스.
 
-    현재는 잡 실패 시점의 감사 이벤트만 기록하며, 성공 시점의 기록은
-    이후 태스크에서 채워진다. 이벤트는 메모리에 누적되며, 영속화
-    (저장소 연동)는 이후 태스크에서 다룬다.
+    잡 성공과 실패 시점의 감사 이벤트를 모두 기록한다. 이벤트는 메모리에
+    누적되며, 영속화(저장소 연동)는 이후 태스크에서 다룬다.
     """
 
     def __init__(self):
         self._events: List[JobAuditEvent] = []
+
+    def record_job_succeeded(self, job_type: str) -> JobAuditEvent:
+        """
+        잡 성공을 감사 이벤트로 기록한다.
+
+        Args:
+            job_type: 성공한 잡의 종류를 식별하는 문자열
+
+        Returns:
+            기록된 감사 이벤트
+        """
+        event = JobAuditEvent(
+            id=str(uuid.uuid4()),
+            action=JobAuditAction.JOB_SUCCEEDED,
+            job_type=job_type,
+            occurred_at=datetime.now(timezone.utc),
+        )
+        self._events.append(event)
+        return event
 
     def record_job_failed(self, job_type: str, error: str) -> JobAuditEvent:
         """
