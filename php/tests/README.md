@@ -157,6 +157,26 @@ PHP test suite.
   `php tests/Modules/Render/FixtureRunnerTest.php` from `php/` after
   `composer install`.
 
+- `Modules/Render/ParityPlaceholderTest.php` (0429) — the render
+  counterpart of `Modules/Parser/ParityPlaceholderTest.php` (0428),
+  following the same expected-failure policy
+  (`docs/php-parity-test-plan.md` section 4). Since
+  `src/modules/render/manifest.json`'s `port.status` is still
+  `not_started`, it doesn't attempt a real parity comparison. It (1)
+  guards that `port.status` is still `not_started`, (2) asserts no
+  `.php` class file exists yet under `php/src/Modules/Render` (unlike
+  parser, render has no single future class name to check —
+  `src/modules/render/__init__.py` re-exports a set of functions, not
+  one service class — so this checks the module directory stays empty
+  of classes instead), and (3) checks every fixture under
+  `tests/modules/render/fixtures/` (via 0425's `Support/FixtureLoader`,
+  which already filters to `.json` and skips the pre-existing `.html`
+  snapshots) matches the cross-language fixture schema, without
+  checking `input.source` (render fixtures vary per function) or
+  comparing render output. Run it with
+  `php tests/Modules/Render/ParityPlaceholderTest.php` from `php/`
+  after `composer install`.
+
 - `Modules/User/UserTest.php` (0409) — confirms `MintWiki\User\User`
   returns the `id`, `username`, and `displayName` passed to its
   constructor (with `displayName` defaulting to `null`), preserves a
