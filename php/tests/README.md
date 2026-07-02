@@ -96,8 +96,26 @@ PHP test suite.
   `php tests/Modules/Parser/FixtureRunnerTest.php` from `php/` after
   `composer install`.
 
-Further fixture runners (0407, ...) are added by later Phase B tasks and
-must likewise run without any network dependency
+- `Modules/Render/FixtureRunner.php` / `Modules/Render/FixtureRunnerTest.php`
+  (0407) — `FixtureRunner` reads the cross-language JSON fixtures under
+  `tests/modules/render/fixtures/` (`docs/cross-language-fixture-schema.md`)
+  directly with `json_decode` and runs them against any
+  `callable(array $input): mixed` render callback, comparing the
+  callback's return value to the fixture's `expected` field. Unlike the
+  parser runner, it passes the whole `input` array (not a single
+  `source` string) to the callback, since render fixtures vary per
+  function (`escape_html` takes `text`, `render_heading` takes `level`/
+  `content`, etc.) — same reasoning as `tests/modules/render/fixtures/`
+  mixing `.json` cross-language fixtures with pre-existing `.html`
+  snapshot fixtures, which `listFixtures()` excludes via its `*.json`
+  glob. The render module's PHP port is still a placeholder (0399), so
+  the test exercises `FixtureRunner` itself against a stub callback
+  rather than a real render function. Run it with
+  `php tests/Modules/Render/FixtureRunnerTest.php` from `php/` after
+  `composer install`.
+
+Further fixture runners (...) are added by later Phase B tasks and must
+likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
 
 Cross-language fixtures these runners consume live under
