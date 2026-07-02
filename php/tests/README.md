@@ -53,6 +53,17 @@ PHP test suite.
   this task — that lands in 0435. Run it with
   `php tests/Modules/Document/RepositoryTest.php` from `php/` after
   `composer install`.
+- `Modules/Document/ServiceTest.php` (0403) — confirms
+  `MintWiki\Document\Service::create()`/`get()` (against an anonymous
+  in-memory `Repository`) issue a non-empty, unique id per document,
+  return the created document by id, return `null` for a missing id,
+  and propagate `EmptyTitleError`/`DuplicateNormalizedTitleError` from
+  `Document`/`Repository::create()`. Only the `create`/`get` contract
+  from `docs/service-method-contracts.md` is covered — `get_by_title`
+  and `get_current_revision_read_model` are out of scope until the
+  revision port exists (0404/0405). Run it with
+  `php tests/Modules/Document/ServiceTest.php` from `php/` after
+  `composer install`.
 
 Fixture runners (0406, 0407, ...) are added by later Phase B tasks and
 must likewise run without any network dependency

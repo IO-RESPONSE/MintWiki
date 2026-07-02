@@ -35,3 +35,12 @@ manifest 는 `src/modules/document/manifest.json` 이다.
   노출한다. `Repository::update()`가 던질 수 있다. 클래스 이름은
   `docs/php-namespace-mapping.md`가 고정한 규칙대로 `MintWiki\Document`
   namespace 안의 중복 `Document` 접두어를 뺀 것이다.
+- `Service.php` (0403) — Python `DocumentService`
+  (`src/modules/document/service.py`)의 `create`/`get` 계약만 옮긴 서비스
+  골격. `docs/service-method-contracts.md`의 document 섹션이 정본이며,
+  나머지 공개 메서드(`get_by_title`, `get_current_revision_read_model`)는
+  revision 포트가 아직 없어(0404/0405 이후) 이 태스크 범위에서 제외했다.
+  `create()`는 title로 새 `Document`를 만들어 `Repository::create()`에
+  위임하고(`source`를 이용한 첫 리비전 생성은 다루지 않는다),
+  `get()`은 `Repository::get()`에 위임한다. 클래스 이름은 `Repository.php`와
+  같은 이유로 중복 `Document` 접두어를 뺀 것이다.
