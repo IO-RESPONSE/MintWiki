@@ -29,6 +29,7 @@ from modules.jobs.category_refresh_payload import (
 from modules.jobs.celery_backend import CeleryQueueBackend
 from modules.jobs.dead_letter import DeadLetter, InvalidDeadLetterError
 from modules.jobs.handler import JobHandler
+from modules.jobs.job_metrics_hook import JobMetric, JobMetricsHook
 from modules.jobs.job_run_context import InvalidJobRunContextError, JobRunContext
 from modules.jobs.payload import JobPayload
 from modules.jobs.queue_backend import QueueBackend
@@ -73,6 +74,8 @@ __all__ = [
     "MissingJobTypeError",
     "InvalidJobAuditEventError",
     "JobAuditRecorder",
+    "JobMetric",
+    "JobMetricsHook",
     "JobPayload",
     "JobResult",
     "InvalidJobResultError",
