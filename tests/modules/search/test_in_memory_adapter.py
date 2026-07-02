@@ -132,3 +132,114 @@ class TestInMemorySearchAdapterSearch:
 
         assert len(results) == 1
         assert results[0].document.document_id == "doc1"
+
+
+class TestInMemorySearchAdapterBodySearchFallback:
+    """제목에 일치하는 내용이 없을 때 본문 검색으로 폴백하는 동작 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_body_fallback_is_case_insensitive(self):
+        """본문 폴백 검색은 대소문자를 구분하지 않는다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(
+            document_id="doc1", title="Hello World", body="Findable Term here"
+        )
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="findable term"))
+
+        assert len(results) == 1
+        assert results[0].document.document_id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_body_fallback_matches_partial_term(self):
+        """질의어가 본문 단어의 일부에 포함되면 검색 결과에 포함된다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(
+            document_id="doc1", title="Hello World", body="Unfindable content"
+        )
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="findable"))
+
+        assert len(results) == 1
+        assert results[0].document.document_id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_body_fallback_returns_multiple_matching_documents(self):
+        """본문 폴백 검색으로 여러 문서가 일치하면 모두 반환한다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(
+            SearchDocument(document_id="doc1", title="First", body="shared keyword")
+        )
+        await adapter.index(
+            SearchDocument(document_id="doc2", title="Second", body="shared keyword")
+        )
+        await adapter.index(
+            SearchDocument(document_id="doc3", title="Third", body="unrelated text")
+        )
+
+        results = await adapter.search(SearchQuery(term="shared keyword"))
+
+        result_ids = {result.document.document_id for result in results}
+        assert result_ids == {"doc1", "doc2"}
+
+    @pytest.mark.asyncio
+    async def test_body_fallback_does_not_duplicate_result_when_term_in_title_and_body(
+        self,
+    ):
+        """질의어가 제목과 본문에 모두 있어도 결과는 한 번만 반환된다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(
+            document_id="doc1", title="Findable Title", body="Findable body text"
+        )
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="Findable"))
+
+        assert len(results) == 1
+        assert results[0].document.document_id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_body_fallback_does_not_match_when_term_absent_from_title_and_body(
+        self,
+    ):
+        """질의어가 제목과 본문 어디에도 없으면 본문 폴백으로도 결과가 없다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(
+            document_id="doc1", title="Hello World", body="Some other content"
+        )
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="Nonexistent"))
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_body_fallback_does_not_match_when_body_is_default_empty(self):
+        """본문을 지정하지 않은 문서는 빈 본문으로 취급되어 본문 폴백이 일치하지 않는다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(document_id="doc1", title="Hello World")
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="Findable"))
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_reindexing_updates_searchable_body(self):
+        """같은 id로 본문을 바꿔 다시 색인하면, 본문 폴백 검색 결과에도 새 본문이 반영된다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(
+            SearchDocument(document_id="doc1", title="Title", body="Old body term")
+        )
+        await adapter.index(
+            SearchDocument(document_id="doc1", title="Title", body="New body term")
+        )
+
+        old_body_results = await adapter.search(SearchQuery(term="Old body"))
+        new_body_results = await adapter.search(SearchQuery(term="New body"))
+
+        assert old_body_results == []
+        assert len(new_body_results) == 1
+        assert new_body_results[0].document.document_id == "doc1"
