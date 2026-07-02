@@ -52,7 +52,7 @@ from modules.jobs.serializer import (
 from modules.jobs.result import InvalidJobResultError, JobResult
 from modules.jobs.retry_policy import InvalidRetryPolicyError, RetryPolicy
 from modules.jobs.rq_backend import RQQueueBackend
-from modules.jobs.runner import JobRunOutcome, SyncJobRunner
+from modules.jobs.runner import JobRunOutcome, PendingJobsRunner, SyncJobRunner
 from modules.jobs.search_index_handler import SEARCH_INDEX_JOB_TYPE, SearchIndexJobHandler
 from modules.jobs.status import JobStatus
 from modules.jobs.timeout_config import InvalidTimeoutConfigError, TimeoutConfig
@@ -85,6 +85,7 @@ __all__ = [
     "JobRunContext",
     "JobRunOutcome",
     "SyncJobRunner",
+    "PendingJobsRunner",
     "InvalidRetryPolicyError",
     "RetryPolicy",
     "InvalidTimeoutConfigError",

@@ -1,9 +1,11 @@
 """동기 잡 실행기."""
-from typing import NamedTuple, Optional
+from typing import List, NamedTuple, Optional
 
 from modules.jobs.audit_recorder import JobAuditRecorder
 from modules.jobs.handler import JobHandler
 from modules.jobs.payload import JobPayload
+from modules.jobs.queue_backend import QueueBackend
+from modules.jobs.registry import JobRegistry
 from modules.jobs.result import JobResult
 from modules.jobs.status import JobStatus
 
@@ -66,4 +68,61 @@ class SyncJobRunner:
         return JobRunOutcome(status=status, result=result)
 
 
-__all__ = ["JobRunOutcome", "SyncJobRunner"]
+class PendingJobsRunner:
+    """
+    큐에 적재된 미처리 잡들을 모두 처리하는 비동기 실행기.
+
+    QueueBackend에서 잡을 하나씩 꺼내 JobRegistry에서 핸들러를 조회한 뒤,
+    SyncJobRunner를 사용해 각 잡을 실행한다. 큐가 빌 때까지 반복하며,
+    모든 실행 결과를 누적해 반환한다.
+    """
+
+    def __init__(
+        self,
+        queue: QueueBackend,
+        registry: JobRegistry,
+        sync_runner: Optional[SyncJobRunner] = None,
+    ):
+        """
+        미처리 잡 실행기를 초기화한다.
+
+        Args:
+            queue: 잡을 가져올 큐 백엔드
+            registry: job_type에서 핸들러를 조회할 레지스트리
+            sync_runner: 각 잡을 실행할 동기 실행기 (선택사항, 생략하면 새로
+                생성한다)
+        """
+        self.queue = queue
+        self.registry = registry
+        self.sync_runner = sync_runner or SyncJobRunner()
+
+    async def run_all(self) -> List[JobRunOutcome]:
+        """
+        큐에 남아 있는 모든 잡을 처리하고 실행 결과 목록을 반환한다.
+
+        각 잡에 대해:
+        1. 큐에서 페이로드를 꺼낸다
+        2. registry에서 job_type에 해당하는 핸들러를 조회한다
+        3. sync_runner로 잡을 실행한다
+        4. 결과를 누적한다
+
+        큐가 비면 반복을 종료하고 누적된 결과 목록을 반환한다.
+
+        Returns:
+            큐의 모든 잡에 대한 JobRunOutcome 목록 (실행 순서대로)
+        """
+        outcomes: List[JobRunOutcome] = []
+
+        while True:
+            payload = await self.queue.dequeue()
+            if payload is None:
+                break
+
+            handler = self.registry.get(payload.job_type)
+            outcome = self.sync_runner.run(handler, payload)
+            outcomes.append(outcome)
+
+        return outcomes
+
+
+__all__ = ["JobRunOutcome", "SyncJobRunner", "PendingJobsRunner"]
