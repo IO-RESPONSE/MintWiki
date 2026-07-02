@@ -593,3 +593,29 @@ class TestDiscussionServiceHideComment:
             await service.hide_comment("nonexistent-id", actor_id="moderator1")
 
         assert service.audit_recorder.events() == []
+
+
+class TestDiscussionServiceModeratorViewsHiddenComment:
+    """서비스를 통해 숨김 처리된 댓글을 모더레이터가 조회하는 시나리오 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_moderator_can_view_body_of_comment_hidden_via_service(self):
+        """서비스로 숨김 처리한 댓글도 모더레이터 뷰에서는 본문이 그대로 노출된다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+        comment = await service.add_comment(
+            thread_id=thread.id, body="모더레이터만 볼 수 있어야 할 본문", created_by="user2"
+        )
+
+        await service.hide_comment(comment.id, actor_id="moderator1")
+
+        retrieved = await service.list_comments_by_thread_id(thread.id)
+        moderator_view = retrieved[0].to_moderator_view()
+        public_view = retrieved[0].to_public_view()
+
+        assert moderator_view["body"] == "모더레이터만 볼 수 있어야 할 본문"
+        assert moderator_view["is_hidden"] is True
+        assert public_view["body"] is None
