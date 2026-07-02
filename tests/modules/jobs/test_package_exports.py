@@ -19,9 +19,10 @@ class TestJobsPackageExports:
         구현, Celery 백엔드 구현, 캐시 퍼지 페이로드/핸들러, 검색 색인
         핸들러, 백링크 갱신 페이로드/placeholder 핸들러, 카테고리 갱신
         페이로드/placeholder 핸들러, 최근 변경 내역 페이로드/placeholder
-        핸들러, 잡 감사 이벤트 모델, 잡 감사 기록기를 검증한다.
+        핸들러, 잡 감사 이벤트 모델, 잡 감사 기록기, 잡 ID 생성기를 검증한다.
         """
         assert jobs.__all__ == [
+            "generate_job_id",
             "JobAuditAction",
             "JobAuditEvent",
             "EmptyJobAuditEventIdError",

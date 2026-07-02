@@ -1,9 +1,9 @@
 """잡 감사 이벤트를 기록하는 서비스."""
-import uuid
 from datetime import datetime, timezone
 from typing import List
 
 from modules.jobs.audit_event import JobAuditAction, JobAuditEvent
+from modules.jobs.id_generator import generate_job_id
 
 
 class JobAuditRecorder:
@@ -28,7 +28,7 @@ class JobAuditRecorder:
             기록된 감사 이벤트
         """
         event = JobAuditEvent(
-            id=str(uuid.uuid4()),
+            id=generate_job_id(),
             action=JobAuditAction.JOB_SUCCEEDED,
             job_type=job_type,
             occurred_at=datetime.now(timezone.utc),
@@ -48,7 +48,7 @@ class JobAuditRecorder:
             기록된 감사 이벤트
         """
         event = JobAuditEvent(
-            id=str(uuid.uuid4()),
+            id=generate_job_id(),
             action=JobAuditAction.JOB_FAILED,
             job_type=job_type,
             occurred_at=datetime.now(timezone.utc),
