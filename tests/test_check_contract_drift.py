@@ -117,11 +117,15 @@ class TestFormatReport:
 class TestMainAgainstRealRepo:
     """실제 저장소를 대상으로 스크립트 전체 실행을 검증한다."""
 
-    def test_main_returns_zero_when_php_tree_absent(self, monkeypatch, capsys):
-        """php/ 트리가 없어도 main() 은 실패(비정상 종료)하지 않는다."""
+    def test_main_returns_zero_regardless_of_php_tree(self, monkeypatch, capsys):
+        """php/ 트리 존재 여부와 무관하게 main() 은 실패(비정상 종료)하지 않는다.
+
+        태스크 0391 이후 저장소에는 `php/` 골격 디렉터리가 존재하지만,
+        아직 실제 PHP 구현이 없으므로 drift 판정은 여전히
+        ``not_measurable`` 이다.
+        """
         module = _load_script_module()
         monkeypatch.chdir(REPO_ROOT)
-        assert not module.PHP_ROOT.is_dir(), "이 태스크 시점에는 php/ 트리가 없어야 한다"
         exit_code = module.main()
         captured = capsys.readouterr()
         assert exit_code == 0
