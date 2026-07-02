@@ -167,10 +167,20 @@
   계획 문서 §8이 아직 확립된 조회 패턴이 없다고 판단해 `audit_event.sql`과
   동일하게 이 태스크에서는 추가하지 않는다.
 
+## 0469가 채우는 것
+
+- `scripts/check_sql_denylist.py`의 `TARGET_GLOBS`에 `db/schema/*.sql`을
+  추가해, 0447이 만든 SQL feature 금지 목록 검사가 이 디렉터리 전체를
+  포함하도록 했다. 각 `.sql` 파일의 PostgreSQL/MariaDB 차이 설명 주석(`--`)은
+  금지 기능 이름을 문서화 목적으로 그대로 인용하므로(예: `document.sql`의
+  "PostgreSQL SERIAL/gen_random_uuid()..." 문장), 검사는 `--` 이후 주석
+  본문을 제외하고 실제 DDL만 본다. `tests/test_sql_denylist.py`에 `.sql`
+  확장자 파일에 대한 탐지 테스트, 주석 오탐 방지 테스트, 이 디렉터리의
+  현재 파일들이 위반 없이 통과하는 회귀 테스트를 추가했다. `scripts/qa.sh`는
+  이미 `check_sql_denylist.py`를 호출하고 있어 별도 배선이 필요 없었다.
+
 ## 이후 채워질 파일
 
-- **0469**: 이 디렉터리 전체에 대한 SQL feature 금지 목록 자동 검사(lint
-  테스트).
 - **0493**: PHP 웹호스팅 installer가 참조할 별도의 schema version 테이블.
 
 ## 관련 문서

@@ -16,7 +16,14 @@ TARGET_GLOBS = [
     "src/modules/*/repository.py",
     "src/persistence/**/*.py",
     "migrations/versions/*.py",
+    "db/schema/*.sql",
 ]
+
+# SQL 라인 주석 시작 표시. db/schema/*.sql 은 PostgreSQL/MariaDB 차이를
+# 설명하는 주석에서 금지 기능 이름을 그대로 인용하므로(예: document.sql의
+# "PostgreSQL SERIAL/gen_random_uuid()" 설명), 주석 본문은 검사 대상에서
+# 제외해야 오탐이 나지 않는다.
+SQL_COMMENT_PREFIX = "--"
 
 # 금지 기능 이름 -> 탐지 정규식.
 # docs/ansi-sql-persistence-policy.md 의 "PostgreSQL 전용 기능 금지 목록" 표와 대응한다.
@@ -76,9 +83,13 @@ def check_file(path: Path) -> list[str]:
     """
     violations: list[str] = []
     lines = path.read_text(encoding="utf-8").splitlines()
+    is_sql_file = path.suffix == ".sql"
     for lineno, line in enumerate(lines, start=1):
+        code = line
+        if is_sql_file:
+            code = line.split(SQL_COMMENT_PREFIX, 1)[0]
         for feature, pattern in DENYLIST.items():
-            if pattern.search(line):
+            if pattern.search(code):
                 violations.append(f"{path}:{lineno}: 금지된 SQL feature '{feature}' 사용")
     return violations
 
