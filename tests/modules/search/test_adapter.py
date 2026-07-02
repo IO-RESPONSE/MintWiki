@@ -67,6 +67,19 @@ class TestSearchAdapterInterface:
         assert results[0].score == 1.0
 
     @pytest.mark.asyncio
+    async def test_concrete_implementation_matches_title_exactly(self):
+        """질의어가 제목과 완전히 일치해도 검색 결과에 포함된다."""
+        adapter = ConcreteSearchAdapter()
+        document = SearchDocument(document_id="doc1", title="Test Document")
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="Test Document"))
+
+        assert len(results) == 1
+        assert results[0].document.document_id == "doc1"
+        assert results[0].score == 1.0
+
+    @pytest.mark.asyncio
     async def test_concrete_implementation_returns_empty_list_when_no_match(self):
         """구체적인 구현은 일치하는 문서가 없으면 빈 목록을 반환한다."""
         adapter = ConcreteSearchAdapter()
