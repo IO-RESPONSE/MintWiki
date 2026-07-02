@@ -134,6 +134,70 @@ class RevisionORM(Base):
         )
 
 
+class AuditEventORM(Base):
+    """
+    감사 이벤트를 나타내는 ORM 모델.
+
+    이 모델은 감사 이벤트 테이블을 SQLAlchemy를 통해 매핑한다.
+    도메인 모델과 데이터베이스 테이블 사이의 변환을 담당한다.
+    Append-only 특성으로 인해 update_at 컬럼이 없다.
+    """
+
+    __tablename__ = "audit_event"
+
+    id = Column(String(255), primary_key=True, nullable=False)
+    category = Column(String(20), nullable=False)
+    action = Column(String(50), nullable=False)
+    entity_id = Column(String(255), nullable=False)
+    related_entity_id = Column(String(255), nullable=True)
+    actor_id = Column(String(255), nullable=True)
+    occurred_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    def to_domain(self):
+        """
+        ORM 모델을 도메인 모델로 변환한다.
+
+        Returns:
+            AuditEvent: 도메인 모델 인스턴스
+        """
+        from modules.audit.audit_event import AuditEvent
+
+        return AuditEvent(
+            id=self.id,
+            category=self.category,
+            action=self.action,
+            entity_id=self.entity_id,
+            related_entity_id=self.related_entity_id,
+            actor_id=self.actor_id,
+            occurred_at=self.occurred_at,
+        )
+
+    @staticmethod
+    def from_domain(event):
+        """
+        도메인 모델을 ORM 모델로 변환한다.
+
+        Args:
+            event: AuditEvent 도메인 모델
+
+        Returns:
+            AuditEventORM: ORM 모델 인스턴스
+        """
+        return AuditEventORM(
+            id=event.id,
+            category=event.category,
+            action=event.action,
+            entity_id=event.entity_id,
+            related_entity_id=event.related_entity_id,
+            actor_id=event.actor_id,
+            occurred_at=event.occurred_at,
+        )
+
+
 class SchemaVersionORM(Base):
     """
     배포된 스키마 버전을 나타내는 ORM 모델.
