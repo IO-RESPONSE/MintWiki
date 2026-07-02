@@ -1,4 +1,6 @@
 """Rule 도메인 모델 테스트."""
+from datetime import datetime, timedelta
+
 import pytest
 
 from modules.acl.permission import Permission
@@ -99,6 +101,28 @@ class TestRuleCreation:
                 effect=Effect.ALLOW,
             )
 
+    def test_defaults_expires_at_to_none(self):
+        rule = Rule(
+            id="rule-13",
+            subject_type=SubjectType.ALL,
+            permission=Permission.READ,
+            effect=Effect.ALLOW,
+        )
+
+        assert rule.expires_at is None
+
+    def test_creates_rule_with_expires_at(self):
+        expires_at = datetime(2026, 1, 1, 0, 0, 0)
+        rule = Rule(
+            id="rule-14",
+            subject_type=SubjectType.ALL,
+            permission=Permission.READ,
+            effect=Effect.ALLOW,
+            expires_at=expires_at,
+        )
+
+        assert rule.expires_at == expires_at
+
 
 class TestRuleIsAllow:
     """is_allow 메서드가 effect에 따라 올바른 값을 반환하는지 확인한다."""
@@ -173,3 +197,78 @@ class TestRuleAppliesTo:
 
         assert rule.applies_to(SubjectType.ANONYMOUS) is True
         assert rule.applies_to(SubjectType.USER, "user-1") is False
+
+
+class TestRuleIsTemporary:
+    """is_temporary 메서드가 expires_at 존재 여부에 따라 올바른 값을 반환하는지 확인한다."""
+
+    def test_returns_false_when_expires_at_is_none(self):
+        rule = Rule(
+            id="rule-15",
+            subject_type=SubjectType.ALL,
+            permission=Permission.READ,
+            effect=Effect.ALLOW,
+        )
+
+        assert rule.is_temporary() is False
+
+    def test_returns_true_when_expires_at_is_set(self):
+        rule = Rule(
+            id="rule-16",
+            subject_type=SubjectType.ALL,
+            permission=Permission.READ,
+            effect=Effect.ALLOW,
+            expires_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+
+        assert rule.is_temporary() is True
+
+
+class TestRuleIsExpired:
+    """is_expired 메서드가 만료 시각을 기준으로 올바른 값을 반환하는지 확인한다."""
+
+    def test_returns_false_when_expires_at_is_none(self):
+        rule = Rule(
+            id="rule-17",
+            subject_type=SubjectType.ALL,
+            permission=Permission.READ,
+            effect=Effect.ALLOW,
+        )
+
+        assert rule.is_expired(datetime(2026, 1, 1, 0, 0, 0)) is False
+
+    def test_returns_false_before_expiry(self):
+        expires_at = datetime(2026, 1, 1, 0, 0, 0)
+        rule = Rule(
+            id="rule-18",
+            subject_type=SubjectType.ALL,
+            permission=Permission.READ,
+            effect=Effect.ALLOW,
+            expires_at=expires_at,
+        )
+
+        assert rule.is_expired(expires_at - timedelta(minutes=30)) is False
+
+    def test_returns_true_after_expiry(self):
+        expires_at = datetime(2026, 1, 1, 0, 0, 0)
+        rule = Rule(
+            id="rule-19",
+            subject_type=SubjectType.ALL,
+            permission=Permission.READ,
+            effect=Effect.ALLOW,
+            expires_at=expires_at,
+        )
+
+        assert rule.is_expired(expires_at + timedelta(seconds=1)) is True
+
+    def test_returns_true_at_exact_expiry_time(self):
+        expires_at = datetime(2026, 1, 1, 0, 0, 0)
+        rule = Rule(
+            id="rule-20",
+            subject_type=SubjectType.ALL,
+            permission=Permission.READ,
+            effect=Effect.ALLOW,
+            expires_at=expires_at,
+        )
+
+        assert rule.is_expired(expires_at) is True

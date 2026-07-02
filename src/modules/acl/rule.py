@@ -1,4 +1,5 @@
 """ACL 규칙 도메인 모델."""
+from datetime import datetime
 from enum import Enum
 from typing import Optional
 
@@ -45,6 +46,10 @@ class Rule:
     규칙은 대상(subject_type/subject_id), 검사 대상 권한(permission),
     그리고 허용/거부 여부(effect)로 구성된다. 여러 규칙을 조합해 최종
     접근 허용 여부를 판단하는 로직은 이 모델이 아닌 상위 서비스가 담당한다.
+
+    규칙에는 선택적으로 만료 시각(expires_at)을 지정할 수 있다. 값이
+    있으면 임시 제한을 나타내며, 만료 이후에도 규칙을 무시할지 여부의
+    판단은 이 모델이 아닌 상위 서비스가 담당한다.
     """
 
     def __init__(
@@ -54,6 +59,7 @@ class Rule:
         permission: Permission,
         effect: Effect,
         subject_id: Optional[str] = None,
+        expires_at: Optional[datetime] = None,
     ):
         """
         ACL 규칙을 생성한다.
@@ -64,6 +70,7 @@ class Rule:
             permission: 규칙이 검사하는 권한 종류
             effect: 권한을 허용할지 거부할지 여부
             subject_id: 대상이 USER 또는 GROUP일 때의 사용자/그룹 id
+            expires_at: 규칙이 만료되는 시각 (선택사항, 없으면 영구 규칙)
 
         Raises:
             EmptyRuleIdError: 규칙 id가 비어있거나 공백만 있는 경우
@@ -82,10 +89,21 @@ class Rule:
         self.subject_id = subject_id
         self.permission = permission
         self.effect = effect
+        self.expires_at = expires_at
 
     def is_allow(self) -> bool:
         """규칙이 허용 규칙인지 확인한다."""
         return self.effect is Effect.ALLOW
+
+    def is_temporary(self) -> bool:
+        """규칙이 만료 시각을 가진 임시 제한인지 확인한다."""
+        return self.expires_at is not None
+
+    def is_expired(self, now: datetime) -> bool:
+        """주어진 시각 기준으로 규칙이 만료되었는지 확인한다."""
+        if self.expires_at is None:
+            return False
+        return now >= self.expires_at
 
     def applies_to(
         self, subject_type: SubjectType, subject_id: Optional[str] = None
