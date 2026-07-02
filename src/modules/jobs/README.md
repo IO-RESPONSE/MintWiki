@@ -55,5 +55,13 @@ subclass for a background category index refresh job: it exposes `job_type`
 as `CATEGORY_REFRESH_JOB_TYPE` (`"category.refresh"`). It carries
 `category_name`, the category whose membership changed and whose index needs
 recomputing. `category_name` is required and cannot be empty/whitespace-only,
-raising `InvalidCategoryRefreshJobPayloadError` otherwise. A handler for this
-payload is added in a later task.
+raising `InvalidCategoryRefreshJobPayloadError` otherwise.
+
+`CategoryRefreshJobHandler` (`category_refresh_handler.py`) is a placeholder
+`JobHandler` for `CategoryRefreshJobPayload`, exposing `job_type` as
+`CATEGORY_REFRESH_JOB_TYPE`. There is no categories module yet to actually
+recompute category index entries, so `handle()` only validates the payload
+type and returns `JobResult.ok(data={"category_name": payload.category_name})`.
+It returns `JobResult.fail(...)` if given a payload that isn't a
+`CategoryRefreshJobPayload`. The real category index update logic replaces
+this placeholder in a later task once a categories module exists.

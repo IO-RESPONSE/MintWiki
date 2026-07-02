@@ -11,6 +11,7 @@ from modules.jobs.cache_purge_payload import (
     CachePurgeJobPayload,
     InvalidCachePurgeJobPayloadError,
 )
+from modules.jobs.category_refresh_handler import CategoryRefreshJobHandler
 from modules.jobs.category_refresh_payload import (
     CATEGORY_REFRESH_JOB_TYPE,
     CategoryRefreshJobPayload,
@@ -34,7 +35,7 @@ from modules.jobs.status import JobStatus
 # 페이로드 기반 클래스, 결과 값 객체, 상태 열거형, 핸들러 인터페이스,
 # 동기 잡 실행기, 재시도 정책, 데드레터 모델, 잡 레지스트리, 캐시 퍼지
 # 페이로드/핸들러, 검색 색인 핸들러, 백링크 갱신 페이로드/placeholder
-# 핸들러, 카테고리 갱신 페이로드만 export한다.
+# 핸들러, 카테고리 갱신 페이로드/placeholder 핸들러만 export한다.
 __all__ = [
     "JobPayload",
     "JobResult",
@@ -57,6 +58,7 @@ __all__ = [
     "CATEGORY_REFRESH_JOB_TYPE",
     "CategoryRefreshJobPayload",
     "InvalidCategoryRefreshJobPayloadError",
+    "CategoryRefreshJobHandler",
     "SEARCH_INDEX_JOB_TYPE",
     "SearchIndexJobHandler",
     "BACKLINK_REFRESH_JOB_TYPE",
