@@ -53,4 +53,16 @@ final class Response
 
         return new self($status, ['Content-Type' => 'application/json'] + $headers, $body);
     }
+
+    /**
+     * HTML 문자열을 body로 하고 Content-Type 헤더를 채운 Response를 생성한다
+     * (태스크 0418). 서버 렌더링 기반만 두는 단계이므로 이스케이프나 템플릿
+     * 처리는 하지 않고, 이미 완성된 HTML 문자열을 그대로 감싼다.
+     *
+     * @param array<string, string> $headers 기본 Content-Type 헤더에 병합할 추가 헤더
+     */
+    public static function html(string $body, int $status = 200, array $headers = []): self
+    {
+        return new self($status, ['Content-Type' => 'text/html; charset=utf-8'] + $headers, $body);
+    }
 }
