@@ -76,6 +76,29 @@ class RecentChangesJobPayload(JobPayload):
     def summary(self) -> str:
         return self._summary
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "RecentChangesJobPayload":
+        """
+        딕셔너리에서 최근 변경 내역 페이로드를 복원한다.
+
+        Args:
+            data: 페이로드 데이터를 담은 딕셔너리
+
+        Returns:
+            복원된 RecentChangesJobPayload 인스턴스
+        """
+        occurred_at = data["occurred_at"]
+        # ISO 형식의 문자열을 datetime으로 변환
+        if isinstance(occurred_at, str):
+            occurred_at = datetime.fromisoformat(occurred_at)
+
+        return cls(
+            page_name=data["page_name"],
+            author_id=data["author_id"],
+            occurred_at=occurred_at,
+            summary=data.get("summary", ""),
+        )
+
 
 __all__ = [
     "RECENT_CHANGES_JOB_TYPE",

@@ -47,6 +47,19 @@ class CategoryRefreshJobPayload(JobPayload):
     def category_name(self) -> str:
         return self._category_name
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "CategoryRefreshJobPayload":
+        """
+        딕셔너리에서 카테고리 갱신 페이로드를 복원한다.
+
+        Args:
+            data: 페이로드 데이터를 담은 딕셔너리
+
+        Returns:
+            복원된 CategoryRefreshJobPayload 인스턴스
+        """
+        return cls(category_name=data["category_name"])
+
 
 __all__ = [
     "CATEGORY_REFRESH_JOB_TYPE",

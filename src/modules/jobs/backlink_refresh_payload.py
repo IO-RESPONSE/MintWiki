@@ -47,6 +47,19 @@ class BacklinkRefreshJobPayload(JobPayload):
     def page_name(self) -> str:
         return self._page_name
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "BacklinkRefreshJobPayload":
+        """
+        딕셔너리에서 백링크 갱신 페이로드를 복원한다.
+
+        Args:
+            data: 페이로드 데이터를 담은 딕셔너리
+
+        Returns:
+            복원된 BacklinkRefreshJobPayload 인스턴스
+        """
+        return cls(page_name=data["page_name"])
+
 
 __all__ = [
     "BACKLINK_REFRESH_JOB_TYPE",

@@ -41,6 +41,11 @@ from modules.jobs.registry import (
     JobRegistry,
     UnknownJobTypeError,
 )
+from modules.jobs.serializer import (
+    JobPayloadSerializer,
+    PayloadRegistry,
+    UnknownPayloadTypeError,
+)
 from modules.jobs.result import InvalidJobResultError, JobResult
 from modules.jobs.retry_policy import InvalidRetryPolicyError, RetryPolicy
 from modules.jobs.rq_backend import RQQueueBackend
@@ -77,6 +82,9 @@ __all__ = [
     "JobRegistry",
     "DuplicateJobTypeError",
     "UnknownJobTypeError",
+    "PayloadRegistry",
+    "JobPayloadSerializer",
+    "UnknownPayloadTypeError",
     "QueueBackend",
     "RQQueueBackend",
     "CeleryQueueBackend",

@@ -68,6 +68,23 @@ class CachePurgeJobPayload(JobPayload):
     def purge_all(self) -> bool:
         return self._purge_all
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "CachePurgeJobPayload":
+        """
+        딕셔너리에서 캐시 퍼지 페이로드를 복원한다.
+
+        Args:
+            data: 페이로드 데이터를 담은 딕셔너리
+
+        Returns:
+            복원된 CachePurgeJobPayload 인스턴스
+        """
+        return cls(
+            source=data.get("source"),
+            parser_version=data.get("parser_version", "1.0.0"),
+            purge_all=data.get("purge_all", False),
+        )
+
 
 __all__ = [
     "CACHE_PURGE_JOB_TYPE",
