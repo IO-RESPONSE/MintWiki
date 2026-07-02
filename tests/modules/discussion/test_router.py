@@ -73,6 +73,26 @@ class TestCreateThread:
         assert response.status_code == 422
         assert "detail" in response.json()
 
+    def test_create_thread_with_whitespace_only_title_returns_422(self, client: TestClient):
+        """엔드포인트는 공백만 있는 제목으로 요청하면 422를 반환한다."""
+        response = client.post(
+            "/threads",
+            json={"document_id": "doc1", "title": "   ", "created_by": "user1"},
+        )
+
+        assert response.status_code == 422
+        assert "detail" in response.json()
+
+    def test_create_thread_normalizes_title_whitespace(self, client: TestClient):
+        """엔드포인트는 제목의 주변 공백을 제거하고 내부 공백을 축소해서 반환한다."""
+        response = client.post(
+            "/threads",
+            json={"document_id": "doc1", "title": "  제목에   대한  이견  ", "created_by": "user1"},
+        )
+
+        assert response.status_code == 200
+        assert response.json()["title"] == "제목에 대한 이견"
+
     def test_create_thread_with_empty_document_id_returns_422(self, client: TestClient):
         """엔드포인트는 빈 문서 id로 요청하면 422를 반환한다."""
         response = client.post(

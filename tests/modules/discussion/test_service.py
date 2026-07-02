@@ -143,6 +143,27 @@ class TestDiscussionServiceThreads:
             await service.create_thread(document_id="doc1", title="", created_by="user1")
 
     @pytest.mark.asyncio
+    async def test_create_thread_raises_on_whitespace_only_title(self):
+        """서비스는 공백만 있는 제목으로 생성하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(EmptyThreadTitleError):
+            await service.create_thread(document_id="doc1", title="   ", created_by="user1")
+
+    @pytest.mark.asyncio
+    async def test_create_thread_normalizes_title_whitespace(self):
+        """서비스는 제목의 주변 공백을 제거하고 내부 공백을 축소해서 저장한다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        thread = await service.create_thread(
+            document_id="doc1", title="  제목에   대한  이견  ", created_by="user1"
+        )
+
+        assert thread.title == "제목에 대한 이견"
+
+    @pytest.mark.asyncio
     async def test_create_thread_raises_on_empty_created_by(self):
         """서비스는 빈 작성자 id로 생성하면 예외를 발생시킨다."""
         repo = InMemoryDiscussionRepository()
