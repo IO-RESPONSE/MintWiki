@@ -53,6 +53,8 @@ def test_acl_package_exports_rule():
         "AclMatrixFixtureLoader",
         "AclMatrixCaseResult",
         "AclMatrixRunner",
+        "NAMESPACE_SEPARATOR",
+        "parse_namespace",
     ]
     assert modules.acl.Rule is Rule
 
@@ -265,3 +267,13 @@ def test_acl_package_exports_matrix_runner():
     assert "AclMatrixRunner" in modules.acl.__all__
     assert modules.acl.AclMatrixCaseResult is AclMatrixCaseResult
     assert modules.acl.AclMatrixRunner is AclMatrixRunner
+
+
+def test_acl_package_exports_namespace_parser():
+    # 0179에서 네임스페이스 파싱 골격이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.namespace_parser import NAMESPACE_SEPARATOR, parse_namespace
+
+    assert "NAMESPACE_SEPARATOR" in modules.acl.__all__
+    assert "parse_namespace" in modules.acl.__all__
+    assert modules.acl.NAMESPACE_SEPARATOR is NAMESPACE_SEPARATOR
+    assert modules.acl.parse_namespace is parse_namespace
