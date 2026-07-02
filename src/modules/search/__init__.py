@@ -13,6 +13,7 @@ from modules.search.result import (
     InvalidSearchResultScoreError,
 )
 from modules.search.adapter import SearchAdapter
+from modules.search.in_memory_adapter import InMemorySearchAdapter
 
 __all__ = [
     "SearchDocument",
@@ -23,4 +24,5 @@ __all__ = [
     "SearchResult",
     "InvalidSearchResultScoreError",
     "SearchAdapter",
+    "InMemorySearchAdapter",
 ]
