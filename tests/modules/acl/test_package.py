@@ -51,6 +51,8 @@ def test_acl_package_exports_rule():
         "AclMatrixCase",
         "AclMatrixFixture",
         "AclMatrixFixtureLoader",
+        "AclMatrixCaseResult",
+        "AclMatrixRunner",
     ]
     assert modules.acl.Rule is Rule
 
@@ -253,3 +255,13 @@ def test_acl_package_exports_matrix_fixture():
     assert modules.acl.AclMatrixCase is AclMatrixCase
     assert modules.acl.AclMatrixFixture is AclMatrixFixture
     assert modules.acl.AclMatrixFixtureLoader is AclMatrixFixtureLoader
+
+
+def test_acl_package_exports_matrix_runner():
+    # 0177에서 ACL 매트릭스 러너가 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.matrix_runner import AclMatrixCaseResult, AclMatrixRunner
+
+    assert "AclMatrixCaseResult" in modules.acl.__all__
+    assert "AclMatrixRunner" in modules.acl.__all__
+    assert modules.acl.AclMatrixCaseResult is AclMatrixCaseResult
+    assert modules.acl.AclMatrixRunner is AclMatrixRunner

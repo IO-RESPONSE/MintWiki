@@ -33,6 +33,7 @@ from modules.acl.matrix_fixture import (
     AclMatrixFixture,
     AclMatrixFixtureLoader,
 )
+from modules.acl.matrix_runner import AclMatrixCaseResult, AclMatrixRunner
 from modules.acl.namespace_defaults import DEFAULT_NAMESPACE, NamespaceAclDefaults
 from modules.acl.permission import Permission
 from modules.acl.rule import (
@@ -81,4 +82,6 @@ __all__ = [
     "AclMatrixCase",
     "AclMatrixFixture",
     "AclMatrixFixtureLoader",
+    "AclMatrixCaseResult",
+    "AclMatrixRunner",
 ]

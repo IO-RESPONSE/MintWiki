@@ -6,8 +6,8 @@ from modules.acl.matrix_fixture import (
     AclMatrixFixture,
     AclMatrixFixtureLoader,
 )
+from modules.acl.matrix_runner import AclMatrixRunner
 from modules.acl.rule import Rule
-from modules.acl.service import AclService
 
 
 class TestAclMatrixFixtureLoaderLoadAll:
@@ -63,20 +63,9 @@ class TestAclMatrixFixturesAgainstAclService:
         "fixture", AclMatrixFixtureLoader.load_all(), ids=lambda f: f.name
     )
     def test_all_cases_match_expected_decision(self, fixture):
-        service = AclService()
-        document_acl = fixture.document_acl()
+        runner = AclMatrixRunner()
 
-        for case in fixture.cases:
-            decision = service.check(
-                permission=case.permission,
-                subject_type=case.subject_type,
-                subject_id=case.subject_id,
-                document_acl=document_acl,
-            )
+        results = runner.run_fixture(fixture)
 
-            assert decision.is_allowed() == case.expected_allowed, (
-                f"{fixture.name}: {case.subject_type}/{case.subject_id} "
-                f"{case.permission} expected allowed={case.expected_allowed}"
-            )
-            if case.expected_matched_rule_id is not None:
-                assert decision.matched_rule_id == case.expected_matched_rule_id
+        failing = [result.describe() for result in results if not result.passed()]
+        assert failing == []
