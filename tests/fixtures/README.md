@@ -14,7 +14,8 @@ tests/fixtures/
 └── seed/           # Portable seed 픽스처 데이터
     ├── README.md   # Seed 픽스처 작성 규칙
     ├── documents.sql  # 기본 문서 데이터
-    └── revisions.sql  # 기본 리비전 데이터
+    ├── revisions.sql  # 기본 리비전 데이터
+    └── collation_korean_titles.sql  # MariaDB collation fixture: 한글 제목 테스트 데이터
 ```
 
 ## 특징
@@ -28,3 +29,4 @@ tests/fixtures/
 - **0490**: Portable seed fixture 추가 (이 디렉토리)
 - **0491**: Python seed loader 추가 (`src/persistence/` 경유)
 - **0492**: PHP seed loader 추가 (`php/tests/` 경유)
+- **0511**: MariaDB collation fixture 테스트 추가 (`test_mariadb_collation_fixture.py`, `collation_korean_titles.sql`)

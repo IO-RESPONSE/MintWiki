@@ -179,10 +179,10 @@ class TestSeedLoaderLoading:
         async with async_session() as session:
             await loader.load_all_seeds(session)
 
-            # 문서 개수 확인
+            # 문서 개수 확인 (documents.sql 3개 + collation_korean_titles.sql 7개)
             doc_result = await session.execute(select(DocumentORM))
             documents = doc_result.scalars().all()
-            assert len(documents) == 3
+            assert len(documents) == 10
 
             # 리비전 개수 확인
             rev_result = await session.execute(select(RevisionORM))
