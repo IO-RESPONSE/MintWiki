@@ -17,6 +17,7 @@ class TestSearchDocumentConstruction:
         assert doc.title == "My Document"
         assert doc.body == ""
         assert doc.redirect_target is None
+        assert doc.categories == []
 
     def test_creates_search_document_with_body(self):
         """본문을 포함하여 검색 문서를 생성한다."""
@@ -35,6 +36,15 @@ class TestSearchDocumentConstruction:
             redirect_target="doc1",
         )
         assert doc.redirect_target == "doc1"
+
+    def test_creates_search_document_with_categories(self):
+        """카테고리를 포함하여 검색 문서를 생성한다."""
+        doc = SearchDocument(
+            document_id="doc4",
+            title="Categorized Document",
+            categories=["Wiki", "Technology"],
+        )
+        assert doc.categories == ["Wiki", "Technology"]
 
     def test_rejects_empty_document_id(self):
         """빈 문서 id로 검색 문서를 생성할 수 없다."""

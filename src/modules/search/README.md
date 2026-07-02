@@ -11,5 +11,5 @@ update a document, and `search()` to run a query and return results.
 
 `InMemorySearchAdapter` (`in_memory_adapter.py`) is the local fallback
 implementation: it keeps indexed `SearchDocument`s in a dict and matches a
-query against the title, body, or redirect target with a case-insensitive
-substring check.
+query against the title, body, redirect target, or categories with a
+case-insensitive substring check.

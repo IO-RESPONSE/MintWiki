@@ -158,6 +158,31 @@ class TestInMemorySearchAdapterSearch:
 
         assert results == []
 
+    @pytest.mark.asyncio
+    async def test_search_matches_category(self):
+        """질의어가 카테고리에만 있어도 검색 결과에 포함된다."""
+        document = SearchDocument(
+            document_id="doc1", title="Hello World", categories=["Wiki"]
+        )
+        adapter = InMemorySearchAdapter()
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="Wiki"))
+
+        assert len(results) == 1
+        assert results[0].document.document_id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_search_does_not_match_when_categories_is_empty(self):
+        """카테고리가 없는 문서는 카테고리로 검색되지 않는다."""
+        document = SearchDocument(document_id="doc1", title="Hello World")
+        adapter = InMemorySearchAdapter()
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="Wiki"))
+
+        assert results == []
+
 
 class TestInMemorySearchAdapterBodySearchFallback:
     """제목에 일치하는 내용이 없을 때 본문 검색으로 폴백하는 동작 테스트."""

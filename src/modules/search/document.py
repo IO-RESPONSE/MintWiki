@@ -1,5 +1,5 @@
 """검색 문서 도메인 모델."""
-from typing import Optional
+from typing import List, Optional
 
 
 class EmptySearchDocumentIdError(Exception):
@@ -29,6 +29,7 @@ class SearchDocument:
         title: str,
         body: str = "",
         redirect_target: Optional[str] = None,
+        categories: Optional[List[str]] = None,
     ):
         """
         검색 문서를 생성한다.
@@ -38,6 +39,7 @@ class SearchDocument:
             title: 검색 대상 제목
             body: 검색 대상 본문 텍스트 (기본값 빈 문자열)
             redirect_target: 리다이렉트 대상 문서의 id (선택사항, 리다이렉트 문서가 아니면 None)
+            categories: 문서가 속한 카테고리명 목록 (선택사항, 기본값 빈 목록)
 
         Raises:
             EmptySearchDocumentIdError: document_id가 비어있거나 공백만 있는 경우
@@ -52,6 +54,7 @@ class SearchDocument:
         self.title = title
         self.body = body
         self.redirect_target = redirect_target
+        self.categories = categories or []
 
     def is_redirect(self) -> bool:
         """이 검색 문서가 리다이렉트 문서인지 확인한다."""
