@@ -224,3 +224,35 @@ class TestInMemoryDiscussionRepository:
         assert len(doc2_threads) == 1
         assert doc1_threads[0].id == "thread1"
         assert doc2_threads[0].id == "thread2"
+
+    @pytest.mark.asyncio
+    async def test_list_threads_by_document_id_ignores_interleaved_other_documents(self):
+        """인메모리 저장소는 다른 문서의 스레드가 섞여 생성되어도 대상 문서의 스레드만 생성 순서대로 나열한다."""
+        repo = InMemoryDiscussionRepository()
+        thread_doc1_a = DiscussionThread(
+            id="thread1",
+            document_id="doc1",
+            title="doc1 첫 번째 이견",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        thread_doc2_a = DiscussionThread(
+            id="thread2",
+            document_id="doc2",
+            title="doc2 첫 번째 이견",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        thread_doc1_b = DiscussionThread(
+            id="thread3",
+            document_id="doc1",
+            title="doc1 두 번째 이견",
+            created_by="user2",
+            created_at=datetime(2026, 1, 2, 0, 0, 0),
+        )
+        await repo.create_thread(thread_doc1_a)
+        await repo.create_thread(thread_doc2_a)
+        await repo.create_thread(thread_doc1_b)
+
+        doc1_threads = await repo.list_threads_by_document_id("doc1")
+        assert [t.id for t in doc1_threads] == ["thread1", "thread3"]
