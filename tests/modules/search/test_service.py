@@ -34,6 +34,20 @@ class TestSearchServiceIndexDocument:
 
         assert adapter._documents["doc1"] is second
 
+    @pytest.mark.asyncio
+    async def test_index_document_stores_multiple_documents_independently(self):
+        """서로 다른 id의 문서를 색인하면 각각 독립적으로 저장된다."""
+        adapter = InMemorySearchAdapter()
+        service = SearchService(adapter)
+        first = SearchDocument(document_id="doc1", title="First Title")
+        second = SearchDocument(document_id="doc2", title="Second Title")
+
+        await service.index_document(first)
+        await service.index_document(second)
+
+        assert adapter._documents["doc1"] is first
+        assert adapter._documents["doc2"] is second
+
 
 class TestSearchServiceSearch:
     """검색 위임 동작 테스트."""
