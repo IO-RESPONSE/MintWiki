@@ -1,9 +1,11 @@
 """문서 편집 시 색인 작업을 큐에 적재하는 서비스."""
+from datetime import datetime, timezone
 from typing import Optional
 
 from modules.document.repository import DocumentRepository
 from modules.jobs.cache_purge_payload import CachePurgeJobPayload
 from modules.jobs.queue_backend import QueueBackend
+from modules.jobs.recent_changes_payload import RecentChangesJobPayload
 from modules.revision.model import Revision
 from modules.revision.service import RevisionService
 from modules.search import IndexDocumentJobPayload
@@ -91,9 +93,18 @@ class EditIndexingService:
             purge_all=False,
         )
 
+        # 최근 변경 내역 작업 페이로드 생성
+        recent_changes_payload = RecentChangesJobPayload(
+            page_name=title,
+            author_id=author_id,
+            occurred_at=datetime.now(timezone.utc),
+            summary=summary,
+        )
+
         # 큐에 적재
         await self._queue.enqueue(index_payload)
         await self._queue.enqueue(cache_purge_payload)
+        await self._queue.enqueue(recent_changes_payload)
 
         return revision
 

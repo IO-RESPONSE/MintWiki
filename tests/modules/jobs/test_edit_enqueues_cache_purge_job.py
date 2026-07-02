@@ -4,7 +4,7 @@ import pytest
 from modules.document.model import Document
 from modules.document.repository import InMemoryDocumentRepository
 from modules.document.service import DocumentService
-from modules.jobs import JobPayload, QueueBackend
+from modules.jobs import JobPayload, QueueBackend, RecentChangesJobPayload
 from modules.jobs.cache_purge_payload import CachePurgeJobPayload
 from modules.jobs.edit_indexing_service import EditIndexingService
 from modules.revision.model import Revision
@@ -120,12 +120,14 @@ class TestEditEnqueuesCachePurgeJob:
             parent_revision_id=rev1.id,
         )
 
-        # 큐에서 순서대로 꺼내기: 색인작업1, 캐시퍼지1, 색인작업2, 캐시퍼지2
+        # 큐에서 순서대로 꺼내기: 색인작업1, 캐시퍼지1, 최근변경1, 색인작업2, 캐시퍼지2, 최근변경2
         job1 = await queue.dequeue()  # 색인 작업 1
         job2 = await queue.dequeue()  # 캐시 퍼지 작업 1
-        job3 = await queue.dequeue()  # 색인 작업 2
-        job4 = await queue.dequeue()  # 캐시 퍼지 작업 2
-        job5 = await queue.dequeue()  # None (큐가 비어있음)
+        job3 = await queue.dequeue()  # 최근 변경 내역 작업 1
+        job4 = await queue.dequeue()  # 색인 작업 2
+        job5 = await queue.dequeue()  # 캐시 퍼지 작업 2
+        job6 = await queue.dequeue()  # 최근 변경 내역 작업 2
+        job7 = await queue.dequeue()  # None (큐가 비어있음)
 
         # 첫 번째 편집의 작업들 확인
         assert job1 is not None
@@ -136,17 +138,25 @@ class TestEditEnqueuesCachePurgeJob:
         assert isinstance(job2, CachePurgeJobPayload)
         assert job2.source == "v2"
 
-        # 두 번째 편집의 작업들 확인
         assert job3 is not None
-        assert isinstance(job3, IndexDocumentJobPayload)
-        assert job3.body == "v3"
+        assert isinstance(job3, RecentChangesJobPayload)
+        assert job3.summary == "Edit 1"
 
+        # 두 번째 편집의 작업들 확인
         assert job4 is not None
-        assert isinstance(job4, CachePurgeJobPayload)
-        assert job4.source == "v3"
+        assert isinstance(job4, IndexDocumentJobPayload)
+        assert job4.body == "v3"
+
+        assert job5 is not None
+        assert isinstance(job5, CachePurgeJobPayload)
+        assert job5.source == "v3"
+
+        assert job6 is not None
+        assert isinstance(job6, RecentChangesJobPayload)
+        assert job6.summary == "Edit 2"
 
         # 큐가 비어있음
-        assert job5 is None
+        assert job7 is None
 
 
 __all__ = ["TestEditEnqueuesCachePurgeJob"]

@@ -1,4 +1,4 @@
-"""문서 편집 시 색인 작업을 큐에 적재하는 통합 테스트."""
+"""문서 편집 시 최근 변경 내역 작업을 큐에 적재하는 통합 테스트."""
 import pytest
 
 from modules.document.model import Document
@@ -14,12 +14,12 @@ from modules.search import IndexDocumentJobPayload
 from tests.modules.jobs.test_queue_backend import ConcreteQueueBackend
 
 
-class TestEditEnqueuesIndexJob:
-    """문서 편집 시 색인 작업이 큐에 적재되는지 확인."""
+class TestEditEnqueuesRecentChangesJob:
+    """문서 편집 시 최근 변경 내역 작업이 큐에 적재되는지 확인."""
 
     @pytest.mark.asyncio
-    async def test_create_revision_enqueues_index_job(self):
-        """리비전을 생성하면 색인 작업을 큐에 적재한다."""
+    async def test_create_revision_enqueues_recent_changes_job(self):
+        """리비전을 생성하면 최근 변경 내역 작업을 큐에 적재한다."""
         doc_repo = InMemoryDocumentRepository()
         rev_repo = InMemoryRevisionRepository()
         queue = ConcreteQueueBackend()
@@ -40,17 +40,31 @@ class TestEditEnqueuesIndexJob:
             parent_revision_id=doc.current_revision_id,
         )
 
-        # 색인 작업이 큐에 적재되었는지 확인
-        enqueued = await queue.dequeue()
-        assert enqueued is not None
-        assert isinstance(enqueued, IndexDocumentJobPayload)
-        assert enqueued.document_id == doc.id
-        assert enqueued.title == "Test Document"
-        assert enqueued.body == "Updated content"
+        # 색인 작업과 캐시 퍼지 작업과 최근 변경 내역 작업이 큐에 적재되었는지 확인
+        index_job = await queue.dequeue()
+        cache_purge_job = await queue.dequeue()
+        recent_changes_job = await queue.dequeue()
+
+        # 색인 작업 확인
+        assert index_job is not None
+        assert isinstance(index_job, IndexDocumentJobPayload)
+        assert index_job.document_id == doc.id
+
+        # 캐시 퍼지 작업 확인
+        assert cache_purge_job is not None
+        assert isinstance(cache_purge_job, CachePurgeJobPayload)
+        assert cache_purge_job.source == "Updated content"
+
+        # 최근 변경 내역 작업 확인
+        assert recent_changes_job is not None
+        assert isinstance(recent_changes_job, RecentChangesJobPayload)
+        assert recent_changes_job.page_name == "Test Document"
+        assert recent_changes_job.author_id == "author-1"
+        assert recent_changes_job.summary == "First edit"
 
     @pytest.mark.asyncio
-    async def test_edit_enqueues_index_job_with_correct_payload(self):
-        """편집 시 정확한 문서 정보를 담은 색인 작업을 큐에 적재한다."""
+    async def test_recent_changes_job_contains_correct_fields(self):
+        """편집 시 올바른 정보를 담은 최근 변경 내역 작업을 큐에 적재한다."""
         doc_repo = InMemoryDocumentRepository()
         rev_repo = InMemoryRevisionRepository()
         queue = ConcreteQueueBackend()
@@ -66,20 +80,31 @@ class TestEditEnqueuesIndexJob:
         await edit_service.create_revision_with_index_job(
             document_id=doc.id,
             source="Content v2",
-            author_id="author-1",
-            summary="Update",
+            author_id="editor-1",
+            summary="오타 수정",
             parent_revision_id=doc.current_revision_id,
         )
 
-        # 첫 번째 색인 작업 확인
-        first_job = await queue.dequeue()
-        assert first_job is not None
-        assert first_job.title == "Wiki Page"
-        assert first_job.body == "Content v2"
+        # 색인 작업 확인 및 스킵
+        index_job = await queue.dequeue()
+        assert index_job is not None
+
+        # 캐시 퍼지 작업 확인 및 스킵
+        cache_purge_job = await queue.dequeue()
+        assert cache_purge_job is not None
+
+        # 최근 변경 내역 작업 확인
+        recent_changes_job = await queue.dequeue()
+        assert recent_changes_job is not None
+        assert isinstance(recent_changes_job, RecentChangesJobPayload)
+        assert recent_changes_job.page_name == "Wiki Page"
+        assert recent_changes_job.author_id == "editor-1"
+        assert recent_changes_job.summary == "오타 수정"
+        assert recent_changes_job.occurred_at is not None
 
     @pytest.mark.asyncio
-    async def test_multiple_edits_enqueue_multiple_jobs(self):
-        """여러 번 편집하면 각각마다 색인 작업을 큐에 적재한다."""
+    async def test_multiple_edits_enqueue_multiple_recent_changes_jobs(self):
+        """여러 번 편집하면 각각마다 최근 변경 내역 작업을 큐에 적재한다."""
         doc_repo = InMemoryDocumentRepository()
         rev_repo = InMemoryRevisionRepository()
         queue = ConcreteQueueBackend()
@@ -118,28 +143,36 @@ class TestEditEnqueuesIndexJob:
         job6 = await queue.dequeue()  # 최근 변경 내역 작업 2
         job7 = await queue.dequeue()  # None (큐가 비어있음)
 
-        # 색인 작업 확인
+        # 첫 번째 편집의 작업들 확인
         assert job1 is not None
         assert isinstance(job1, IndexDocumentJobPayload)
         assert job1.body == "v2"
+
+        assert job2 is not None
+        assert isinstance(job2, CachePurgeJobPayload)
+        assert job2.source == "v2"
+
+        assert job3 is not None
+        assert isinstance(job3, RecentChangesJobPayload)
+        assert job3.page_name == "Document"
+        assert job3.summary == "Edit 1"
+
+        # 두 번째 편집의 작업들 확인
         assert job4 is not None
         assert isinstance(job4, IndexDocumentJobPayload)
         assert job4.body == "v3"
 
-        # 캐시 퍼지 작업 확인
-        assert job2 is not None
-        assert isinstance(job2, CachePurgeJobPayload)
         assert job5 is not None
         assert isinstance(job5, CachePurgeJobPayload)
+        assert job5.source == "v3"
 
-        # 최근 변경 내역 작업 확인
-        assert job3 is not None
-        assert isinstance(job3, RecentChangesJobPayload)
         assert job6 is not None
         assert isinstance(job6, RecentChangesJobPayload)
+        assert job6.page_name == "Document"
+        assert job6.summary == "Edit 2"
 
         # 큐가 비어있음
         assert job7 is None
 
 
-__all__ = ["TestEditEnqueuesIndexJob"]
+__all__ = ["TestEditEnqueuesRecentChangesJob"]
