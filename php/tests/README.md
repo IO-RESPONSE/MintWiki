@@ -125,6 +125,25 @@ PHP test suite.
   `php tests/Modules/Render/FixtureRunnerTest.php` from `php/` after
   `composer install`.
 
+- `Modules/User/UserTest.php` (0409) — confirms `MintWiki\User\User`
+  returns the `id`, `username`, and `displayName` passed to its
+  constructor (with `displayName` defaulting to `null`), preserves a
+  unicode `username` verbatim, and throws `EmptyUsernameError` for an
+  empty or whitespace-only `username`. Run it with
+  `php tests/Modules/User/UserTest.php` from `php/` after
+  `composer install`.
+- `Modules/User/AnonymousIdentityTest.php` (0409) — confirms
+  `MintWiki\User\AnonymousIdentity::isAnonymous()` returns `true` and
+  that each instance is distinct (no shared/singleton state). Run it
+  with `php tests/Modules/User/AnonymousIdentityTest.php` from `php/`
+  after `composer install`.
+- `Modules/User/IpIdentityTest.php` (0409) — confirms
+  `MintWiki\User\IpIdentity` returns the IPv4/IPv6 `ipAddress` passed to
+  its constructor, that `isAnonymous()` returns `true`, and that an
+  invalid or empty address raises `InvalidIpAddressError`. Run it with
+  `php tests/Modules/User/IpIdentityTest.php` from `php/` after
+  `composer install`.
+
 Further fixture runners (...) are added by later Phase B tasks and must
 likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
