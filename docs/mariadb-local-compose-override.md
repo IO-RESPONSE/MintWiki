@@ -286,6 +286,8 @@ chmod 644 db/schema/*.sql
   문자열 비교/정렬 정책.
 - [MariaDB Migration Smoke Plan](mariadb-migration-smoke-plan.md) —
   MariaDB 서버에 대한 smoke 테스트 계획 및 실행 조건.
+- [MariaDB 헬스 체크](mariadb-health-check.md) —
+  MariaDB 연결 상태를 확인하는 방법 (헬스 엔드포인트, CLI, smoke 테스트).
 - [0481 Add optional MariaDB test script](php-db-ui-micro-job-prompts-0351-0670.md) —
   실제 smoke 테스트 스크립트 구현 (이 문서의 자동 smoke 절 참고).
 - [0502 Add MariaDB compose profile](php-db-ui-micro-job-prompts-0351-0670.md) —

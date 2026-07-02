@@ -154,6 +154,8 @@ Checklist §5](migration-portability-checklist.md#5-순방향재실행-안전성
   smoke 대상 SQL 원본의 위치와 파일 규칙.
 - [MariaDB Compatibility Matrix](mariadb-compatibility-matrix.md) — 이
   smoke가 전제하는 MariaDB 최소 지원 버전(10.6 LTS).
+- [MariaDB 헬스 체크](mariadb-health-check.md) —
+  이 smoke 테스트를 포함한 MariaDB 연결 상태 확인 방법.
 - [PostgreSQL DSN Compatibility](postgresql-dsn-compatibility.md) — §1이
   기준으로 삼는 `WIKI_MARIADB_DSN` 형식의 원출처.
 - [PHP, ANSI DB, UI micro job prompts 0351-0670](php-db-ui-micro-job-prompts-0351-0670.md)
