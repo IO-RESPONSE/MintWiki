@@ -5,6 +5,84 @@ Background work orchestration.
 Owns job interfaces, sync runner, queued backend adapters, retry metadata, and
 dead-letter handling.
 
+## Execution Models: Sync vs Queued Runner
+
+The jobs module supports two execution models for running background jobs:
+
+### SyncJobRunner: Synchronous Execution
+
+`SyncJobRunner` (`runner.py`) executes jobs immediately in the calling thread
+with a synchronous contract. It takes a `JobHandler` and `JobPayload`, invokes
+`handler.handle(payload)` directly, and returns the result immediately. If the
+handler raises an exception, `SyncJobRunner` catches it and converts it to a
+failed `JobResult`, ensuring the caller always gets a `JobRunOutcome` with a
+status (SUCCEEDED or FAILED) and a result.
+
+**Use SyncJobRunner when:**
+- A job's result is needed immediately (request-response pattern)
+- The job is fast enough not to block the caller
+- Simple, single-threaded job execution is sufficient
+- Testing or development scenarios where queuing overhead is unnecessary
+
+**Characteristics:**
+- Blocking execution: caller waits for job completion
+- No queue, persistence, or retry mechanism
+- Result available immediately
+- Suitable for synchronous request handlers (e.g., handling an HTTP request)
+
+**Example:** Processing a cache invalidation synchronously within a request
+handler so the response sees the fresh data.
+
+### Queued Runner: Asynchronous Execution
+
+A queued runner (not yet fully implemented in this module) executes jobs
+asynchronously through a `QueueBackend`, decoupling job submission from
+execution. Jobs are enqueued via `QueueBackend.enqueue(payload)`, persisted
+or stored in a message broker (Redis, RabbitMQ, etc.), and processed by
+separate worker processes that dequeue jobs via `QueueBackend.dequeue()`.
+
+**Use a queued runner when:**
+- Job latency is acceptable and the caller doesn't need the result immediately
+- Jobs are long-running or resource-intensive (sending emails, heavy indexing)
+- Multiple workers should process jobs in parallel across machines
+- Jobs should persist across restarts (via durable queue backends)
+- Retry and failure recovery policies are important
+
+**Characteristics:**
+- Non-blocking submission: caller enqueues and returns immediately
+- Persistent storage: jobs survive process crashes
+- Scalable: multiple workers can process jobs in parallel
+- Retry-friendly: failed jobs can be retried from the queue
+- Suitable for background processing (e.g., full-text search indexing)
+
+**Example:** Queueing a full-text search index update when a document is saved,
+processed by background workers without delaying the save response.
+
+**Queue Backends:**
+- `QueueBackend` (`queue_backend.py`) is the abstract interface: `enqueue()`,
+  `dequeue()`, and `size()`, all async. Concrete implementations are provided
+  for RQ (Redis Queue) and Celery.
+- `RQQueueBackend` (`rq_backend.py`) adapts RQ (Redis-backed job queue).
+- `CeleryQueueBackend` (`celery_backend.py`) adapts Celery (message broker-based
+  job queue).
+
+### Design: Separation of Concerns
+
+`SyncJobRunner` and queued runners are designed to share the same handler and
+payload contracts (`JobHandler`, `JobPayload`, `JobResult`, `JobAuditEvent`),
+allowing a handler to run either synchronously or queued without modification.
+The execution model is chosen at runtime (e.g., by the request handler or job
+submission point), not by the handler itself. This allows switching between
+sync and queued execution without changing handler or payload code.
+
+`QueueBackend` and `SyncJobRunner` are independent concerns:
+- `SyncJobRunner` knows nothing about queuing; it only runs a handler once.
+- A queued runner (in a later task) will use `QueueBackend` for persistence and
+  pair `SyncJobRunner` with a worker loop: dequeue → run → record → retry/dead-letter.
+
+Both models record audit events (`JobAuditEvent`) on completion, enabling
+observability regardless of execution mode.
+
 `CachePurgeJobPayload` (`cache_purge_payload.py`) is a `JobPayload` subclass
 for a background cache purge job: it exposes `job_type` as
 `CACHE_PURGE_JOB_TYPE` (`"cache.purge"`). It carries `source` and
