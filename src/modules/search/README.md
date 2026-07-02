@@ -190,3 +190,141 @@ table of expected results over the `SearchFixtureLoader` fixture corpus.
 `tests/modules/search/test_quality_baseline.py` pins that table as a
 regression test, so later quality improvements have a documented "before"
 state to compare against.
+
+## Search Phase QA Checklist
+
+Manual/exploratory checklist for the Search MVP phase (search adapter,
+local fallback search, indexing contracts), grouped by the same areas
+documented above. Each item names the automated test that already covers
+it, so a QA pass can spot-check the listed behavior directly (e.g. via the
+HTTP API or a REPL) and cross-check against the referenced test when a
+result looks wrong.
+
+### Adapter interface & in-memory fallback
+
+- [ ] `SearchAdapter` cannot be instantiated directly and requires
+  `index()`/`search()`/`delete()`/`health_check()` on any subclass.
+  (`test_adapter.py::TestSearchAdapterInterface`)
+- [ ] `InMemorySearchAdapter.search()` matches a query term
+  case-insensitively against `title`, `body`, `redirect_target`, and
+  `categories`, and never duplicates a document that matches in more than
+  one field. (`test_in_memory_adapter.py::TestInMemorySearchAdapterSearch`,
+  `::TestInMemorySearchAdapterBodySearchFallback`,
+  `::TestInMemorySearchAdapterRedirectSearch`)
+- [ ] Re-indexing a `document_id` that is already indexed overwrites the
+  stored document (title/body/redirect/categories all updated), rather
+  than adding a second entry. (`test_in_memory_adapter.py::TestInMemorySearchAdapterIndex`)
+- [ ] `delete()` removes only the target document and is a no-op (does not
+  raise) for an id that was never indexed.
+  (`test_in_memory_adapter.py::TestInMemorySearchAdapterDelete`)
+- [ ] `limit`/`offset` on `SearchQuery` paginate the in-memory result set
+  correctly, including an offset past the end of the results.
+  (`test_in_memory_adapter.py::TestInMemorySearchAdapterPagination`)
+- [ ] `health_check()` always returns `True` for `InMemorySearchAdapter`
+  (empty or non-empty index) since it has no external dependency.
+  (`test_in_memory_adapter.py::TestInMemorySearchAdapterHealthCheck`)
+- [ ] `MeilisearchSearchAdapter`/`OpenSearchSearchAdapter` store their
+  connection settings on construction but raise `NotImplementedError` from
+  every `SearchAdapter` method — confirm this is expected (skeletons only)
+  rather than a bug. (`test_meilisearch_adapter.py`, `test_opensearch_adapter.py`)
+
+### Query & pagination
+
+- [ ] `SearchQuery` rejects an empty or whitespace-only `term`, a `limit`
+  below `1`, and a negative `offset`. (`test_query.py`)
+- [ ] `SearchQuery` defaults to no limit and `offset == 0` when neither is
+  given. (`test_query.py::TestSearchQueryPagination`)
+
+### Service & error mapping
+
+- [ ] `SearchService.index_document()`/`search()`/`delete_document()`/
+  `health_check()` delegate straight through to the configured adapter with
+  no ranking or filtering of their own. (`test_service.py::TestSearchServiceIndexDocument`,
+  `::TestSearchServiceDeleteDocument`, `::TestSearchServiceSearch`)
+- [ ] Every `SearchResult` returned by the service carries the same
+  placeholder `score` of `1.0`, regardless of where the match occurred —
+  confirm this before treating result order as relevance-ranked.
+  (`test_service.py::TestSearchServiceRankingPlaceholder`)
+- [ ] When the underlying adapter raises, `SearchService` wraps the
+  exception in a `SearchServiceError` carrying the failing operation name
+  (`index`/`search`/`delete`/`health_check`) and chains the original
+  exception as the cause, for all four service methods.
+  (`test_service.py::TestSearchServiceAdapterFailureMapping`)
+
+### Indexing payloads & reindex command
+
+- [ ] `IndexDocumentRequest` (schema) and `IndexDocumentJobPayload` both
+  require `document_id`/`title` and accept the same optional
+  `redirect_target`/`categories` fields. (`test_schema.py`, `test_job_payload.py`)
+- [ ] `IndexDocumentJobPayload.to_search_document()` produces a
+  `SearchDocument` with all fields carried over, including when only the
+  required fields are set. (`test_job_payload.py::TestIndexDocumentJobPayloadToSearchDocument`)
+- [ ] `SearchReindexCommand.run()` indexes every document from its
+  `document_source` iterable, returns the count indexed, and makes each
+  document searchable afterward; an empty source indexes nothing.
+  (`test_reindex.py::TestSearchReindexCommandRun`)
+- [ ] A `SearchServiceError` raised mid-reindex propagates out of
+  `SearchReindexCommand.run()` rather than being swallowed.
+  (`test_reindex.py::test_propagates_search_service_error`)
+
+### Config
+
+- [ ] `SearchAdapterConfig` defaults to `"in_memory"`, can be overridden by
+  the `WIKI_SEARCH_BACKEND` environment variable, and an explicit
+  constructor argument takes precedence over the environment variable.
+  (`test_config.py::TestSearchAdapterConfig`)
+- [ ] An unsupported backend value — from either the constructor or the
+  environment variable — raises `InvalidSearchAdapterBackendError`.
+  (`test_config.py::test_unsupported_backend_raises_error`,
+  `::test_unsupported_backend_from_environment_raises_error`)
+
+### Normalization & highlighting (not yet wired in)
+
+- [ ] `normalize_korean_text` only performs Unicode NFC composition — it
+  does not strip particles (josa/eomi), trim whitespace, or change case,
+  and is idempotent when applied twice. Confirm it is **not** called by
+  `InMemorySearchAdapter` yet. (`test_normalization.py::TestNormalizeKoreanTextNoOpBaseline`)
+- [ ] `highlight_search_term` wraps every case-insensitive match with
+  `<mark>` tags while preserving the original casing of matched text, and
+  returns the input unchanged when the term is empty or has no match.
+  Confirm it is **not** called from `SearchService`, `SearchResult`, or the
+  router yet. (`test_highlighting.py::TestHighlightSearchTerm`)
+
+### Fixtures
+
+- [ ] `SearchFixtureLoader.load_all()` returns fixture documents with
+  unique `document_id`s covering title-only, title+body, redirect,
+  categorized, and "full" scenarios; `load_by_id()` raises `ValueError` for
+  an unknown id. (`test_fixtures.py`)
+
+### Router (`GET /title`, `GET /body`, `GET /health`)
+
+- [ ] `GET /title` and `GET /body` return `422` for a missing, empty, or
+  whitespace-only query parameter, and apply `limit`/`offset` from the
+  request. (`test_router.py::TestSearchByTitle`, `::TestSearchByBody`)
+- [ ] Both routes also match against `redirect_target` and `categories`,
+  not just the field named in the route path. (`test_router.py::TestSearchMatchesAcrossIndexedFields`)
+- [ ] `GET /health` always returns `200` with `{"healthy": true/false}`
+  reflecting the adapter's `health_check()` result — confirm it does not
+  yet map an unhealthy backend to `503` or catch a raised
+  `SearchServiceError`. (`test_router.py::TestSearchHealth`)
+- [ ] Response bodies expose only the declared fields (`document_id`,
+  `title`, `score`) — no accidental leakage of `body`/`redirect_target`.
+  (`test_router.py::TestSearchResponseShape`)
+
+### Quality baseline
+
+- [ ] The fixture-corpus query table in
+  [`search-quality-baseline.md`](search-quality-baseline.md) still matches
+  what `InMemorySearchAdapter` returns today; a mismatch means either the
+  doc or the adapter changed without the other being updated.
+  (`test_quality_baseline.py::TestSearchQualityBaseline`)
+
+### What this checklist does not cover
+
+- Real Meilisearch/OpenSearch integration behavior — both adapters are
+  skeletons today; actual client wiring is filled in by later tasks.
+- Indexing HTTP routes — `IndexDocumentRequest` is defined but not yet
+  wired to a route.
+- Search performance/load characteristics under real deployment traffic —
+  this checklist covers functional correctness only.
