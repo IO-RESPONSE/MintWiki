@@ -46,6 +46,9 @@ class TestCreateThread:
         assert data["status"] == "open"
         assert isinstance(data["id"], str)
         assert len(data["id"]) > 0
+        assert isinstance(data["created_at"], str)
+        assert data["closed_at"] is None
+        assert data["paused_at"] is None
 
     def test_create_thread_generates_unique_ids(self, client: TestClient):
         """엔드포인트는 매 요청마다 고유한 id를 발급한다."""
@@ -145,6 +148,7 @@ class TestCloseThread:
         data = response.json()
         assert data["id"] == thread_id
         assert data["status"] == "closed"
+        assert data["closed_at"] is not None
 
     def test_close_nonexistent_thread_returns_404(self, client: TestClient):
         """엔드포인트는 존재하지 않는 스레드를 닫으려 하면 404를 반환한다."""
@@ -172,6 +176,8 @@ class TestAddComment:
         assert data["is_hidden"] is False
         assert isinstance(data["id"], str)
         assert len(data["id"]) > 0
+        assert isinstance(data["created_at"], str)
+        assert data["hidden_at"] is None
 
     def test_add_comment_generates_unique_ids(self, client: TestClient):
         """엔드포인트는 매 요청마다 고유한 id를 발급한다."""

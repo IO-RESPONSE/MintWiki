@@ -82,6 +82,9 @@ async def create_thread(
         title=thread.title,
         created_by=thread.created_by,
         status=thread.status,
+        created_at=thread.created_at,
+        closed_at=thread.closed_at,
+        paused_at=thread.paused_at,
     )
 
 
@@ -109,6 +112,9 @@ async def list_threads(
                 title=thread.title,
                 created_by=thread.created_by,
                 status=thread.status,
+                created_at=thread.created_at,
+                closed_at=thread.closed_at,
+                paused_at=thread.paused_at,
             )
             for thread in threads
         ]
@@ -146,6 +152,9 @@ async def close_thread(
         title=thread.title,
         created_by=thread.created_by,
         status=thread.status,
+        created_at=thread.created_at,
+        closed_at=thread.closed_at,
+        paused_at=thread.paused_at,
     )
 
 
@@ -186,6 +195,8 @@ async def add_comment(
         body=comment.body,
         created_by=comment.created_by,
         is_hidden=comment.is_hidden,
+        created_at=comment.created_at,
+        hidden_at=comment.hidden_at,
     )
 
 
@@ -213,6 +224,8 @@ async def list_comments(
                 body=comment.body,
                 created_by=comment.created_by,
                 is_hidden=comment.is_hidden,
+                created_at=comment.created_at,
+                hidden_at=comment.hidden_at,
             )
             for comment in comments
         ]

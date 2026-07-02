@@ -1,4 +1,7 @@
 """토론 API 스키마."""
+from datetime import datetime
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -18,6 +21,9 @@ class ThreadResponse(BaseModel):
     title: str
     created_by: str
     status: str
+    created_at: datetime
+    closed_at: Optional[datetime] = None
+    paused_at: Optional[datetime] = None
 
 
 class ListThreadsResponse(BaseModel):
@@ -41,6 +47,8 @@ class CommentResponse(BaseModel):
     body: str
     created_by: str
     is_hidden: bool
+    created_at: datetime
+    hidden_at: Optional[datetime] = None
 
 
 class ListCommentsResponse(BaseModel):
