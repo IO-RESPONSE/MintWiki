@@ -109,3 +109,6 @@
 - `docs/php-db-ui-micro-job-prompts-0351-0670.md` — 0424(도메인
   framework 금지 규칙), 0430(PHP QA 스크립트), 0431(루트 QA 훅 연결) 등
   관련 후속 태스크 목록.
+- `docs/php-no-framework-domain-rule.md` — 0424가 정의하는 도메인 계층
+  framework 금지 규칙 정본. 이 규칙을 자동 검사로 구현할지는 위 도입
+  트리거 조건에서 판단한다.

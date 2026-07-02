@@ -137,6 +137,8 @@ namespace MintWiki\...;
   요약만 하는 정본).
 - `docs/php-replacement-strategy.md` — `php/` 트리가 따르는 모듈 단위
   1:1 교체 원칙.
+- `docs/php-no-framework-domain-rule.md` — 0424가 정의하는 도메인 계층
+  framework 금지/어댑터 역참조 금지 규칙 정본.
 - `docs/php-test-bootstrap.md` — 파일을 작성한 뒤 `composer install`과
   `php` CLI로 어떻게 실행/검증하는지.
 - `php/README.md`, `php/tests/README.md` — `php/` 트리 구조와 파일별
