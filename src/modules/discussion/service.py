@@ -113,6 +113,25 @@ class DiscussionService:
         thread.reopen()
         return await self.repository.update_thread(thread)
 
+    async def pause_thread(self, thread_id: str) -> DiscussionThread:
+        """
+        토론 스레드를 일시정지한다.
+
+        Args:
+            thread_id: 일시정지할 스레드의 id
+
+        Returns:
+            일시정지된 토론 스레드
+
+        Raises:
+            DiscussionThreadNotFoundError: 스레드가 없는 경우
+        """
+        thread = await self.repository.get_thread(thread_id)
+        if thread is None:
+            raise DiscussionThreadNotFoundError(f"스레드 id '{thread_id}'를 찾을 수 없습니다")
+        thread.pause(datetime.now(timezone.utc))
+        return await self.repository.update_thread(thread)
+
     async def add_comment(
         self, thread_id: str, body: str, created_by: str
     ) -> DiscussionComment:

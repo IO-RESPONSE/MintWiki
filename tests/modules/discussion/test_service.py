@@ -238,6 +238,45 @@ class TestDiscussionServiceThreads:
         with pytest.raises(DiscussionThreadNotFoundError):
             await service.reopen_thread("nonexistent-id")
 
+    @pytest.mark.asyncio
+    async def test_pause_thread(self):
+        """서비스는 열려 있는 스레드를 일시정지할 수 있다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+
+        paused = await service.pause_thread(thread.id)
+
+        assert paused.id == thread.id
+        assert paused.is_paused() is True
+        assert paused.is_open() is False
+        assert paused.paused_at is not None
+
+    @pytest.mark.asyncio
+    async def test_pause_thread_delegates_to_repository(self):
+        """서비스는 저장소에 스레드 일시정지를 위임한다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+        thread = await service.create_thread(
+            document_id="doc1", title="제목", created_by="user1"
+        )
+
+        await service.pause_thread(thread.id)
+
+        retrieved = await repo.get_thread(thread.id)
+        assert retrieved.is_paused() is True
+
+    @pytest.mark.asyncio
+    async def test_pause_nonexistent_thread_raises(self):
+        """서비스는 존재하지 않는 스레드를 일시정지하려 하면 예외를 발생시킨다."""
+        repo = InMemoryDiscussionRepository()
+        service = DiscussionService(repo)
+
+        with pytest.raises(DiscussionThreadNotFoundError):
+            await service.pause_thread("nonexistent-id")
+
 
 class TestDiscussionServiceComments:
     """토론 서비스의 댓글 추가/조회 테스트."""

@@ -45,6 +45,7 @@ class DiscussionThread:
         created_at: datetime,
         status: str = "open",
         closed_at: Optional[datetime] = None,
+        paused_at: Optional[datetime] = None,
     ):
         """
         토론 스레드를 생성한다.
@@ -57,6 +58,7 @@ class DiscussionThread:
             created_at: 스레드가 생성된 시각
             status: 스레드 상태 (기본값 "open")
             closed_at: 스레드가 닫힌 시각 (선택사항, 닫히지 않았으면 None)
+            paused_at: 스레드가 일시정지된 시각 (선택사항, 일시정지되지 않았으면 None)
 
         Raises:
             EmptyThreadIdError: 스레드 id가 비어있거나 공백만 있는 경우
@@ -80,10 +82,15 @@ class DiscussionThread:
         self.created_at = created_at
         self.status = status
         self.closed_at = closed_at
+        self.paused_at = paused_at
 
     def is_open(self) -> bool:
         """스레드가 열려 있는지 확인한다."""
         return self.status == "open"
+
+    def is_paused(self) -> bool:
+        """스레드가 일시정지되어 있는지 확인한다."""
+        return self.status == "paused"
 
     def close(self, now: datetime) -> None:
         """스레드를 닫는다."""
@@ -94,3 +101,8 @@ class DiscussionThread:
         """스레드를 다시 연다."""
         self.status = "open"
         self.closed_at = None
+
+    def pause(self, now: datetime) -> None:
+        """스레드를 일시정지한다."""
+        self.status = "paused"
+        self.paused_at = now

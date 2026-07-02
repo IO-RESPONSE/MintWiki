@@ -13,6 +13,12 @@ class TestThreadState:
         """CLOSED 멤버는 스레드의 closed 문자열 값과 일치한다."""
         assert ThreadState.CLOSED.value == "closed"
 
+    def test_has_paused_member(self):
+        """PAUSED 멤버는 스레드의 paused 문자열 값과 일치한다."""
+        assert ThreadState.PAUSED.value == "paused"
+
     def test_members_are_distinct(self):
-        """OPEN과 CLOSED는 서로 다른 멤버다."""
+        """OPEN, CLOSED, PAUSED는 서로 다른 멤버다."""
         assert ThreadState.OPEN != ThreadState.CLOSED
+        assert ThreadState.OPEN != ThreadState.PAUSED
+        assert ThreadState.CLOSED != ThreadState.PAUSED

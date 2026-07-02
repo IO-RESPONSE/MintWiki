@@ -156,3 +156,30 @@ class TestDiscussionThreadState:
         assert thread.status == "open"
         assert thread.closed_at is None
         assert thread.is_open() is True
+
+    def test_pause_marks_thread_paused(self):
+        """pause 호출 시 스레드가 일시정지 상태로 전환된다."""
+        thread = DiscussionThread(
+            id="thread1",
+            document_id="doc1",
+            title="제목",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1),
+        )
+        paused_at = datetime(2026, 1, 2)
+        thread.pause(paused_at)
+        assert thread.status == "paused"
+        assert thread.paused_at == paused_at
+        assert thread.is_open() is False
+        assert thread.is_paused() is True
+
+    def test_is_paused_false_for_new_thread(self):
+        """새로 생성된 스레드는 일시정지 상태가 아니다."""
+        thread = DiscussionThread(
+            id="thread1",
+            document_id="doc1",
+            title="제목",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1),
+        )
+        assert thread.is_paused() is False

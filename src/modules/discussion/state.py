@@ -11,3 +11,4 @@ class ThreadState(Enum):
 
     OPEN = "open"
     CLOSED = "closed"
+    PAUSED = "paused"
