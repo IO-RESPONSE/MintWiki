@@ -13,9 +13,13 @@ def test_user_package_exports_domain_model():
         "AnonymousIdentity",
         "IpIdentity",
         "InvalidIpAddressError",
+        "Group",
+        "EmptyGroupNameError",
     ]
     assert modules.user.User is not None
     assert modules.user.EmptyUsernameError is not None
     assert modules.user.AnonymousIdentity is not None
     assert modules.user.IpIdentity is not None
     assert modules.user.InvalidIpAddressError is not None
+    assert modules.user.Group is not None
+    assert modules.user.EmptyGroupNameError is not None
