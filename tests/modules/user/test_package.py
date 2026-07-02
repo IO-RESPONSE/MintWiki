@@ -7,6 +7,7 @@ def test_user_package_is_importable():
 
 
 def test_user_package_exports_domain_model():
-    assert modules.user.__all__ == ["User", "EmptyUsernameError"]
+    assert modules.user.__all__ == ["User", "EmptyUsernameError", "AnonymousIdentity"]
     assert modules.user.User is not None
     assert modules.user.EmptyUsernameError is not None
+    assert modules.user.AnonymousIdentity is not None
