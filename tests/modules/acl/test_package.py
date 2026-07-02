@@ -43,6 +43,10 @@ def test_acl_package_exports_rule():
         "restrict_document_delete",
         "DOCUMENT_ADMIN_RESTRICTION_RULE_ID",
         "restrict_document_admin",
+        "AclAuditAction",
+        "AclAuditEvent",
+        "EmptyAclAuditEventIdError",
+        "MissingRuleIdError",
     ]
     assert modules.acl.Rule is Rule
 
@@ -202,3 +206,22 @@ def test_acl_package_exports_document_admin_restriction():
         is DOCUMENT_ADMIN_RESTRICTION_RULE_ID
     )
     assert modules.acl.restrict_document_admin is restrict_document_admin
+
+
+def test_acl_package_exports_audit_event():
+    # 0171에서 AclAuditEvent 모델이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.audit_event import (
+        AclAuditAction,
+        AclAuditEvent,
+        EmptyAclAuditEventIdError,
+        MissingRuleIdError,
+    )
+
+    assert "AclAuditAction" in modules.acl.__all__
+    assert "AclAuditEvent" in modules.acl.__all__
+    assert "EmptyAclAuditEventIdError" in modules.acl.__all__
+    assert "MissingRuleIdError" in modules.acl.__all__
+    assert modules.acl.AclAuditAction is AclAuditAction
+    assert modules.acl.AclAuditEvent is AclAuditEvent
+    assert modules.acl.EmptyAclAuditEventIdError is EmptyAclAuditEventIdError
+    assert modules.acl.MissingRuleIdError is MissingRuleIdError

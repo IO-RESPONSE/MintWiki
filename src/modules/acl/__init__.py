@@ -1,4 +1,10 @@
 """ACL module package."""
+from modules.acl.audit_event import (
+    AclAuditAction,
+    AclAuditEvent,
+    EmptyAclAuditEventIdError,
+    MissingRuleIdError,
+)
 from modules.acl.decision import Decision
 from modules.acl.default_policy import (
     LOGGED_IN_EDIT_RULE_ID,
@@ -61,4 +67,8 @@ __all__ = [
     "restrict_document_delete",
     "DOCUMENT_ADMIN_RESTRICTION_RULE_ID",
     "restrict_document_admin",
+    "AclAuditAction",
+    "AclAuditEvent",
+    "EmptyAclAuditEventIdError",
+    "MissingRuleIdError",
 ]
