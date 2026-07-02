@@ -124,3 +124,23 @@ class TestSearchServiceSearch:
         results = await service.search(SearchQuery(term="Anything"))
 
         assert results == []
+
+    @pytest.mark.asyncio
+    async def test_search_returns_all_matching_documents(self):
+        """질의어에 일치하는 여러 문서를 모두 반환한다."""
+        adapter = InMemorySearchAdapter()
+        service = SearchService(adapter)
+        await service.index_document(
+            SearchDocument(document_id="doc1", title="Apple Pie")
+        )
+        await service.index_document(
+            SearchDocument(document_id="doc2", title="Apple Juice")
+        )
+        await service.index_document(
+            SearchDocument(document_id="doc3", title="Banana Bread")
+        )
+
+        results = await service.search(SearchQuery(term="Apple"))
+
+        result_ids = {result.document.document_id for result in results}
+        assert result_ids == {"doc1", "doc2"}
