@@ -256,3 +256,35 @@ class TestInMemoryDiscussionRepository:
 
         doc1_threads = await repo.list_threads_by_document_id("doc1")
         assert [t.id for t in doc1_threads] == ["thread1", "thread3"]
+
+    @pytest.mark.asyncio
+    async def test_list_comments_by_thread_id_ignores_interleaved_other_threads(self):
+        """인메모리 저장소는 다른 스레드의 댓글이 섞여 생성되어도 대상 스레드의 댓글만 생성 순서대로 나열한다."""
+        repo = InMemoryDiscussionRepository()
+        comment_thread1_a = DiscussionComment(
+            id="comment1",
+            thread_id="thread1",
+            body="thread1 첫 번째 댓글",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        comment_thread2_a = DiscussionComment(
+            id="comment2",
+            thread_id="thread2",
+            body="thread2 첫 번째 댓글",
+            created_by="user1",
+            created_at=datetime(2026, 1, 1, 0, 0, 0),
+        )
+        comment_thread1_b = DiscussionComment(
+            id="comment3",
+            thread_id="thread1",
+            body="thread1 두 번째 댓글",
+            created_by="user2",
+            created_at=datetime(2026, 1, 2, 0, 0, 0),
+        )
+        await repo.create_comment(comment_thread1_a)
+        await repo.create_comment(comment_thread2_a)
+        await repo.create_comment(comment_thread1_b)
+
+        thread1_comments = await repo.list_comments_by_thread_id("thread1")
+        assert [c.id for c in thread1_comments] == ["comment1", "comment3"]
