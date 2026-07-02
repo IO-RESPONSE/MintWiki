@@ -13,9 +13,22 @@ def test_discussion_package_exports_thread_model():
         "EmptyThreadDocumentIdError",
         "EmptyThreadTitleError",
         "EmptyThreadCreatedByError",
+        "DiscussionComment",
+        "EmptyCommentIdError",
+        "EmptyCommentThreadIdError",
+        "EmptyCommentBodyError",
+        "EmptyCommentCreatedByError",
     ]
     assert modules.discussion.DiscussionThread is not None
     assert modules.discussion.EmptyThreadIdError is not None
     assert modules.discussion.EmptyThreadDocumentIdError is not None
     assert modules.discussion.EmptyThreadTitleError is not None
     assert modules.discussion.EmptyThreadCreatedByError is not None
+
+
+def test_discussion_package_exports_comment_model():
+    assert modules.discussion.DiscussionComment is not None
+    assert modules.discussion.EmptyCommentIdError is not None
+    assert modules.discussion.EmptyCommentThreadIdError is not None
+    assert modules.discussion.EmptyCommentBodyError is not None
+    assert modules.discussion.EmptyCommentCreatedByError is not None

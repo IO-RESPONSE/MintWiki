@@ -1,4 +1,11 @@
 """Discussion module package."""
+from modules.discussion.comment import (
+    DiscussionComment,
+    EmptyCommentBodyError,
+    EmptyCommentCreatedByError,
+    EmptyCommentIdError,
+    EmptyCommentThreadIdError,
+)
 from modules.discussion.thread import (
     DiscussionThread,
     EmptyThreadCreatedByError,
@@ -13,4 +20,9 @@ __all__ = [
     "EmptyThreadDocumentIdError",
     "EmptyThreadTitleError",
     "EmptyThreadCreatedByError",
+    "DiscussionComment",
+    "EmptyCommentIdError",
+    "EmptyCommentThreadIdError",
+    "EmptyCommentBodyError",
+    "EmptyCommentCreatedByError",
 ]
