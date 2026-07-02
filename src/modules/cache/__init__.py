@@ -5,6 +5,7 @@ from modules.cache.cache import Cache
 from modules.cache.redis import RedisCacheBackend
 from modules.cache.read import read_render_cache
 from modules.cache.write import write_render_cache
+from modules.cache.invalidate import invalidate_render_cache
 
 __all__ = [
     "build_render_cache_key",
@@ -14,4 +15,5 @@ __all__ = [
     "Cache",
     "read_render_cache",
     "write_render_cache",
+    "invalidate_render_cache",
 ]
