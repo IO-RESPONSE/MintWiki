@@ -83,6 +83,171 @@ sync and queued execution without changing handler or payload code.
 Both models record audit events (`JobAuditEvent`) on completion, enabling
 observability regardless of execution mode.
 
+## Job Failure Handling
+
+Job failures can occur in two ways:
+
+### Failure Detection
+
+1. **Explicit Failures via JobResult.fail()**
+
+   A handler may return a failed `JobResult` by calling `JobResult.fail(error)`.
+   This is the preferred way to indicate a known, recoverable failure. The error
+   message provides context for logging and retry decisions.
+
+   Example:
+   ```python
+   def handle(self, payload: JobPayload) -> JobResult:
+       if payload.data is invalid:
+           return JobResult.fail("Invalid payload data")
+       # ... perform work
+       return JobResult.ok()
+   ```
+
+2. **Implicit Failures via Exception**
+
+   If a handler raises an exception (e.g., `ValueError`, `RuntimeError`, or any
+   other exception), `SyncJobRunner` catches it and automatically converts it to
+   a failed `JobResult` with the exception message as the error text. This ensures
+   the runner never crashes due to a handler bug; instead, it treats the error as
+   a job failure and records an audit event.
+
+   Example:
+   ```python
+   def handle(self, payload: JobPayload) -> JobResult:
+       result = external_service.call()  # may raise exception
+       return JobResult.ok(data=result)
+   ```
+
+### Failure Representation
+
+All failures are captured in a `JobResult` with:
+- `success=False`
+- `data=None` (always None for failures)
+- `error: str` (required; describes the failure reason)
+
+When `SyncJobRunner.run()` completes, it wraps the `JobResult` in a `JobRunOutcome`:
+- `status`: `JobStatus.FAILED` if the result failed
+- `result`: the `JobResult` with the error message
+
+This means the caller **always** receives a structured outcome; failures never
+propagate uncaught exceptions.
+
+### Failure Recording and Audit Trail
+
+On every job execution (success or failure), `SyncJobRunner` records an audit
+event via `JobAuditRecorder`:
+
+- **On Success:** `record_job_succeeded(job_type)` records a `JobAuditEvent`
+  with `action=JOB_SUCCEEDED` and `error=None`.
+
+- **On Failure:** `record_job_failed(job_type, error)` records a `JobAuditEvent`
+  with `action=JOB_FAILED` and the failure reason. This happens regardless of
+  whether the failure came from an explicit `JobResult.fail()` or an exception.
+
+Audit events include:
+- `id`: unique identifier generated at record time
+- `action`: `JOB_SUCCEEDED` or `JOB_FAILED`
+- `job_type`: the payload's job type (for categorizing the failure)
+- `occurred_at`: UTC timestamp of the event
+- `error`: error message (populated only when `action=JOB_FAILED`)
+
+These events are accumulated in memory and can be persisted to storage in a
+later phase. They enable debugging, monitoring, and failure analysis.
+
+### Retry Policies
+
+`RetryPolicy` (`retry_policy.py`) defines when and how a failed job should be
+retried:
+
+- `max_attempts`: maximum number of attempts (including the initial attempt).
+  For example, `max_attempts=3` means try once, then retry twice.
+
+- `base_delay_seconds`: delay (in seconds) before the first retry.
+
+- `backoff_multiplier`: exponential backoff multiplier (default: 2.0). The delay
+  before retry N is calculated as:
+  ```
+  delay_ms(attempt) = base_delay_seconds * (backoff_multiplier ** (attempt - 1))
+  ```
+
+  For example, with `base_delay_seconds=1.0` and `backoff_multiplier=2.0`:
+  - After attempt 1: wait 1.0 second
+  - After attempt 2: wait 2.0 seconds
+  - After attempt 3: wait 4.0 seconds
+
+  This pattern ensures transient failures (network glitches, temporary lock
+  contention) have time to recover without overwhelming the system with
+  immediate retries.
+
+The `RetryPolicy` object itself only computes delay and checks whether retries
+remain; the actual retry loop and state transitions are implemented in the
+queued runner (a later task).
+
+### Dead Letter Handling
+
+`DeadLetter` (`dead_letter.py`) preserves metadata for jobs that fail beyond
+the maximum retry attempts:
+
+- `payload`: the original job payload (for inspection and potential replay)
+- `job_type`: the job's type (for categorization)
+- `error`: the error message from the final failed attempt
+- `attempts`: number of attempts made before giving up (always ≥ 1)
+
+When a job's attempt count reaches `retry_policy.max_attempts`, the queued
+runner creates a `DeadLetter` and stores it for later analysis or replay.
+Dead letters allow operators to:
+- Understand why a job failed permanently
+- Decide whether the job should be retried manually
+- Fix the underlying issue and replay the job
+- Collect statistics on failure patterns
+
+Dead letter storage and handling are implemented in a later task.
+
+### Error Handling Best Practices
+
+1. **Return Explicit Failures for Known Issues**
+
+   Use `JobResult.fail()` for validation errors, precondition failures, or
+   recoverable business logic errors:
+   ```python
+   if not await dependency.exists():
+       return JobResult.fail("Dependency not found")
+   ```
+
+   This makes the failure reason clear in logs and audit events.
+
+2. **Let Exceptions Bubble Up Briefly**
+
+   If a handler calls an external API or system that throws an exception for
+   unforeseen reasons (network timeouts, parse errors), allow the exception to
+   propagate. `SyncJobRunner` will catch it and convert it to a failed result,
+   preserving the exception message:
+   ```python
+   # SyncJobRunner will catch any exception and return
+   # JobResult.fail(str(exception))
+   result = external_service.critical_operation()
+   return JobResult.ok(data=result)
+   ```
+
+3. **Provide Context in Error Messages**
+
+   Error messages should be specific enough to debug failures later:
+   ```python
+   # Bad: too generic
+   return JobResult.fail("Failed")
+
+   # Good: specific context
+   return JobResult.fail(
+       f"Failed to index page '{page_id}': search adapter returned {status_code}"
+   )
+   ```
+
+4. **Avoid Swallowing Exceptions Without Logging**
+
+   If you catch an exception in the handler, either return a failed result or
+   re-raise it. The audit trail depends on knowing the failure reason.
+
 `CachePurgeJobPayload` (`cache_purge_payload.py`) is a `JobPayload` subclass
 for a background cache purge job: it exposes `job_type` as
 `CACHE_PURGE_JOB_TYPE` (`"cache.purge"`). It carries `source` and
