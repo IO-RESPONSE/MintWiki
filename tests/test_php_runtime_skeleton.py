@@ -8,8 +8,25 @@
 """
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PHP_ROOT = REPO_ROOT / "php"
+
+MODULE_NAMESPACES = [
+    "Document",
+    "Revision",
+    "Parser",
+    "Render",
+    "Acl",
+    "Discussion",
+    "Search",
+    "Cache",
+    "Jobs",
+    "User",
+    "Admin",
+    "Audit",
+]
 
 
 class TestPhpRuntimeSkeleton:
@@ -42,3 +59,19 @@ class TestPhpRuntimeSkeleton:
         """0397부터 `src/Http`에 정적 route 매칭만 지원하는 Router가 들어온다."""
         router_file = PHP_ROOT / "src" / "Http" / "Router.php"
         assert router_file.is_file(), "missing php/src/Http/Router.php"
+
+    def test_src_modules_directory_exists(self):
+        """0399부터 `src/Modules`에 모듈별 namespace 골격이 들어온다."""
+        modules_dir = PHP_ROOT / "src" / "Modules"
+        assert modules_dir.is_dir(), "missing php/src/Modules"
+
+    def test_src_modules_readme_exists(self):
+        readme = PHP_ROOT / "src" / "Modules" / "README.md"
+        assert readme.is_file(), "missing php/src/Modules/README.md"
+
+    @pytest.mark.parametrize("module_name", MODULE_NAMESPACES)
+    def test_module_namespace_skeleton_directory_exists(self, module_name):
+        """`docs/php-namespace-mapping.md`가 고정한 12개 모듈 namespace마다
+        빈 디렉터리(+ README)가 있어야 한다."""
+        readme = PHP_ROOT / "src" / "Modules" / module_name / "README.md"
+        assert readme.is_file(), f"missing php/src/Modules/{module_name}/README.md"
