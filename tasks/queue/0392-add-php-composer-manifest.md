@@ -1,0 +1,35 @@
+# 0392 Add PHP composer manifest
+
+## Goal
+
+Composer manifest를 추가한다.
+
+## Phase
+
+Phase B: PHP Runtime Skeleton, 0391-0440.
+
+## Scope
+
+- php/composer.json
+
+## Acceptance Criteria
+
+- The task implements only the behavior named in the goal.
+- Relevant tests or fixtures are added or updated.
+- Existing tests continue to pass.
+- The change is small enough to review as one runner cycle.
+
+## Out of Scope
+
+- Work from later task numbers.
+- Broad refactors across unrelated modules.
+- Production deployment changes unless explicitly named in this task.
+
+## QA
+
+- `scripts/test.sh`
+- `scripts/qa.sh`
+
+## Notes
+
+shared hosting 대응을 위해 의존성은 최소화한다.

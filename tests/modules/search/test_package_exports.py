@@ -12,9 +12,10 @@ class TestSearchPackageExports:
     def test_all_matches_declared_exports(self):
         """__all__ 에 선언된 이름이 실제 모듈 속성으로 존재한다.
 
-        어댑터/로컬 폴백 검색/인덱싱 계약은 후속 태스크에서 추가되므로,
+        로컬 폴백 검색 구현/인덱싱 계약은 후속 태스크에서 추가되므로,
         현재는 검색 문서 모델(SearchDocument), 검색 질의 모델(SearchQuery),
-        검색 결과 모델(SearchResult), 그리고 그 오류 타입만 export한다.
+        검색 결과 모델(SearchResult), 검색 어댑터 인터페이스(SearchAdapter),
+        그리고 그 오류 타입만 export한다.
         """
         assert search.__all__ == [
             "SearchDocument",
@@ -24,6 +25,7 @@ class TestSearchPackageExports:
             "EmptySearchQueryTermError",
             "SearchResult",
             "InvalidSearchResultScoreError",
+            "SearchAdapter",
         ]
         for name in search.__all__:
             assert hasattr(search, name)

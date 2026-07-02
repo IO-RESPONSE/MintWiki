@@ -12,6 +12,7 @@ from modules.search.result import (
     SearchResult,
     InvalidSearchResultScoreError,
 )
+from modules.search.adapter import SearchAdapter
 
 __all__ = [
     "SearchDocument",
@@ -21,4 +22,5 @@ __all__ = [
     "EmptySearchQueryTermError",
     "SearchResult",
     "InvalidSearchResultScoreError",
+    "SearchAdapter",
 ]
