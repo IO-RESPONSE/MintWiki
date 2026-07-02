@@ -237,3 +237,54 @@ class TestListComments:
 
         assert response.status_code == 200
         assert response.json()["comments"] == []
+
+
+class TestCloseThreadIdempotency:
+    """스레드 닫기 엔드포인트의 반복 호출 동작 테스트."""
+
+    def test_closing_already_closed_thread_stays_closed(self, client: TestClient):
+        """이미 닫힌 스레드를 다시 닫아도 오류 없이 닫힌 상태를 유지한다."""
+        create_response = client.post(
+            "/threads",
+            json={"document_id": "doc1", "title": "제목", "created_by": "user1"},
+        )
+        thread_id = create_response.json()["id"]
+        client.post(f"/threads/{thread_id}/close")
+
+        response = client.post(f"/threads/{thread_id}/close")
+
+        assert response.status_code == 200
+        assert response.json()["status"] == "closed"
+
+
+class TestDiscussionApiIntegration:
+    """여러 엔드포인트를 이어서 호출하는 통합 시나리오 테스트."""
+
+    def test_thread_and_comment_flow_via_api(self, client: TestClient):
+        """스레드 생성, 댓글 추가, 목록 조회, 닫기가 API를 통해 일관되게 반영된다."""
+        create_response = client.post(
+            "/threads",
+            json={"document_id": "doc1", "title": "제목", "created_by": "user1"},
+        )
+        thread_id = create_response.json()["id"]
+
+        client.post(
+            f"/threads/{thread_id}/comments",
+            json={"body": "첫 번째 댓글", "created_by": "user2"},
+        )
+        client.post(
+            f"/threads/{thread_id}/comments",
+            json={"body": "두 번째 댓글", "created_by": "user3"},
+        )
+
+        comments_response = client.get(f"/threads/{thread_id}/comments")
+        bodies = [c["body"] for c in comments_response.json()["comments"]]
+        assert bodies == ["첫 번째 댓글", "두 번째 댓글"]
+
+        client.post(f"/threads/{thread_id}/close")
+
+        threads_response = client.get("/threads", params={"document_id": "doc1"})
+        threads = threads_response.json()["threads"]
+        assert len(threads) == 1
+        assert threads[0]["id"] == thread_id
+        assert threads[0]["status"] == "closed"
