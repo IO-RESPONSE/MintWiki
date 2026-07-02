@@ -68,9 +68,20 @@
   `user_session` 테이블(0464)로 분리한다. `User` 도메인 모델이
   `created_at`/`updated_at`을 갖지 않아 이 파일도 두 컬럼을 두지 않는다.
 
+## 0464가 채우는 것
+
+- `user_session.sql`: `src/modules/user/session.py`의 `Session`,
+  `src/modules/user/session_repository.py`의 `SessionRepository`와
+  [User Portable Repository Plan §3](../../docs/user-portable-repository-plan.md#3-session--user_session-테이블)이
+  확정한 컬럼(`id`, `account_id`, `created_at`, `expires_at`)을 옮기는
+  portable `CREATE TABLE` 문. `account_id`는 `account.sql`(0463)이 만든
+  `account` 테이블을 참조하는 `fk_user_session_account_id` FK를 갖는다.
+  `SessionRepository`가 `create`/`get`/`delete`만 요구하고 모두 `id`(PK)
+  기준이라 추가 인덱스는 두지 않는다.
+
 ## 이후 채워질 파일
 
-- **0464~0468**: `user_session`, ACL, discussion, audit, jobs 테이블.
+- **0465~0468**: ACL, discussion, audit, jobs 테이블.
 - **0469**: 이 디렉터리 전체에 대한 SQL feature 금지 목록 자동 검사(lint
   테스트).
 - **0493**: PHP 웹호스팅 installer가 참조할 별도의 schema version 테이블.
