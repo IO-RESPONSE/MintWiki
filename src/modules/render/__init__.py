@@ -7,5 +7,6 @@ from modules.render.internal_link import render_internal_link
 from modules.render.external_link import render_external_link
 from modules.render.bold_italic_strike import render_bold, render_italic, render_strike
 from modules.render.unordered_list import render_unordered_list
+from modules.render.ordered_list import render_ordered_list
 
-__all__ = ["escape_html", "render_plain_paragraph", "render_heading", "generate_heading_id", "render_internal_link", "render_external_link", "render_bold", "render_italic", "render_strike", "render_unordered_list"]
+__all__ = ["escape_html", "render_plain_paragraph", "render_heading", "generate_heading_id", "render_internal_link", "render_external_link", "render_bold", "render_italic", "render_strike", "render_unordered_list", "render_ordered_list"]
