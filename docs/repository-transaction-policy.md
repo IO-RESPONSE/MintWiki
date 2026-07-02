@@ -38,7 +38,7 @@
 - 조회 전용 메서드(`get`, `list_by_document_id` 등) — 쓰기가 없으므로
   commit/rollback을 호출하지 않는다.
 - 제약 위반을 식별하는 구체적인 방법(에러 메시지 매칭 vs 제약 이름) —
-  [0474 portable duplicate key handling](php-db-ui-micro-job-prompts-0351-0670.md)이
+  [0474 portable duplicate key handling](portable-duplicate-key-handling.md)이
   다룬다. 이 문서는 "언제 rollback을 호출하는가"만 다루고, "어떤 예외를
   도메인 예외로 바꾸는가"는 다루지 않는다.
 
@@ -183,5 +183,5 @@ except IntegrityError as e:
   원출처.
 - [MariaDB Compatibility Matrix](mariadb-compatibility-matrix.md) —
   DDL의 암묵적 커밋 등 트랜잭션 관련 PostgreSQL/MariaDB 차이.
-- [0474 portable duplicate key handling](php-db-ui-micro-job-prompts-0351-0670.md) —
+- [0474 portable duplicate key handling](portable-duplicate-key-handling.md) —
   rollback 이후 어떤 예외를 도메인 예외로 바꾸는지 확정하는 후속 문서.

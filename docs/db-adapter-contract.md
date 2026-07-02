@@ -54,7 +54,7 @@ Repository가 SQLAlchemy 세부사항(예외 타입, flush/commit 순서 등)을
   다룬다. 이 문서는 "어댑터가 commit/rollback을 노출해야 한다"는 존재만
   확정한다.
 - 제약 위반의 구체적 식별 방법(에러 메시지 매칭 vs 제약 이름 vs SQLSTATE) —
-  [0474 portable duplicate key handling](php-db-ui-micro-job-prompts-0351-0670.md)이
+  [0474 portable duplicate key handling](portable-duplicate-key-handling.md)이
   다룬다.
 - SQL 방언 분기(예: upsert)의 실제 구현과 드라이버 기능 차이 탐지 —
   [0450](php-db-ui-micro-job-prompts-0351-0670.md),
@@ -163,7 +163,7 @@ class DbAdapter(ABC):
   통합 신호로 잡아 Repository에 전달할 수 있어야 한다는 존재 자체.
 - 이 문서가 확정하지 않는 것: 위반된 제약을 식별하는 구체적인 방법(제약
   이름 파싱 vs 에러 메시지 매칭 vs DB별 SQLSTATE 코드 비교) —
-  [0474 portable duplicate key handling](php-db-ui-micro-job-prompts-0351-0670.md)이
+  [0474 portable duplicate key handling](portable-duplicate-key-handling.md)이
   다룬다. 다만 힌트는 남긴다:
   [portable-schema-naming-policy.md](portable-schema-naming-policy.md#3-테이블컬럼-네이밍-규칙)가
   이미 모든 제약에 `uq_<table>_<column>` 같은 예측 가능한 이름을
@@ -226,8 +226,9 @@ class DbAdapter(ABC):
 - **0473**([repository-transaction-policy.md](repository-transaction-policy.md)):
   repository 트랜잭션 정책 — 2절 commit/rollback의 정확한 시점과
   크로스 모듈 트랜잭션 경계를 확정한다.
-- **0474**: portable duplicate key handling — 3절이 미정으로 남긴 제약
-  식별 방법을 확정한다.
+- **0474**([portable-duplicate-key-handling.md](portable-duplicate-key-handling.md)):
+  portable duplicate key handling — 3절이 미정으로 남긴 제약 식별 방법을
+  확정한다.
 - **0484 이후**: PHP 쪽 PDO connection/transaction skeleton, SQL dialect
   enum, document/revision SQL repository skeleton이 이 계약을 PHP
   interface로 옮긴다.
