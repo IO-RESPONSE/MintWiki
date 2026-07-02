@@ -20,11 +20,15 @@ import sys
 from pathlib import Path
 
 # 도메인에 침투하면 안 되는 프레임워크의 최상위 패키지명
+# 주의: "pydantic-settings" 패키지는 import 시 최상위 이름이 "pydantic" 이
+# 아니라 "pydantic_settings" 이므로 별도로 등록해야 한다 (실제 pyproject.toml
+# 의존성 목록 기준).
 FORBIDDEN_ROOTS = {
     "fastapi",
     "starlette",
     "sqlalchemy",
     "pydantic",
+    "pydantic_settings",
     "asyncpg",
     "uvicorn",
     "alembic",
