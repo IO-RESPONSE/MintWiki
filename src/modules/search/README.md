@@ -66,6 +66,15 @@ module's shared job payload base class and the actual job handler are
 added in later tasks; this payload is defined standalone here in the
 meantime.
 
+`SearchReindexCommand` (`reindex.py`) is the search reindex command
+skeleton: it wraps a `SearchService` and a `document_source` (any iterable
+of `SearchDocument`), and its `run()` method iterates the source, indexing
+each document through the service, and returns the count of documents
+indexed. Wiring `document_source` to pull the live document set from the
+`document` module (rather than an iterable passed in directly by the
+caller) is filled in by a later task; this command only provides the loop
+and delegation shape.
+
 `SearchAdapterConfig` (`config.py`) selects which `SearchAdapter`
 implementation to construct: a plain domain class (no `pydantic`, per the
 portability layering rules, since it's not a `router.py`/`repository.py`/

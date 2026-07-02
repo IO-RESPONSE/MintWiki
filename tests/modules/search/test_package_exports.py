@@ -20,7 +20,8 @@ class TestSearchPackageExports:
         어댑터 골격(MeilisearchSearchAdapter), OpenSearch 검색 어댑터
         골격(OpenSearchSearchAdapter), 어댑터로 위임하는 검색 서비스
         골격(SearchService), 문서 색인 작업 페이로드
-        (IndexDocumentJobPayload), 사용할 검색 어댑터 구현을 고르는 설정
+        (IndexDocumentJobPayload), 검색 색인 재구축 명령 골격
+        (SearchReindexCommand), 사용할 검색 어댑터 구현을 고르는 설정
         (SearchAdapterConfig), 한국어 텍스트 정규화 자리표시자
         (normalize_korean_text), 검색 결과 하이라이팅 자리표시자
         (highlight_search_term), 검색 서비스 오류 모델
@@ -42,6 +43,7 @@ class TestSearchPackageExports:
             "OpenSearchSearchAdapter",
             "SearchService",
             "IndexDocumentJobPayload",
+            "SearchReindexCommand",
             "SearchAdapterConfig",
             "InvalidSearchAdapterBackendError",
             "normalize_korean_text",

@@ -20,6 +20,7 @@ from modules.search.meilisearch_adapter import MeilisearchSearchAdapter
 from modules.search.opensearch_adapter import OpenSearchSearchAdapter
 from modules.search.service import SearchService
 from modules.search.job_payload import IndexDocumentJobPayload
+from modules.search.reindex import SearchReindexCommand
 from modules.search.config import SearchAdapterConfig, InvalidSearchAdapterBackendError
 from modules.search.normalization import normalize_korean_text
 from modules.search.highlighting import highlight_search_term
@@ -41,6 +42,7 @@ __all__ = [
     "OpenSearchSearchAdapter",
     "SearchService",
     "IndexDocumentJobPayload",
+    "SearchReindexCommand",
     "SearchAdapterConfig",
     "InvalidSearchAdapterBackendError",
     "normalize_korean_text",
