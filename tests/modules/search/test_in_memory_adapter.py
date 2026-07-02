@@ -268,3 +268,115 @@ class TestInMemorySearchAdapterBodySearchFallback:
         assert old_body_results == []
         assert len(new_body_results) == 1
         assert new_body_results[0].document.document_id == "doc1"
+
+
+class TestInMemorySearchAdapterRedirectSearch:
+    """리다이렉트 대상으로 검색되는 동작 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_redirect_search_is_case_insensitive(self):
+        """리다이렉트 대상 검색은 대소문자를 구분하지 않는다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(
+            document_id="doc1", title="Old Title", redirect_target="New Title"
+        )
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="new title"))
+
+        assert len(results) == 1
+        assert results[0].document.document_id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_redirect_search_matches_partial_target(self):
+        """질의어가 리다이렉트 대상의 일부에 포함되면 검색 결과에 포함된다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(
+            document_id="doc1", title="Old Title", redirect_target="New Title"
+        )
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="Title"))
+
+        assert len(results) == 1
+        assert results[0].document.document_id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_redirect_search_returns_multiple_matching_documents(self):
+        """리다이렉트 대상 검색으로 여러 문서가 일치하면 모두 반환한다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(
+            SearchDocument(
+                document_id="doc1", title="First", redirect_target="Shared Target"
+            )
+        )
+        await adapter.index(
+            SearchDocument(
+                document_id="doc2", title="Second", redirect_target="Shared Target"
+            )
+        )
+        await adapter.index(
+            SearchDocument(
+                document_id="doc3", title="Third", redirect_target="Unrelated Target"
+            )
+        )
+
+        results = await adapter.search(SearchQuery(term="Shared Target"))
+
+        result_ids = {result.document.document_id for result in results}
+        assert result_ids == {"doc1", "doc2"}
+
+    @pytest.mark.asyncio
+    async def test_redirect_search_does_not_duplicate_result_when_term_in_title_and_redirect_target(
+        self,
+    ):
+        """질의어가 제목과 리다이렉트 대상에 모두 있어도 결과는 한 번만 반환된다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(
+            document_id="doc1",
+            title="Findable Title",
+            redirect_target="Findable Redirect",
+        )
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="Findable"))
+
+        assert len(results) == 1
+        assert results[0].document.document_id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_redirect_search_does_not_match_when_term_absent_from_redirect_target(
+        self,
+    ):
+        """질의어가 리다이렉트 대상에 없으면 리다이렉트 검색으로도 결과가 없다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(
+            document_id="doc1", title="Old Title", redirect_target="New Title"
+        )
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="Nonexistent"))
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_reindexing_updates_searchable_redirect_target(self):
+        """같은 id로 리다이렉트 대상을 바꿔 다시 색인하면, 검색 결과에도 새 리다이렉트 대상이 반영된다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(
+            SearchDocument(
+                document_id="doc1", title="Title", redirect_target="Old Target"
+            )
+        )
+        await adapter.index(
+            SearchDocument(
+                document_id="doc1", title="Title", redirect_target="New Target"
+            )
+        )
+
+        old_target_results = await adapter.search(SearchQuery(term="Old Target"))
+        new_target_results = await adapter.search(SearchQuery(term="New Target"))
+
+        assert old_target_results == []
+        assert len(new_target_results) == 1
+        assert new_target_results[0].document.document_id == "doc1"
