@@ -8,6 +8,10 @@ from modules.search.query import (
     SearchQuery,
     EmptySearchQueryTermError,
 )
+from modules.search.result import (
+    SearchResult,
+    InvalidSearchResultScoreError,
+)
 
 __all__ = [
     "SearchDocument",
@@ -15,4 +19,6 @@ __all__ = [
     "EmptySearchDocumentTitleError",
     "SearchQuery",
     "EmptySearchQueryTermError",
+    "SearchResult",
+    "InvalidSearchResultScoreError",
 ]
