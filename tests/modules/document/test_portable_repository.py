@@ -194,3 +194,124 @@ class TestPortableQueryBuilderPolicy:
         survivor = await repo.get("doc1")
         assert survivor is not None
         assert survivor.title == "Safe Document"
+
+    @pytest.mark.asyncio
+    async def test_lookup_with_sql_keywords_in_title(self, async_db_session):
+        """SQL 키워드가 포함된 제목으로도 정확히 조회된다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        title = "SELECT * FROM document WHERE"
+        await repo.create(Document(id="doc1", title=title))
+
+        result = await repo.get_by_normalized_title(title)
+        assert result is not None
+        assert result.id == "doc1"
+        assert result.title == title
+
+    @pytest.mark.asyncio
+    async def test_lookup_with_double_quotes(self, async_db_session):
+        """큰따옴표가 포함된 정규화된 제목으로 정확히 조회된다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        title = 'Document with "quoted" text'
+        await repo.create(Document(id="doc1", title=title))
+
+        result = await repo.get_by_normalized_title(title)
+        assert result is not None
+        assert result.id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_lookup_with_mixed_quotes(self, async_db_session):
+        """작은따옴표와 큰따옴표가 섞여 있는 제목으로 정확히 조회된다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        title = '''Document with 'single' and "double" quotes'''
+        await repo.create(Document(id="doc1", title=title))
+
+        result = await repo.get_by_normalized_title(title)
+        assert result is not None
+        assert result.id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_lookup_with_semicolon(self, async_db_session):
+        """세미콜론이 포함된 제목으로도 정확히 조회된다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        title = "SQL Injection Attempt; DROP TABLE document;"
+        await repo.create(Document(id="doc1", title=title))
+
+        result = await repo.get_by_normalized_title(title)
+        assert result is not None
+        assert result.id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_lookup_with_backslash(self, async_db_session):
+        """백슬래시가 포함된 제목으로도 정확히 조회된다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        title = "Path\\to\\document"
+        await repo.create(Document(id="doc1", title=title))
+
+        result = await repo.get_by_normalized_title(title)
+        assert result is not None
+        assert result.id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_lookup_nonexistent_returns_none(self, async_db_session):
+        """존재하지 않는 정규화된 제목으로 조회하면 None을 반환한다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        await repo.create(Document(id="doc1", title="Existing Document"))
+
+        result = await repo.get_by_normalized_title("Nonexistent Document")
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_multiple_lookups_with_special_chars(self, async_db_session):
+        """특수문자가 있는 여러 문서들이 정확히 구분되어 조회된다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        docs = [
+            Document(id="doc1", title="O'Brien's Report"),
+            Document(id="doc2", title='Report "Final" Version'),
+            Document(id="doc3", title="Report; Urgent!"),
+            Document(id="doc4", title="Normal Report"),
+        ]
+
+        for doc in docs:
+            await repo.create(doc)
+
+        # 각 문서를 정확히 조회할 수 있다.
+        assert (await repo.get_by_normalized_title("O'Brien's Report")).id == "doc1"
+        assert (await repo.get_by_normalized_title('Report "Final" Version')).id == "doc2"
+        assert (await repo.get_by_normalized_title("Report; Urgent!")).id == "doc3"
+        assert (await repo.get_by_normalized_title("Normal Report")).id == "doc4"
+
+    @pytest.mark.asyncio
+    async def test_lookup_with_parentheses(self, async_db_session):
+        """괄호가 포함된 제목으로도 정확히 조회된다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        title = "Report (Confidential) - Q3"
+        await repo.create(Document(id="doc1", title=title))
+
+        result = await repo.get_by_normalized_title(title)
+        assert result is not None
+        assert result.id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_lookup_with_equals_sign(self, async_db_session):
+        """등호가 포함된 제목으로도 정확히 조회된다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        title = "Formula: X = Y + Z"
+        await repo.create(Document(id="doc1", title=title))
+
+        result = await repo.get_by_normalized_title(title)
+        assert result is not None
+        assert result.id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_lookup_distinguishes_from_similar_titles(self, async_db_session):
+        """유사한 제목들이 정확히 구분되어 조회된다."""
+        repo = DatabaseDocumentRepository(async_db_session)
+        await repo.create(Document(id="doc1", title="Document's Title"))
+        await repo.create(Document(id="doc2", title="Documents Title"))
+
+        result1 = await repo.get_by_normalized_title("Document's Title")
+        result2 = await repo.get_by_normalized_title("Documents Title")
+
+        assert result1.id == "doc1"
+        assert result2.id == "doc2"
+        assert result1.id != result2.id
