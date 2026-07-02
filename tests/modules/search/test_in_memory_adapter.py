@@ -31,6 +31,20 @@ class TestInMemorySearchAdapterIndex:
 
         assert adapter._documents["doc1"] is second
 
+    @pytest.mark.asyncio
+    async def test_reindexing_updates_searchable_title(self):
+        """같은 id로 제목을 바꿔 다시 색인하면, 검색 결과에도 새 제목이 반영된다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(SearchDocument(document_id="doc1", title="First Title"))
+        await adapter.index(SearchDocument(document_id="doc1", title="Second Title"))
+
+        old_title_results = await adapter.search(SearchQuery(term="First"))
+        new_title_results = await adapter.search(SearchQuery(term="Second"))
+
+        assert old_title_results == []
+        assert len(new_title_results) == 1
+        assert new_title_results[0].document.document_id == "doc1"
+
 
 class TestInMemorySearchAdapterSearch:
     """검색 기능 테스트."""
@@ -102,5 +116,18 @@ class TestInMemorySearchAdapterSearch:
         adapter = InMemorySearchAdapter()
 
         results = await adapter.search(SearchQuery(term="Anything"))
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_search_does_not_match_body_only_content(self):
+        """질의어가 본문에만 있고 제목에는 없으면 검색 결과에 포함되지 않는다."""
+        adapter = InMemorySearchAdapter()
+        document = SearchDocument(
+            document_id="doc1", title="Hello World", body="Nonexistent term here"
+        )
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="Nonexistent"))
 
         assert results == []
