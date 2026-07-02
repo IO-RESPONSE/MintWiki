@@ -3,6 +3,7 @@ from modules.user.anonymous import AnonymousIdentity
 from modules.user.group import EmptyGroupNameError, Group
 from modules.user.ip_identity import InvalidIpAddressError, IpIdentity
 from modules.user.model import EmptyUsernameError, User
+from modules.user.password import PasswordHasher
 from modules.user.repository import InMemoryUserRepository, UserRepository
 
 __all__ = [
@@ -15,4 +16,5 @@ __all__ = [
     "EmptyGroupNameError",
     "UserRepository",
     "InMemoryUserRepository",
+    "PasswordHasher",
 ]

@@ -17,6 +17,7 @@ def test_user_package_exports_domain_model():
         "EmptyGroupNameError",
         "UserRepository",
         "InMemoryUserRepository",
+        "PasswordHasher",
     ]
     assert modules.user.User is not None
     assert modules.user.EmptyUsernameError is not None
@@ -27,3 +28,4 @@ def test_user_package_exports_domain_model():
     assert modules.user.EmptyGroupNameError is not None
     assert modules.user.UserRepository is not None
     assert modules.user.InMemoryUserRepository is not None
+    assert modules.user.PasswordHasher is not None
