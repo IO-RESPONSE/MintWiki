@@ -50,7 +50,7 @@ Repository가 SQLAlchemy 세부사항(예외 타입, flush/commit 순서 등)을
   이미 다룬다.
 - InMemory* 구현체 — SQL을 전혀 거치지 않으므로 이 계약의 대상이 아니다.
 - 커밋 시점과 크로스 모듈 트랜잭션 경계의 세부 규칙 —
-  [0473 repository 트랜잭션 정책](php-db-ui-micro-job-prompts-0351-0670.md)이
+  [0473 repository 트랜잭션 정책](repository-transaction-policy.md)이
   다룬다. 이 문서는 "어댑터가 commit/rollback을 노출해야 한다"는 존재만
   확정한다.
 - 제약 위반의 구체적 식별 방법(에러 메시지 매칭 vs 제약 이름 vs SQLSTATE) —
@@ -223,7 +223,8 @@ class DbAdapter(ABC):
   UPDATE가 필요하다)를 참조한다.
 - **0472**: DB driver capability model — 어댑터가 드라이버별로 다르게
   노출할 수 있는 기능 차이(예: `RETURNING` 지원 여부)를 다룬다.
-- **0473**: repository 트랜잭션 정책 — 2절 commit/rollback의 정확한 시점과
+- **0473**([repository-transaction-policy.md](repository-transaction-policy.md)):
+  repository 트랜잭션 정책 — 2절 commit/rollback의 정확한 시점과
   크로스 모듈 트랜잭션 경계를 확정한다.
 - **0474**: portable duplicate key handling — 3절이 미정으로 남긴 제약
   식별 방법을 확정한다.
