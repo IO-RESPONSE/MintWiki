@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "module": "acl",
+  "summary": "Owns permission decisions.",
+  "port": {
+    "source_path": "src/modules/acl",
+    "target_namespace": "MintWiki\\Acl",
+    "status": "not_started"
+  },
+  "service": {
+    "path": "src/modules/acl/service.py",
+    "public_methods": [
+      "check"
+    ]
+  },
+  "repository": {
+    "port_path": "src/modules/acl/service.py",
+    "interface": "AclService"
+  },
+  "fixtures": {
+    "path": "tests/modules/acl/fixtures",
+    "format": "json"
+  },
+  "contract_notes": [
+    "check(permission, subject_type, subject_id=None, document_acl=None, namespace=DEFAULT_NAMESPACE) -> Decision 가 고정된 입력/출력 계약이다. 입력은 검사할 permission(Permission), 대상 종류(subject_type: SubjectType)와 대상 id(subject_id, USER/GROUP일 때만 필요), 문서별 규칙(document_acl: 선택), 네임스페이스(namespace: 기본값 '*')로 구성된다. 출력 Decision 은 permission/allowed/reason/matched_rule_id 네 필드를 가지며, 일치하는 규칙이 없으면 allowed=False, matched_rule_id=None, reason='no matching rule' 로 고정된 거부 응답을 반환한다.",
+    "규칙 목록 해석 순서: document_acl 이 주어지고 has_rules() 가 참이면 그 규칙만 사용하고 namespace_defaults 는 전혀 참조하지 않는다(병합하지 않음). 그 외의 경우에만 namespace_defaults.get(namespace) 를 사용한다. 해석된 규칙 목록은 등록 순서대로 permission 과 subject 가 모두 일치하는 첫 번째 규칙(first match wins)의 effect 를 결과로 사용하며, 구체성이나 allow/deny 우선순위 로직은 없다. 자세한 근거는 src/modules/acl/README.md 의 ACL Evaluation Order 참고.",
+    "check() 가 의도적으로 평가하지 않는 것: 규칙 만료(Rule.expires_at/is_expired) 는 check() 가 now 인자를 받지 않으므로 검사하지 않으며, 만료된 규칙을 걸러내는 것은 document_acl/namespace_defaults 를 구성하는 호출자의 책임이다. 그룹 소속 여부(Group.has_member)도 check() 가 조회하지 않으므로, 호출자가 후보 그룹마다 check() 를 반복 호출해야 한다. 사용자 차단 여부(modules.user.block_check_service.BlockCheckService) 는 router.py 의 require_permission 의존성이 check() 호출 이전에 별도로 검사하며 ACL 규칙 평가의 일부가 아니다.",
+    "acl 은 도메인 계층에 저장소 포트(ABC)를 아직 갖지 않는다. DocumentAcl 과 NamespaceAclDefaults 는 메모리에만 존재하는 도메인 모델이며 영속화 어댑터가 없다. repository 필드는 이 모듈의 유일한 진입 계약인 AclService 를 가리킬 뿐 영속성 어댑터를 의미하지 않는다 — parser/render manifest 와 동일한 표기 방식이다.",
+    "docs/modules.md 의 의존 규칙에 따라 acl 은 user, document, audit 을 호출할 수 있다. 현재 구현(router.py)은 이 중 user(BlockCheckService)만 실제로 호출하며, document/audit 연동은 이후 태스크에서 채운다.",
+    "fixtures 디렉터리(tests/modules/acl/fixtures)는 아직 채워지지 않았다. 현재 픽스처는 src/modules/acl/matrix_fixture.py(AclMatrixFixtureLoader)에 Python 객체로 존재하며, 공용 JSON fixture 변환은 태스크 0370 에서 진행한다.",
+    "target_namespace 는 태스크 0367(Python to PHP namespace mapping)에서 정식 문서화되기 전까지의 후보값이다."
+  ]
+}
