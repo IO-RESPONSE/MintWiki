@@ -6,6 +6,7 @@ from modules.user.model import EmptyUsernameError, User
 from modules.user.password import PasswordHasher
 from modules.user.repository import InMemoryUserRepository, UserRepository
 from modules.user.session import EmptySessionIdError, EmptyUserIdError, Session
+from modules.user.session_repository import SessionRepository
 
 __all__ = [
     "User",
@@ -21,4 +22,5 @@ __all__ = [
     "Session",
     "EmptySessionIdError",
     "EmptyUserIdError",
+    "SessionRepository",
 ]
