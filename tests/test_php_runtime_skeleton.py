@@ -26,7 +26,10 @@ class TestPhpRuntimeSkeleton:
             readme = PHP_ROOT / name / "README.md"
             assert readme.is_file(), f"missing php/{name}/README.md"
 
-    def test_skeleton_contains_no_php_files_yet(self):
-        """0391 시점에는 골격만 추가하고, 실제 PHP 소스는 아직 없다."""
-        php_files = list(PHP_ROOT.rglob("*.php"))
-        assert php_files == []
+    def test_src_and_public_contain_no_php_files_yet(self):
+        """0391 시점 골격 원칙은 `src/`, `public/`에는 여전히 유효하다 —
+        실제 애플리케이션 PHP 소스는 아직 없다. `tests/`는 0393부터
+        autoload smoke test를 담으므로 이 제약에서 제외한다."""
+        for name in ["src", "public"]:
+            php_files = list((PHP_ROOT / name).rglob("*.php"))
+            assert php_files == [], f"unexpected .php files under php/{name}"
