@@ -53,7 +53,7 @@ Python 리스트/딕셔너리로만 존재하고, `document`/`revision`/`user`
 - `AclAuditEvent`/`AclAuditRecorder`(`audit_event.py`, `audit_recorder.py`)의
   저장소 설계 — `modules/audit/README.md`가 "permission logs"를 명시적으로
   `audit` 모듈 소유로 두고 있고, 그 모듈의 portability 계획은
-  [0457 audit portable repository plan](php-db-ui-micro-job-prompts-0351-0670.md)과
+  [0457 audit portable repository plan](audit-portable-repository-plan.md)과
   [0467 audit table portable SQL](php-db-ui-micro-job-prompts-0351-0670.md)의
   범위다 — 이 문서보다 뒤 번호 태스크이므로 범위 밖(Out of Scope: "Work
   from later task numbers")이다.
@@ -227,7 +227,7 @@ Policy](portable-query-builder-policy.md)에 따라 SQLAlchemy 쿼리 빌더
   확정하지 않은 `sort_order` 동시성 처리(레이스 컨디션 재시도 전략)는
   그 구현 태스크가 결정해야 한다.
 - `AclAuditEvent`의 저장소 설계는 [0457 audit portable repository
-  plan](php-db-ui-micro-job-prompts-0351-0670.md)이 다룬다(적용 범위
+  plan](audit-portable-repository-plan.md)이 다룬다(적용 범위
   참고).
 
 ## 관련 문서

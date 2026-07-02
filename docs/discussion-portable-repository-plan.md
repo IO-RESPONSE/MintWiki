@@ -73,7 +73,7 @@ Alembic 마이그레이션이 아직 없다는 점은 `user`/`acl` 모듈과 같
   않은 감사 트레일을 전제하게 된다 — [ACL Portable Repository
   Plan](acl-portable-repository-plan.md#적용-범위)이 `AclAuditEvent` 저장소
   설계를 같은 이유로 [0457 audit portable repository
-  plan](php-db-ui-micro-job-prompts-0351-0670.md)에 넘긴 것과 동일하게, 이
+  plan](audit-portable-repository-plan.md)에 넘긴 것과 동일하게, 이
   문서도 `DiscussionAuditEvent` 저장소 설계를 0457/그 이후 태스크로 넘긴다.
 - `DiscussionRecentActivity`(`recent_activity.py`,
   `recent_activity_service.py`) — 저장소 자체가 없다. `from_audit_event()`가
@@ -256,7 +256,7 @@ CommentORM.created_at, CommentORM.id).limit(limit).offset(offset)` 형태의
 - 실제 `Database*Repository` 구현체와 그에 대한 portability 테스트
   (0452/0453과 같은 형식)는 0466 이후 별도 태스크의 범위다.
 - `DiscussionAuditEvent`의 저장소 설계는 [0457 audit portable repository
-  plan](php-db-ui-micro-job-prompts-0351-0670.md)이 다룬다(적용 범위 참고).
+  plan](audit-portable-repository-plan.md)이 다룬다(적용 범위 참고).
 
 ## 관련 문서
 

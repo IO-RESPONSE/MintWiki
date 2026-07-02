@@ -213,8 +213,11 @@ class DbAdapter(ABC):
 - **0456**([discussion-portable-repository-plan.md](discussion-portable-repository-plan.md)):
   discussion 모듈(스레드/댓글) 저장소 portability 계획에서 이 계약을
   참조한다.
-- **0457-0458**: audit/jobs 각 모듈의 저장소 portability 계획에서 이 계약을
-  참조한다.
+- **0457**([audit-portable-repository-plan.md](audit-portable-repository-plan.md)):
+  audit 모듈(감사 이벤트) 저장소 portability 계획에서 이 계약 중 §5가
+  확인한 부분집합(`add`/`fetch_one`/`fetch_all`/`commit`/`rollback`,
+  `execute` 제외)을 참조한다.
+- **0458**: jobs 모듈의 저장소 portability 계획에서 이 계약을 참조한다.
 - **0472**: DB driver capability model — 어댑터가 드라이버별로 다르게
   노출할 수 있는 기능 차이(예: `RETURNING` 지원 여부)를 다룬다.
 - **0473**: repository 트랜잭션 정책 — 2절 commit/rollback의 정확한 시점과
