@@ -120,14 +120,15 @@ class TestInMemorySearchAdapterSearch:
         assert results == []
 
     @pytest.mark.asyncio
-    async def test_search_does_not_match_body_only_content(self):
-        """질의어가 본문에만 있고 제목에는 없으면 검색 결과에 포함되지 않는다."""
+    async def test_search_matches_body_only_content(self):
+        """질의어가 본문에만 있고 제목에는 없어도 검색 결과에 포함된다."""
         adapter = InMemorySearchAdapter()
         document = SearchDocument(
-            document_id="doc1", title="Hello World", body="Nonexistent term here"
+            document_id="doc1", title="Hello World", body="Findable term here"
         )
         await adapter.index(document)
 
-        results = await adapter.search(SearchQuery(term="Nonexistent"))
+        results = await adapter.search(SearchQuery(term="Findable"))
 
-        assert results == []
+        assert len(results) == 1
+        assert results[0].document.document_id == "doc1"
