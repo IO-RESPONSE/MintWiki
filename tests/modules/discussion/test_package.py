@@ -19,6 +19,7 @@ def test_discussion_package_exports_thread_model():
         "EmptyCommentBodyError",
         "EmptyCommentCreatedByError",
         "ThreadState",
+        "DiscussionRepository",
     ]
     assert modules.discussion.DiscussionThread is not None
     assert modules.discussion.EmptyThreadIdError is not None
@@ -37,3 +38,7 @@ def test_discussion_package_exports_comment_model():
 
 def test_discussion_package_exports_thread_state_enum():
     assert modules.discussion.ThreadState is not None
+
+
+def test_discussion_package_exports_repository_interface():
+    assert modules.discussion.DiscussionRepository is not None

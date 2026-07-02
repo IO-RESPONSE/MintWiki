@@ -1,0 +1,103 @@
+"""토론 저장소 인터페이스."""
+from abc import ABC, abstractmethod
+from typing import Optional
+
+from modules.discussion.comment import DiscussionComment
+from modules.discussion.thread import DiscussionThread
+
+
+class DiscussionRepository(ABC):
+    """
+    토론 저장소의 인터페이스.
+
+    저장소는 토론 스레드와 댓글을 저장하고 검색하는 메서드를 정의한다.
+    구체적인 저장소 구현(메모리, 데이터베이스 등)은
+    이 인터페이스를 구현해야 한다.
+    """
+
+    @abstractmethod
+    async def create_thread(self, thread: DiscussionThread) -> DiscussionThread:
+        """
+        새로운 토론 스레드를 저장소에 저장한다.
+
+        Args:
+            thread: 저장할 토론 스레드
+
+        Returns:
+            저장된 토론 스레드
+
+        Raises:
+            다양한 저장소 구현별 예외가 발생할 수 있음
+        """
+        pass
+
+    @abstractmethod
+    async def get_thread(self, id: str) -> Optional[DiscussionThread]:
+        """
+        주어진 id로 토론 스레드를 조회한다.
+
+        Args:
+            id: 조회할 토론 스레드의 고유 식별자
+
+        Returns:
+            조회된 토론 스레드 또는 없으면 None
+        """
+        pass
+
+    @abstractmethod
+    async def list_threads_by_document_id(self, document_id: str) -> list[DiscussionThread]:
+        """
+        주어진 문서의 토론 스레드를 생성 순서대로 나열한다.
+
+        Args:
+            document_id: 조회할 문서의 고유 식별자
+
+        Returns:
+            문서의 토론 스레드 목록 (생성 순서)
+        """
+        pass
+
+    @abstractmethod
+    async def update_thread(self, thread: DiscussionThread) -> DiscussionThread:
+        """
+        기존 토론 스레드를 업데이트한다.
+
+        Args:
+            thread: 업데이트할 토론 스레드
+
+        Returns:
+            업데이트된 토론 스레드
+
+        Raises:
+            다양한 저장소 구현별 예외가 발생할 수 있음
+        """
+        pass
+
+    @abstractmethod
+    async def create_comment(self, comment: DiscussionComment) -> DiscussionComment:
+        """
+        새로운 댓글을 저장소에 저장한다.
+
+        Args:
+            comment: 저장할 댓글
+
+        Returns:
+            저장된 댓글
+
+        Raises:
+            다양한 저장소 구현별 예외가 발생할 수 있음
+        """
+        pass
+
+    @abstractmethod
+    async def list_comments_by_thread_id(self, thread_id: str) -> list[DiscussionComment]:
+        """
+        주어진 스레드의 댓글을 생성 순서대로 나열한다.
+
+        Args:
+            thread_id: 조회할 스레드의 고유 식별자
+
+        Returns:
+            스레드의 댓글 목록 (생성 순서)
+        """
+        pass
