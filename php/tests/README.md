@@ -22,6 +22,18 @@ PHP test suite.
   an in-memory `pdo_sqlite` connection so the test stays network-free.
   Run it with `php tests/Persistence/PdoTransactionTest.php` from `php/`
   after `composer install`.
+- `Persistence/SqlDialectTest.php` (0486) — confirms
+  `MintWiki\Persistence\SqlDialect` enum cases and methods (`tryFrom`,
+  `tryFromDriver`, `fromDriver`) work correctly. Run it with
+  `php tests/Persistence/SqlDialectTest.php` from `php/` after
+  `composer install`.
+- `Modules/Document/DocumentRepositoryTest.php` (0487) — confirms
+  `MintWiki\Modules\Document\DocumentRepository` skeleton and `Document`
+  domain model are correctly structured. Uses an in-memory `pdo_sqlite`
+  connection so the test stays network-free. SQL implementation is
+  placeholder for now. Run it with
+  `php tests/Modules/Document/DocumentRepositoryTest.php` from `php/`
+  after `composer install`.
 
 These tests run without phpunit, directly via the `php` CLI, and without
 any network dependency (`composer.json` declares no packages beyond the
