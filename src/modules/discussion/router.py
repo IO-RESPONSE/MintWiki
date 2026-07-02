@@ -14,6 +14,7 @@ from modules.discussion.schema import (
     AddCommentRequest,
     CommentResponse,
     CreateThreadRequest,
+    ListCommentsResponse,
     ListThreadsResponse,
     ThreadResponse,
 )
@@ -150,6 +151,36 @@ async def add_comment(
         body=comment.body,
         created_by=comment.created_by,
         is_hidden=comment.is_hidden,
+    )
+
+
+@router.get("/threads/{thread_id}/comments", tags=["discussion"])
+async def list_comments(
+    thread_id: str,
+    service: DiscussionService = Depends(get_discussion_service),
+) -> ListCommentsResponse:
+    """
+    주어진 스레드의 댓글 목록을 생성 순서대로 반환한다.
+
+    Args:
+        thread_id: 조회할 스레드의 id (경로 파라미터)
+        service: 토론 서비스
+
+    Returns:
+        스레드의 댓글 목록 (생성 순서)
+    """
+    comments = await service.list_comments_by_thread_id(thread_id)
+    return ListCommentsResponse(
+        comments=[
+            CommentResponse(
+                id=comment.id,
+                thread_id=comment.thread_id,
+                body=comment.body,
+                created_by=comment.created_by,
+                is_hidden=comment.is_hidden,
+            )
+            for comment in comments
+        ]
     )
 
 

@@ -178,3 +178,36 @@ class TestAddComment:
         )
 
         assert response.status_code == 422
+
+
+class TestListComments:
+    """댓글 목록 조회 엔드포인트 테스트."""
+
+    def test_list_comments_returns_comments_for_thread(self, client: TestClient):
+        """엔드포인트는 지정한 스레드의 댓글 목록을 생성 순서대로 반환한다."""
+        client.post(
+            "/threads/thread1/comments",
+            json={"body": "첫 번째", "created_by": "user1"},
+        )
+        client.post(
+            "/threads/thread1/comments",
+            json={"body": "두 번째", "created_by": "user1"},
+        )
+        client.post(
+            "/threads/thread2/comments",
+            json={"body": "다른 스레드", "created_by": "user1"},
+        )
+
+        response = client.get("/threads/thread1/comments")
+
+        assert response.status_code == 200
+        data = response.json()
+        bodies = [comment["body"] for comment in data["comments"]]
+        assert bodies == ["첫 번째", "두 번째"]
+
+    def test_list_comments_with_no_comments_returns_empty_list(self, client: TestClient):
+        """엔드포인트는 댓글이 없는 스레드에 대해 빈 목록을 반환한다."""
+        response = client.get("/threads/thread-without-comments/comments")
+
+        assert response.status_code == 200
+        assert response.json()["comments"] == []

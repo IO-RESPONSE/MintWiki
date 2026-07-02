@@ -41,3 +41,9 @@ class CommentResponse(BaseModel):
     body: str
     created_by: str
     is_hidden: bool
+
+
+class ListCommentsResponse(BaseModel):
+    """댓글 목록 응답 스키마."""
+
+    comments: list[CommentResponse]
