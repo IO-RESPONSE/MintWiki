@@ -27,3 +27,6 @@ parameters: `limit` (max results to return, `None` means no limit) and
 depend on: it wraps a `SearchAdapter` and delegates `index_document()`,
 `search()`, and `delete_document()` to it. Converting source documents into
 `SearchDocument`s and ranking query results are filled in by later tasks.
+
+`router` (`router.py`) is an empty `APIRouter` skeleton, not yet registered
+in `main.py`. Actual search/index HTTP routes are wired up in later tasks.
