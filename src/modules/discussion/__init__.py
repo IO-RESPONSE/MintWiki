@@ -11,6 +11,7 @@ from modules.discussion.repository import (
     DiscussionThreadNotFoundError,
     InMemoryDiscussionRepository,
 )
+from modules.discussion.service import DiscussionService
 from modules.discussion.state import ThreadState
 from modules.discussion.thread import (
     DiscussionThread,
@@ -35,4 +36,5 @@ __all__ = [
     "DiscussionRepository",
     "DiscussionThreadNotFoundError",
     "InMemoryDiscussionRepository",
+    "DiscussionService",
 ]
