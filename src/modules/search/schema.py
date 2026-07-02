@@ -32,3 +32,9 @@ class SearchResponse(BaseModel):
     """검색 응답 스키마."""
 
     results: List[SearchResultResponse]
+
+
+class SearchHealthResponse(BaseModel):
+    """검색 헬스 체크 응답 스키마."""
+
+    healthy: bool

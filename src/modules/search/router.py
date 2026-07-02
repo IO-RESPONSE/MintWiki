@@ -4,7 +4,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from modules.search.query import EmptySearchQueryTermError, SearchQuery
-from modules.search.schema import SearchResponse, SearchResultResponse
+from modules.search.schema import (
+    SearchHealthResponse,
+    SearchResponse,
+    SearchResultResponse,
+)
 from modules.search.service import SearchService
 
 # 검색 API 라우터. 접두사는 main.py에 등록할 때 지정한다.
@@ -64,6 +68,27 @@ async def search_by_title(
             for result in results
         ]
     )
+
+
+@router.get("/health", tags=["search"])
+async def search_health(
+    service: SearchService = Depends(get_search_service),
+) -> SearchHealthResponse:
+    """
+    검색 백엔드의 상태를 확인하는 자리표시자 라우트.
+
+    SearchService.health_check()의 결과를 그대로 응답에 담아 전달할 뿐,
+    그 외의 처리는 하지 않는다. 검색 백엔드 장애를 구분되는 HTTP 상태
+    코드(예: 503)로 매핑하는 것은 이후 태스크에서 채워진다.
+
+    Args:
+        service: 검색 서비스
+
+    Returns:
+        검색 백엔드가 정상이면 healthy=True, 그렇지 않으면 healthy=False
+    """
+    healthy = await service.health_check()
+    return SearchHealthResponse(healthy=healthy)
 
 
 @router.get("/body", tags=["search"])

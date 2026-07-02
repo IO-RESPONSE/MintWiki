@@ -113,7 +113,12 @@ pagination parameters, building a `SearchQuery`, and delegating to a
 test that mounts the router is responsible for setting this). An empty or
 whitespace-only query parameter returns `422`. Results are returned as a
 `SearchResponse` (see `schema.py`) listing each match's `document_id`,
-`title`, and `score`. Indexing HTTP routes are wired up in later tasks.
+`title`, and `score`. It also exposes a `GET /health` route placeholder that
+delegates to `SearchService.health_check()` and returns a
+`SearchHealthResponse` (`{"healthy": true/false}`); it always responds `200`
+and does not yet map backend failures to a distinct HTTP status code (e.g.
+`503`) or handle a raised `SearchServiceError` — both are filled in by later
+tasks. Indexing HTTP routes are wired up in later tasks.
 
 ## External Search Engine Choice
 

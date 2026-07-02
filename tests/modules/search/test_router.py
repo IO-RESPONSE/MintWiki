@@ -1,12 +1,33 @@
 """검색 라우터 테스트."""
+from typing import List
+
 import pytest
 from fastapi import APIRouter, FastAPI
 from fastapi.testclient import TestClient
 
+from modules.search.adapter import SearchAdapter
 from modules.search.document import SearchDocument
 from modules.search.in_memory_adapter import InMemorySearchAdapter
+from modules.search.query import SearchQuery
+from modules.search.result import SearchResult
 from modules.search.router import get_search_service, router
 from modules.search.service import SearchService
+
+
+class UnhealthySearchAdapter(SearchAdapter):
+    """health_check가 항상 False를 반환하는 테스트 전용 어댑터."""
+
+    async def index(self, document: SearchDocument) -> None:
+        raise NotImplementedError
+
+    async def search(self, query: SearchQuery) -> List[SearchResult]:
+        raise NotImplementedError
+
+    async def delete(self, document_id: str) -> None:
+        raise NotImplementedError
+
+    async def health_check(self) -> bool:
+        return False
 
 
 class TestSearchRouterSkeleton:
@@ -32,9 +53,16 @@ class TestSearchRouteRegistration:
     def test_search_by_body_route_is_registered(self):
         assert ("/body", "GET") in self._registered_routes()
 
+    def test_search_health_route_is_registered(self):
+        assert ("/health", "GET") in self._registered_routes()
+
     def test_no_unexpected_routes_are_registered(self):
         """의도하지 않은 라우트가 실수로 추가되지 않았는지 확인한다."""
-        assert self._registered_routes() == {("/title", "GET"), ("/body", "GET")}
+        assert self._registered_routes() == {
+            ("/title", "GET"),
+            ("/body", "GET"),
+            ("/health", "GET"),
+        }
 
     def test_routes_are_tagged_search(self):
         """모든 라우트가 OpenAPI 문서에서 search 태그로 묶이는지 확인한다."""
@@ -296,6 +324,31 @@ class TestSearchByBody:
         response = client.get("/body", params={"body": "Apple", "offset": -1})
 
         assert response.status_code == 422
+
+
+class TestSearchHealth:
+    """검색 헬스 체크 엔드포인트 테스트."""
+
+    def test_search_health_returns_healthy_true_when_adapter_is_healthy(
+        self, client: TestClient
+    ):
+        """어댑터가 정상이면 healthy=True를 반환한다."""
+        response = client.get("/health")
+
+        assert response.status_code == 200
+        assert response.json() == {"healthy": True}
+
+    def test_search_health_returns_healthy_false_when_adapter_is_unhealthy(self):
+        """어댑터가 비정상이면 healthy=False를 반환한다."""
+        app = FastAPI()
+        app.state.search_service = SearchService(UnhealthySearchAdapter())
+        app.include_router(router)
+        client = TestClient(app)
+
+        response = client.get("/health")
+
+        assert response.status_code == 200
+        assert response.json() == {"healthy": False}
 
 
 class TestSearchResponseShape:
