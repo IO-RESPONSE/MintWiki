@@ -189,6 +189,94 @@ def test_db_schema_user_session_sql_separates_dialect_differences_in_comments():
     assert "SERIAL" not in create_table_stmt
 
 
+def test_db_schema_acl_rule_sql_exists():
+    """0465가 추가한 acl_rule.sql이 존재하는지 확인한다."""
+    acl_rule_sql = _db_dir() / "schema" / "acl_rule.sql"
+    assert acl_rule_sql.exists(), "db/schema/acl_rule.sql should exist"
+
+
+def test_db_schema_acl_rule_sql_matches_plan_spec():
+    """acl_rule.sql이 Rule/DocumentAcl과 계획 문서 §3과 같은 컬럼·제약을 갖는지 확인한다."""
+    content = (_db_dir() / "schema" / "acl_rule.sql").read_text()
+
+    assert "CREATE TABLE acl_rule" in content
+    assert "id VARCHAR(255) NOT NULL" in content
+    assert "document_id VARCHAR(255) NOT NULL" in content
+    assert "subject_type VARCHAR(20) NOT NULL" in content
+    assert "subject_id VARCHAR(255) NULL" in content
+    assert "permission VARCHAR(20) NOT NULL" in content
+    assert "effect VARCHAR(10) NOT NULL" in content
+    assert "expires_at TIMESTAMP NULL" in content
+    assert "sort_order INTEGER NOT NULL" in content
+    assert "CONSTRAINT pk_acl_rule PRIMARY KEY (id)" in content
+    assert (
+        "CONSTRAINT fk_acl_rule_document_id FOREIGN KEY (document_id) "
+        "REFERENCES document (id)" in content
+    )
+    assert (
+        "CONSTRAINT uq_acl_rule_document_id_sort_order UNIQUE "
+        "(document_id, sort_order)" in content
+    )
+
+
+def test_db_schema_acl_rule_sql_separates_dialect_differences_in_comments():
+    """PostgreSQL/MariaDB 차이가 주석으로 분리되어 있는지 확인한다(0461과 동일 패턴)."""
+    content = (_db_dir() / "schema" / "acl_rule.sql").read_text()
+
+    assert "PostgreSQL" in content
+    assert "MariaDB" in content
+    # 실제 CREATE TABLE 문에는 방언 전용 문법이 섞이지 않는다.
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    assert "WITH TIME ZONE" not in create_table_stmt
+    assert "COLLATE" not in create_table_stmt
+    assert "AUTO_INCREMENT" not in create_table_stmt
+    assert "SERIAL" not in create_table_stmt
+
+
+def test_db_schema_acl_namespace_rule_sql_exists():
+    """0465가 추가한 acl_namespace_rule.sql이 존재하는지 확인한다."""
+    acl_namespace_rule_sql = _db_dir() / "schema" / "acl_namespace_rule.sql"
+    assert acl_namespace_rule_sql.exists(), (
+        "db/schema/acl_namespace_rule.sql should exist"
+    )
+
+
+def test_db_schema_acl_namespace_rule_sql_matches_plan_spec():
+    """acl_namespace_rule.sql이 NamespaceAclDefaults와 계획 문서 §4와 같은 컬럼·제약을 갖는지 확인한다."""
+    content = (_db_dir() / "schema" / "acl_namespace_rule.sql").read_text()
+
+    assert "CREATE TABLE acl_namespace_rule" in content
+    assert "id VARCHAR(255) NOT NULL" in content
+    assert "namespace VARCHAR(255) NOT NULL" in content
+    assert "subject_type VARCHAR(20) NOT NULL" in content
+    assert "subject_id VARCHAR(255) NULL" in content
+    assert "permission VARCHAR(20) NOT NULL" in content
+    assert "effect VARCHAR(10) NOT NULL" in content
+    assert "expires_at TIMESTAMP NULL" in content
+    assert "sort_order INTEGER NOT NULL" in content
+    assert "CONSTRAINT pk_acl_namespace_rule PRIMARY KEY (id)" in content
+    assert (
+        "CONSTRAINT uq_acl_namespace_rule_namespace_sort_order UNIQUE "
+        "(namespace, sort_order)" in content
+    )
+    # namespace는 FK 대상 테이블이 없는 자유 문자열이라 FK 제약이 없다.
+    assert "FOREIGN KEY" not in content
+
+
+def test_db_schema_acl_namespace_rule_sql_separates_dialect_differences_in_comments():
+    """PostgreSQL/MariaDB 차이가 주석으로 분리되어 있는지 확인한다(0461과 동일 패턴)."""
+    content = (_db_dir() / "schema" / "acl_namespace_rule.sql").read_text()
+
+    assert "PostgreSQL" in content
+    assert "MariaDB" in content
+    # 실제 CREATE TABLE 문에는 방언 전용 문법이 섞이지 않는다.
+    create_table_stmt = content[content.index("CREATE TABLE") :]
+    assert "WITH TIME ZONE" not in create_table_stmt
+    assert "COLLATE" not in create_table_stmt
+    assert "AUTO_INCREMENT" not in create_table_stmt
+    assert "SERIAL" not in create_table_stmt
+
+
 def test_db_readme_confirms_migration_history_table():
     """README가 checklist §6이 보류한 적용 이력 테이블 이름/방식을 확정하는지 확인한다."""
     content = (_db_dir() / "README.md").read_text()

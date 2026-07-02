@@ -79,9 +79,34 @@
   `SessionRepository`가 `create`/`get`/`delete`만 요구하고 모두 `id`(PK)
   기준이라 추가 인덱스는 두지 않는다.
 
+## 0465가 채우는 것
+
+- `acl_rule.sql`: `src/modules/acl/rule.py`의 `Rule`, `document_acl.py`의
+  `DocumentAcl`과 [ACL Portable Repository Plan
+  §3](../../docs/acl-portable-repository-plan.md#3-rule문서-범위--acl_rule-테이블)이
+  확정한 컬럼(`id`, `document_id`, `subject_type`, `subject_id`,
+  `permission`, `effect`, `expires_at`, `sort_order`)을 옮기는 portable
+  `CREATE TABLE` 문. `document_id`는 `document.sql`(0461)이 만든
+  `document` 테이블을 참조하는 `fk_acl_rule_document_id` FK를 갖는다.
+  `subject_id`는 `USER`/`GROUP`에 따라 참조 대상이 갈리는 다형 참조라
+  FK를 걸지 않는다. `sort_order`는 규칙 우선순위(first-match-wins)를
+  재현하는 전용 정수 컬럼이며, `UNIQUE(document_id, sort_order)`
+  (`uq_acl_rule_document_id_sort_order`)로 같은 문서 안 순번 중복을
+  막는다.
+- `acl_namespace_rule.sql`: `namespace_defaults.py`의
+  `NamespaceAclDefaults`와 [ACL Portable Repository Plan
+  §4](../../docs/acl-portable-repository-plan.md#4-rule네임스페이스-기본값--acl_namespace_rule-테이블)가
+  확정한 컬럼(`id`, `namespace`, `subject_type`, `subject_id`,
+  `permission`, `effect`, `expires_at`, `sort_order`)을 옮기는 portable
+  `CREATE TABLE` 문. `acl_rule.sql`과 같은 `Rule` 도메인 모델을 다루지만
+  키 컬럼 성격이 달라(`document_id`는 FK 필수, `namespace`는 FK 대상이
+  없는 자유 문자열) 별도 테이블로 분리했다. `UNIQUE(namespace,
+  sort_order)`(`uq_acl_namespace_rule_namespace_sort_order`)로 같은
+  네임스페이스 안 순번 중복을 막는다.
+
 ## 이후 채워질 파일
 
-- **0465~0468**: ACL, discussion, audit, jobs 테이블.
+- **0466~0468**: discussion, audit, jobs 테이블.
 - **0469**: 이 디렉터리 전체에 대한 SQL feature 금지 목록 자동 검사(lint
   테스트).
 - **0493**: PHP 웹호스팅 installer가 참조할 별도의 schema version 테이블.
