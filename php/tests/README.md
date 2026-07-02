@@ -173,6 +173,17 @@ PHP test suite.
   `php tests/Modules/Discussion/ThreadStateTest.php` from `php/` after
   `composer install`.
 
+- `Modules/Cache/BackendTest.php` (0411) — confirms
+  `MintWiki\Cache\Backend` is an interface implementable with the
+  `get`/`set`/`delete` contract (via an anonymous in-memory
+  implementation), and that `get` returns `null` for a missing key,
+  reflects the most recent `set` for a given key, and returns `null`
+  again after `delete`. `clear()` and TTL/expiry are out of scope for
+  this task. No concrete backend implementation ships in this task —
+  that lands in a later task. Run it with
+  `php tests/Modules/Cache/BackendTest.php` from `php/` after
+  `composer install`.
+
 Further fixture runners (...) are added by later Phase B tasks and must
 likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
