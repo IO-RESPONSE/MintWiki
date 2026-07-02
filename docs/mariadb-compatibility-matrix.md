@@ -71,7 +71,7 @@ ID, timestamp, collation)은 후속 문서(0443~0446)에서 확정한다.
 | 항목 | PostgreSQL | MariaDB (10.6+, InnoDB) | 상태 | 비고 |
 |---|---|---|---|---|
 | 기본 격리 수준 | `READ COMMITTED` | `REPEATABLE READ` | 차이(주의) | 두 DB 모두 `READ COMMITTED`를 명시적으로 지원하므로, 저장소 코드는 격리 수준을 애플리케이션에서 명시하거나 기본값 차이를 전제로 재조회 패턴(`RETURNING` 대신 `SELECT`)을 쓴다 — [ansi-sql-persistence-policy.md](ansi-sql-persistence-policy.md) 참고 |
-| DDL의 트랜잭션 포함 여부 | `CREATE TABLE`/`ALTER TABLE`도 트랜잭션 안에서 롤백 가능 | DDL은 대부분 **암묵적 커밋**을 유발하며 롤백되지 않음 | 대체 필요 | Alembic 마이그레이션을 "DDL은 각 스텝이 즉시 커밋된다"는 전제로 작성한다. 여러 DDL을 하나의 논리적 트랜잭션으로 묶어 되돌릴 수 있다고 가정하지 않는다(0448 migration portability checklist에서 확정) |
+| DDL의 트랜잭션 포함 여부 | `CREATE TABLE`/`ALTER TABLE`도 트랜잭션 안에서 롤백 가능 | DDL은 대부분 **암묵적 커밋**을 유발하며 롤백되지 않음 | 대체 필요 | Alembic 마이그레이션을 "DDL은 각 스텝이 즉시 커밋된다"는 전제로 작성한다. 여러 DDL을 하나의 논리적 트랜잭션으로 묶어 되돌릴 수 있다고 가정하지 않는다([migration-portability-checklist.md](migration-portability-checklist.md)에서 확정) |
 | `BEGIN`/`COMMIT`/`ROLLBACK` | 표준 지원 | 표준 지원 | 공통 | SQLAlchemy `AsyncSession`을 통한 사용은 드라이버 계층이라 정책 대상 아님 |
 | 행 잠금(`SELECT ... FOR UPDATE`) | 지원 | 지원(InnoDB) | 공통 | `SKIP LOCKED`/`NOWAIT` 확장 문법은 위 인덱스 표의 금지 항목 참고 |
 | Deadlock 처리 | 자동 감지 후 하나의 트랜잭션을 중단 | 자동 감지 후 하나의 트랜잭션을 중단 | 공통 | 애플리케이션은 재시도 로직을 DB 특정 오류 메시지가 아닌 표준 오류 클래스로 판단한다(0474 duplicate key 처리 정책과 동일한 원칙) |
@@ -100,6 +100,9 @@ ID, timestamp, collation)은 후속 문서(0443~0446)에서 확정한다.
   정책으로 확정한다.
 - **0447**: 금지 목록(타입/인덱스/트랜잭션 표의 "금지(정책)" 항목)을
   코드에서 자동 탐지하는 스크립트를 추가한다.
+- **0448**([migration-portability-checklist.md](migration-portability-checklist.md)):
+  3절 트랜잭션 매트릭스의 "DDL의 트랜잭션 포함 여부" 항목을 마이그레이션
+  작성 체크리스트로 구체화한다.
 - **0511**: 이 매트릭스의 "차이(주의)" 항목 중 한글 정렬/collation을
   fixture 테스트로 검증한다.
 
