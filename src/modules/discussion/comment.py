@@ -1,5 +1,6 @@
 """토론 댓글 도메인 모델."""
 from datetime import datetime
+from typing import Optional
 
 
 class EmptyCommentIdError(Exception):
@@ -40,6 +41,8 @@ class DiscussionComment:
         body: str,
         created_by: str,
         created_at: datetime,
+        is_hidden: bool = False,
+        hidden_at: Optional[datetime] = None,
     ):
         """
         토론 댓글을 생성한다.
@@ -50,6 +53,8 @@ class DiscussionComment:
             body: 댓글 본문
             created_by: 댓글을 작성한 사용자의 id
             created_at: 댓글이 생성된 시각
+            is_hidden: 댓글이 숨김 처리되었는지 여부 (기본값 False)
+            hidden_at: 댓글이 숨겨진 시각 (선택사항, 숨겨지지 않았으면 None)
 
         Raises:
             EmptyCommentIdError: 댓글 id가 비어있거나 공백만 있는 경우
@@ -71,3 +76,10 @@ class DiscussionComment:
         self.body = body
         self.created_by = created_by
         self.created_at = created_at
+        self.is_hidden = is_hidden
+        self.hidden_at = hidden_at
+
+    def hide(self, now: datetime) -> None:
+        """댓글을 숨김 처리한다."""
+        self.is_hidden = True
+        self.hidden_at = now
