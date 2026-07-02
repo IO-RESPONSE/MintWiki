@@ -76,3 +76,12 @@ required and cannot be empty/whitespace-only, and `occurred_at` is required,
 raising `InvalidRecentChangesJobPayloadError` otherwise. The handler that
 actually records the entry is added in a later task; this payload only
 defines the data contract.
+
+`RecentChangesJobHandler` (`recent_changes_handler.py`) is a placeholder
+`JobHandler` for `RecentChangesJobPayload`, exposing `job_type` as
+`RECENT_CHANGES_JOB_TYPE`. There is no recent changes module yet to actually
+record the entry, so `handle()` only validates the payload type and returns
+`JobResult.ok(data={...})` with `page_name`, `author_id`, `occurred_at`, and
+`summary`. It returns `JobResult.fail(...)` if given a payload that isn't a
+`RecentChangesJobPayload`. The real recent changes recording logic replaces
+this placeholder in a later task once a recent changes module exists.
