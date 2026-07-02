@@ -1,0 +1,7 @@
+{
+  "schema_version": "1.0",
+  "description": "성공 케이스 예시: 제목 앞뒤 공백을 제거한다.",
+  "input": { "title": "  Example Title  " },
+  "expected": { "title": "Example Title" },
+  "errors": []
+}

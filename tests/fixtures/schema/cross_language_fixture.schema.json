@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wiki-engine.local/schema/cross-language-fixture.json",
+  "title": "Cross-Language Fixture",
+  "description": "Python/PHP 구현이 공유하는 parity fixture 파일이 따라야 하는 스키마. 하나의 입력(input)과 그에 대응하는 기대 출력(expected)/기대 에러 코드(errors)를 고정한다. 자세한 설명은 docs/cross-language-fixture-schema.md 참고.",
+  "type": "object",
+  "required": ["schema_version", "input", "expected", "errors"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "이 fixture 가 따르는 스키마 버전. 현재 값은 \"1.0\" 고정.",
+      "const": "1.0"
+    },
+    "description": {
+      "type": "string",
+      "description": "이 fixture 가 다루는 시나리오에 대한 한글 설명(선택)."
+    },
+    "input": {
+      "description": "검증 대상 서비스 메서드에 그대로 전달하는 입력값. 형태는 메서드마다 다르므로 이 스키마는 타입을 제한하지 않는다."
+    },
+    "expected": {
+      "description": "input 을 실행했을 때 Python/PHP 구현이 동일하게 반환해야 하는 기대 출력값. errors 가 비어 있지 않은(실패가 기대되는) fixture 는 이 필드를 null 로 둔다."
+    },
+    "errors": {
+      "type": "array",
+      "description": "input 을 실행했을 때 기대되는 안정적인 error code 목록(docs/php-replacement-strategy.md 의 error code 정책 참고). 성공이 기대되는 fixture 는 빈 배열을 쓴다. 메시지 문자열이 아니라 코드만 담는다.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_.]*$"
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "1.0",
+      "description": "이 항목은 실제 fixture 가 아니라 성공 케이스 필드 사용법을 보여주는 템플릿이다.",
+      "input": { "title": "  Example Title  " },
+      "expected": { "title": "Example Title" },
+      "errors": []
+    },
+    {
+      "schema_version": "1.0",
+      "description": "이 항목은 실제 fixture 가 아니라 실패 케이스 필드 사용법을 보여주는 템플릿이다.",
+      "input": { "title": "" },
+      "expected": null,
+      "errors": ["document.empty_title"]
+    }
+  ]
+}
