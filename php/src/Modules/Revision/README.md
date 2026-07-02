@@ -20,4 +20,10 @@ manifest 는 `src/modules/revision/manifest.json` 이다.
   섹션이 정본이다. 구현 없이 시그니처만 두며, `create`/`get`/
   `listByDocumentId` 세 메서드를 선언한다. 리비전은 append-only이므로
   Document\Repository와 달리 `update`/`delete`가 없다. 실제 구현체는
-  이후 태스크(0435 등)에서 추가된다.
+  이후 태스크(0436 등)에서 추가된다.
+- `InMemoryRepository.php` (0436) — Python `InMemoryRevisionRepository`
+  (`src/modules/revision/repository.py`)와 동작을 맞춘 `Repository`의
+  메모리 기반 구현체. id -> `Revision` 맵과 documentId -> id 목록 맵을
+  함께 유지해 `listByDocumentId()`가 생성 순서를 보존한다. append-only
+  계약에 맞춰 `update`는 두지 않는다. DB 전 단계의 문서/리비전 통합
+  테스트용이다.
