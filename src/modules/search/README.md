@@ -11,6 +11,78 @@ update a document, `search()` to run a query and return results, `delete()`
 to remove a document from the index by id, and `health_check()` to report
 whether the search backend is able to serve requests.
 
+## Search Adapter Contract
+
+The behavioral guarantees below are implicit in the interface and in the
+tests that exercise `InMemorySearchAdapter`. Any current or future
+`SearchAdapter` implementation (in-memory fallback, `MeilisearchSearchAdapter`,
+`OpenSearchSearchAdapter`, or otherwise) must satisfy them, not just match the
+method signatures.
+
+### 1. `index(document)` — create-or-update
+
+- Indexing a `document_id` that is already indexed overwrites the stored
+  document; it does not add a second entry or raise.
+- Every field (`title`, `body`, `redirect_target`, `categories`) is replaced
+  with the new document's values, not merged with the old ones.
+- Verified by `test_in_memory_adapter.py::TestInMemorySearchAdapterIndex`.
+
+### 2. `search(query)` — read-only, deduplicated, paginated
+
+- Matching is a case-insensitive substring check against `title`, `body`,
+  `redirect_target`, and `categories`.
+- A document that matches in more than one field appears exactly once in the
+  result list — never duplicated.
+- `SearchQuery.limit`/`offset` paginate the matched set before it is
+  returned; an `offset` past the end of the results yields an empty list
+  rather than raising.
+- An empty index, or a query with no matches, returns `[]` — never `None`
+  and never an exception.
+- Verified by `test_in_memory_adapter.py::TestInMemorySearchAdapterSearch`,
+  `::TestInMemorySearchAdapterBodySearchFallback`,
+  `::TestInMemorySearchAdapterRedirectSearch`,
+  `::TestInMemorySearchAdapterPagination`.
+
+### 3. `delete(document_id)` — idempotent removal
+
+- Removes only the document with the given id.
+- Deleting an id that was never indexed (or already deleted) is a no-op —
+  it must not raise.
+- Verified by `test_in_memory_adapter.py::TestInMemorySearchAdapterDelete`.
+
+### 4. `health_check()` — no side effects
+
+- Reports whether the backend can currently serve requests; must not
+  mutate the index or raise for a healthy backend.
+- `InMemorySearchAdapter` always returns `True` since it has no external
+  dependency to fail; an adapter backed by an external engine is expected to
+  probe that dependency instead.
+- Verified by `test_in_memory_adapter.py::TestInMemorySearchAdapterHealthCheck`.
+
+### Interface enforcement
+
+- `SearchAdapter` is an `ABC`: it cannot be instantiated directly, and a
+  subclass that does not implement all four methods above cannot be
+  instantiated either. Verified by
+  `test_adapter.py::TestSearchAdapterInterface::test_adapter_is_abstract`.
+- Satisfying the contract's *shape* is not the same as satisfying its
+  *behavior*: `MeilisearchSearchAdapter`/`OpenSearchSearchAdapter` implement
+  all four methods but raise `NotImplementedError` from each — expected
+  until a later task fills in the real client integration
+  (`test_meilisearch_adapter.py`, `test_opensearch_adapter.py`).
+
+### Failure handling above the adapter
+
+- The contract does not standardize what an adapter raises on failure — a
+  `MeilisearchSearchAdapter` failure looks different from an
+  `OpenSearchSearchAdapter` failure. Callers are not expected to catch
+  adapter-specific exceptions directly: `SearchService` wraps any exception
+  raised by the configured adapter in a `SearchServiceError` carrying the
+  failing operation name (`index`/`search`/`delete`/`health_check`), so
+  callers depend on one error type regardless of which adapter is
+  configured. Verified by
+  `test_service.py::TestSearchServiceAdapterFailureMapping`.
+
 `InMemorySearchAdapter` (`in_memory_adapter.py`) is the local fallback
 implementation: it keeps indexed `SearchDocument`s in a dict and matches a
 query against the title, body, redirect target, or categories with a
