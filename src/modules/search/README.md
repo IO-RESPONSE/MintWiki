@@ -47,6 +47,18 @@ module's shared job payload base class and the actual job handler are
 added in later tasks; this payload is defined standalone here in the
 meantime.
 
+`SearchAdapterConfig` (`config.py`) selects which `SearchAdapter`
+implementation to construct: a plain domain class (no `pydantic`, per the
+portability layering rules, since it's not a `router.py`/`repository.py`/
+`schema.py`) with a `backend` attribute. `backend` defaults to `"in_memory"`,
+can be overridden via the `WIKI_SEARCH_BACKEND` environment variable, or
+passed explicitly to the constructor (which takes precedence over the
+environment variable). Only `"in_memory"` is a valid value today since
+`InMemorySearchAdapter` is the only implementation; an unsupported value
+raises `InvalidSearchAdapterBackendError`. `meilisearch`/`opensearch`
+backends are added, along with the wiring that reads this config to build
+the adapter, in later tasks.
+
 `router` (`router.py`) is an `APIRouter`, not yet registered in `main.py`.
 It exposes `GET /title` and `GET /body`, each reading a required query
 parameter (`title` or `body`, respectively) plus optional `limit`/`offset`

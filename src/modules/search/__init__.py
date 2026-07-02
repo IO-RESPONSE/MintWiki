@@ -18,6 +18,7 @@ from modules.search.adapter import SearchAdapter
 from modules.search.in_memory_adapter import InMemorySearchAdapter
 from modules.search.service import SearchService
 from modules.search.job_payload import IndexDocumentJobPayload
+from modules.search.config import SearchAdapterConfig, InvalidSearchAdapterBackendError
 
 __all__ = [
     "SearchDocument",
@@ -33,4 +34,6 @@ __all__ = [
     "InMemorySearchAdapter",
     "SearchService",
     "IndexDocumentJobPayload",
+    "SearchAdapterConfig",
+    "InvalidSearchAdapterBackendError",
 ]
