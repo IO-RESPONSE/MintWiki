@@ -217,6 +217,18 @@ PHP test suite.
   `php tests/Modules/Admin/ServiceTest.php` from `php/` after
   `composer install`.
 
+- `Http/HealthRouteTest.php` (0419) — confirms the `GET /health` handler
+  `public/index.php` registers on `MintWiki\Http\Router` returns a
+  `200` JSON response (`Content-Type: application/json`) with
+  `{"status": "ok", "app": "wiki-engine"}` by default, that a
+  `WIKI_APP_NAME` environment variable overrides the `app` value (via
+  `MintWiki\App\ConfigLoader`), and that other methods/paths
+  (`POST /health`, `GET /other`) still don't match. The full
+  over-HTTP behavior of `public/index.php` (including the
+  placeholder-text fallback for non-`/health` requests) is covered by
+  `tests/test_php_public_front_controller.py` (Python, `php -S`) in the
+  repository root. Run it with `php tests/Http/HealthRouteTest.php` from
+  `php/` after `composer install`.
 - `App/ConfigLoaderTest.php` (0415) — confirms `MintWiki\App\ConfigLoader::get()`
   prefers a `WIKI_`-prefixed environment variable when set, falls back to
   the constructor-provided file-value array when the environment variable

@@ -9,8 +9,9 @@ namespace MintWiki\Http;
  *
  * method + path 문자열이 완전히 일치하는 경우에만 매칭한다 — 동적
  * 세그먼트(`/articles/{id}` 등)나 와일드카드는 지원하지 않는다. route
- * 등록 자체를 검증하는 테스트(0398)와 실제 핸들러 실행/front controller
- * 연결(0419 health endpoint 등)은 이후 태스크에서 이어진다.
+ * 등록 자체를 검증하는 테스트는 0398이며, 실제 핸들러 실행/front
+ * controller 연결은 0419(`/health`)에서 처음 이루어졌다. 나머지 route
+ * 연결은 이후 태스크에서 이어진다.
  */
 final class Router
 {
