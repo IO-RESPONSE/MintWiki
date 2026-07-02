@@ -133,6 +133,31 @@ class TestInMemorySearchAdapterSearch:
         assert len(results) == 1
         assert results[0].document.document_id == "doc1"
 
+    @pytest.mark.asyncio
+    async def test_search_matches_redirect_target(self):
+        """질의어가 리다이렉트 대상에만 있어도 검색 결과에 포함된다."""
+        document = SearchDocument(
+            document_id="doc1", title="Old Title", redirect_target="NewTitle"
+        )
+        adapter = InMemorySearchAdapter()
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="NewTitle"))
+
+        assert len(results) == 1
+        assert results[0].document.document_id == "doc1"
+
+    @pytest.mark.asyncio
+    async def test_search_does_not_match_when_redirect_target_is_none(self):
+        """리다이렉트 대상이 없는 문서는 리다이렉트 대상으로 검색되지 않는다."""
+        document = SearchDocument(document_id="doc1", title="Hello World")
+        adapter = InMemorySearchAdapter()
+        await adapter.index(document)
+
+        results = await adapter.search(SearchQuery(term="NewTitle"))
+
+        assert results == []
+
 
 class TestInMemorySearchAdapterBodySearchFallback:
     """제목에 일치하는 내용이 없을 때 본문 검색으로 폴백하는 동작 테스트."""
