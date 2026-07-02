@@ -1,4 +1,5 @@
 """ACL module package."""
+from modules.acl.document_acl import DocumentAcl, EmptyDocumentIdError
 from modules.acl.namespace_defaults import DEFAULT_NAMESPACE, NamespaceAclDefaults
 from modules.acl.permission import Permission
 from modules.acl.rule import (
@@ -18,4 +19,6 @@ __all__ = [
     "MissingSubjectIdError",
     "NamespaceAclDefaults",
     "DEFAULT_NAMESPACE",
+    "DocumentAcl",
+    "EmptyDocumentIdError",
 ]

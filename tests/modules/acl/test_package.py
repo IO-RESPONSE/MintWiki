@@ -23,6 +23,8 @@ def test_acl_package_exports_rule():
         "MissingSubjectIdError",
         "NamespaceAclDefaults",
         "DEFAULT_NAMESPACE",
+        "DocumentAcl",
+        "EmptyDocumentIdError",
     ]
     assert modules.acl.Rule is Rule
 
@@ -33,3 +35,13 @@ def test_acl_package_exports_namespace_defaults():
 
     assert "NamespaceAclDefaults" in modules.acl.__all__
     assert modules.acl.NamespaceAclDefaults is NamespaceAclDefaults
+
+
+def test_acl_package_exports_document_acl():
+    # 0155에서 DocumentAcl 모델이 추가되었으므로 export에 포함되어야 한다.
+    from modules.acl.document_acl import DocumentAcl, EmptyDocumentIdError
+
+    assert "DocumentAcl" in modules.acl.__all__
+    assert "EmptyDocumentIdError" in modules.acl.__all__
+    assert modules.acl.DocumentAcl is DocumentAcl
+    assert modules.acl.EmptyDocumentIdError is EmptyDocumentIdError
