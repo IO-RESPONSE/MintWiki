@@ -99,6 +99,14 @@ finish_failed() {
 
 trap 'finish_failed $?' ERR
 
+# 에이전트(claude/codex) 호출 단계.
+# 이 단계의 실패는 대개 rate-limit·네트워크 등 인프라 사유다. 그런 실패까지
+# "태스크 실패"로 처리하면(→ failed/ 이동) 멀쩡한 태스크가 스킵되어 구멍이 난다.
+# 따라서 에이전트 실패 시에는 워킹트리를 되돌려 태스크를 큐에 남기고 조용히
+# 종료해, 다음 사이클(또는 5h 윈도우 리셋 후)에 재시도되게 한다.
+# (test/qa 실패만 진짜 실패로 보고 finish_failed 로 failed/ 처리한다.)
+trap - ERR
+set +e
 case "$AGENT" in
   claude)
     scripts/claude-runner.sh "$ACTIVE_TASK" "$RUN_DIR"
@@ -108,9 +116,19 @@ case "$AGENT" in
     ;;
   *)
     echo "Unsupported WIKI_ENGINE_AGENT: $AGENT" >&2
+    set -e
     exit 64
     ;;
 esac
+agent_rc=$?
+set -e
+if [ "$agent_rc" -ne 0 ]; then
+  echo "Agent 호출 실패(rc=$agent_rc) — rate-limit/인프라 추정. 태스크를 큐에 남기고 종료." >&2
+  git reset --hard HEAD >/dev/null 2>&1 || true
+  git clean -fd >/dev/null 2>&1 || true
+  exit 0
+fi
+trap 'finish_failed $?' ERR
 scripts/test.sh
 scripts/qa.sh
 
