@@ -21,9 +21,15 @@ PHP test suite.
   match exactly, and returns `null` otherwise (no dynamic segments or
   partial matches). Run it with `php tests/Http/RouterTest.php` from
   `php/` after `composer install`.
+- `Http/RouteRegistrationTest.php` (0398) — confirms `Router::register()`
+  registers multiple routes independently (using `home`/`health`
+  placeholder routes as examples) and that re-registering the same
+  method+path replaces the previous handler without affecting other
+  routes. Run it with `php tests/Http/RouteRegistrationTest.php` from
+  `php/` after `composer install`.
 
-Fixture runners (0398, 0406, 0407, ...) are added by later Phase B tasks
-and must likewise run without any network dependency
+Fixture runners (0406, 0407, ...) are added by later Phase B tasks and
+must likewise run without any network dependency
 (`docs/php-db-ui-micro-job-prompts-0351-0670.md`).
 
 Cross-language fixtures these runners consume live under
