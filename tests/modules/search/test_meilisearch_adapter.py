@@ -66,3 +66,13 @@ class TestMeilisearchSearchAdapterSkeletonBehavior:
 
         with pytest.raises(NotImplementedError):
             await adapter.delete("doc1")
+
+    @pytest.mark.asyncio
+    async def test_health_check_raises_not_implemented(self):
+        """health_check는 아직 구현되지 않아 NotImplementedError를 발생시킨다."""
+        adapter = MeilisearchSearchAdapter(
+            host="http://localhost:7700", index_name="wiki_pages"
+        )
+
+        with pytest.raises(NotImplementedError):
+            await adapter.health_check()

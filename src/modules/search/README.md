@@ -7,31 +7,33 @@ search engine integration behind a stable interface.
 
 `SearchAdapter` (`adapter.py`) is the abstract interface concrete adapters
 (local fallback, external search engines) implement: `index()` to add or
-update a document, `search()` to run a query and return results, and
-`delete()` to remove a document from the index by id.
+update a document, `search()` to run a query and return results, `delete()`
+to remove a document from the index by id, and `health_check()` to report
+whether the search backend is able to serve requests.
 
 `InMemorySearchAdapter` (`in_memory_adapter.py`) is the local fallback
 implementation: it keeps indexed `SearchDocument`s in a dict and matches a
 query against the title, body, redirect target, or categories with a
 case-insensitive substring check. `delete()` removes an entry by id and is a
 no-op if the id isn't indexed. Matches are paginated according to the
-query's `offset`/`limit` before being returned.
+query's `offset`/`limit` before being returned. `health_check()` always
+returns `True` since it has no external dependency to fail.
 
 `MeilisearchSearchAdapter` (`meilisearch_adapter.py`) is a skeleton for an
 external Meilisearch-backed adapter: it implements the `SearchAdapter`
 interface shape only. Its constructor stores connection settings (`host`,
 `index_name`, optional `api_key`) for a future Meilisearch client, but
-`index()`, `search()`, and `delete()` all raise `NotImplementedError`. The
-actual Meilisearch client integration and wiring through
-`SearchAdapterConfig` are filled in by later tasks.
+`index()`, `search()`, `delete()`, and `health_check()` all raise
+`NotImplementedError`. The actual Meilisearch client integration and wiring
+through `SearchAdapterConfig` are filled in by later tasks.
 
 `OpenSearchSearchAdapter` (`opensearch_adapter.py`) is a skeleton for an
 external OpenSearch-backed adapter: it implements the `SearchAdapter`
 interface shape only. Its constructor stores connection settings (`host`,
 `index_name`, optional `api_key`) for a future OpenSearch client, but
-`index()`, `search()`, and `delete()` all raise `NotImplementedError`. The
-actual OpenSearch client integration and wiring through
-`SearchAdapterConfig` are filled in by later tasks.
+`index()`, `search()`, `delete()`, and `health_check()` all raise
+`NotImplementedError`. The actual OpenSearch client integration and wiring
+through `SearchAdapterConfig` are filled in by later tasks.
 
 `SearchQuery` (`query.py`) carries the search term plus pagination
 parameters: `limit` (max results to return, `None` means no limit) and
@@ -41,8 +43,9 @@ parameters: `limit` (max results to return, `None` means no limit) and
 
 `SearchService` (`service.py`) is the service-layer skeleton other modules
 depend on: it wraps a `SearchAdapter` and delegates `index_document()`,
-`search()`, and `delete_document()` to it. Converting source documents into
-`SearchDocument`s and ranking query results are filled in by later tasks.
+`search()`, `delete_document()`, and `health_check()` to it. Converting
+source documents into `SearchDocument`s and ranking query results are filled
+in by later tasks.
 
 `IndexDocumentRequest` (`schema.py`) is the indexing payload model: it
 mirrors the fields needed to construct a `SearchDocument` (`document_id`,

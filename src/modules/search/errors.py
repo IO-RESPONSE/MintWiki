@@ -18,7 +18,7 @@ class SearchServiceError(Exception):
         서비스 오류를 생성한다.
 
         Args:
-            operation: 오류가 발생한 검색 작업 이름 (예: "index", "search", "delete")
+            operation: 오류가 발생한 검색 작업 이름 (예: "index", "search", "delete", "health_check")
             original_error: 어댑터가 던진 원본 예외
         """
         self.operation = operation

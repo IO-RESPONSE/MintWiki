@@ -48,3 +48,13 @@ class SearchAdapter(ABC):
             document_id: 삭제할 검색 문서의 고유 식별자
         """
         pass
+
+    @abstractmethod
+    async def health_check(self) -> bool:
+        """
+        검색 백엔드가 요청을 처리할 수 있는 상태인지 확인한다.
+
+        Returns:
+            검색 백엔드가 정상이면 True, 그렇지 않으면 False
+        """
+        pass

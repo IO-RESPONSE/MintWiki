@@ -24,6 +24,9 @@ class FailingSearchAdapter(SearchAdapter):
     async def delete(self, document_id: str) -> None:
         raise self._error
 
+    async def health_check(self) -> bool:
+        raise self._error
+
 
 class TestSearchServiceIndexDocument:
     """색인 위임 동작 테스트."""
@@ -245,6 +248,20 @@ class TestSearchServiceRankingPlaceholder:
         assert scores == {"doc1": 1.0, "doc2": 1.0}
 
 
+class TestSearchServiceHealthCheck:
+    """상태 확인 위임 동작 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_health_check_delegates_to_adapter(self):
+        """health_check는 어댑터의 health_check를 호출해 결과를 반환한다."""
+        adapter = InMemorySearchAdapter()
+        service = SearchService(adapter)
+
+        is_healthy = await service.health_check()
+
+        assert is_healthy is True
+
+
 class TestSearchServiceAdapterFailureMapping:
     """어댑터 예외가 SearchServiceError로 매핑되는 동작 테스트."""
 
@@ -285,6 +302,19 @@ class TestSearchServiceAdapterFailureMapping:
             await service.delete_document("doc1")
 
         assert exc_info.value.operation == "delete"
+        assert exc_info.value.original_error is original
+
+    @pytest.mark.asyncio
+    async def test_health_check_wraps_adapter_error(self):
+        """상태 확인 중 어댑터가 던진 예외는 SearchServiceError로 감싸진다."""
+        original = ConnectionError("상태 확인 서버에 연결할 수 없음")
+        adapter = FailingSearchAdapter(original)
+        service = SearchService(adapter)
+
+        with pytest.raises(SearchServiceError) as exc_info:
+            await service.health_check()
+
+        assert exc_info.value.operation == "health_check"
         assert exc_info.value.original_error is original
 
     @pytest.mark.asyncio

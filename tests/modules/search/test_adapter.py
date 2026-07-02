@@ -30,6 +30,10 @@ class ConcreteSearchAdapter(SearchAdapter):
         """주어진 id의 문서를 색인에서 삭제한다."""
         self.indexed_documents.pop(document_id, None)
 
+    async def health_check(self) -> bool:
+        """검색 백엔드가 정상 상태인지 확인한다."""
+        return True
+
 
 class TestSearchAdapterInterface:
     """검색 어댑터 인터페이스 테스트."""
@@ -50,6 +54,10 @@ class TestSearchAdapterInterface:
     def test_delete_method_exists(self):
         """검색 어댑터는 delete 메서드를 정의한다."""
         assert hasattr(SearchAdapter, "delete")
+
+    def test_health_check_method_exists(self):
+        """검색 어댑터는 health_check 메서드를 정의한다."""
+        assert hasattr(SearchAdapter, "health_check")
 
     @pytest.mark.asyncio
     async def test_concrete_implementation_can_index_document(self):
@@ -137,3 +145,12 @@ class TestSearchAdapterInterface:
         adapter = ConcreteSearchAdapter()
 
         await adapter.delete("nonexistent")
+
+    @pytest.mark.asyncio
+    async def test_concrete_implementation_can_report_health_status(self):
+        """구체적인 구현은 상태 확인 결과를 반환할 수 있다."""
+        adapter = ConcreteSearchAdapter()
+
+        is_healthy = await adapter.health_check()
+
+        assert is_healthy is True

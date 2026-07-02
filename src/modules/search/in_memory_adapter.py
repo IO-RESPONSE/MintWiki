@@ -66,3 +66,12 @@ class InMemorySearchAdapter(SearchAdapter):
             document_id: 삭제할 검색 문서의 고유 식별자
         """
         self._documents.pop(document_id, None)
+
+    async def health_check(self) -> bool:
+        """
+        메모리 색인은 외부 의존성이 없으므로 항상 정상 상태를 반환한다.
+
+        Returns:
+            항상 True
+        """
+        return True

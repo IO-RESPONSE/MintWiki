@@ -438,6 +438,29 @@ class TestInMemorySearchAdapterPagination:
         assert len(set(paginated_ids)) == len(paginated_ids)
 
 
+class TestInMemorySearchAdapterHealthCheck:
+    """상태 확인 기능 테스트."""
+
+    @pytest.mark.asyncio
+    async def test_health_check_returns_true_when_index_is_empty(self):
+        """색인이 비어 있어도 정상 상태를 반환한다."""
+        adapter = InMemorySearchAdapter()
+
+        is_healthy = await adapter.health_check()
+
+        assert is_healthy is True
+
+    @pytest.mark.asyncio
+    async def test_health_check_returns_true_when_documents_are_indexed(self):
+        """문서가 색인되어 있어도 정상 상태를 반환한다."""
+        adapter = InMemorySearchAdapter()
+        await adapter.index(SearchDocument(document_id="doc1", title="Hello World"))
+
+        is_healthy = await adapter.health_check()
+
+        assert is_healthy is True
+
+
 class TestInMemorySearchAdapterRedirectSearch:
     """리다이렉트 대상으로 검색되는 동작 테스트."""
 

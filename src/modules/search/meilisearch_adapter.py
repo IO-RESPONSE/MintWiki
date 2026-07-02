@@ -76,3 +76,15 @@ class MeilisearchSearchAdapter(SearchAdapter):
             NotImplementedError: 항상 발생한다.
         """
         raise NotImplementedError("Meilisearch 어댑터는 아직 구현되지 않았습니다.")
+
+    async def health_check(self) -> bool:
+        """
+        Meilisearch 백엔드가 요청을 처리할 수 있는 상태인지 확인한다.
+
+        아직 실제 Meilisearch 클라이언트 연동이 구현되지 않아 항상
+        NotImplementedError 를 발생시킨다.
+
+        Raises:
+            NotImplementedError: 항상 발생한다.
+        """
+        raise NotImplementedError("Meilisearch 어댑터는 아직 구현되지 않았습니다.")

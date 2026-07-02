@@ -78,3 +78,18 @@ class SearchService:
             await self.adapter.delete(document_id)
         except Exception as error:
             raise SearchServiceError("delete", error) from error
+
+    async def health_check(self) -> bool:
+        """
+        검색 백엔드가 요청을 처리할 수 있는 상태인지 확인한다.
+
+        Returns:
+            검색 백엔드가 정상이면 True, 그렇지 않으면 False
+
+        Raises:
+            SearchServiceError: 어댑터가 상태 확인 중 예외를 던진 경우
+        """
+        try:
+            return await self.adapter.health_check()
+        except Exception as error:
+            raise SearchServiceError("health_check", error) from error
