@@ -17,6 +17,10 @@ Skeleton, 0391-0440 의 0430 산출물이다
   테스트 실행만 하지만, 그 문서의 도입 트리거 조건이 성립하면 정적
   분석 단계를 이 스크립트에 추가한다. "test/static check 명령을 한 곳에
   둔다"는 0430 Notes 요구사항을 충족하는 지점이다.
+- `build-package.sh` — 공유 호스팅 배포 패키지 빌드의 골격 스크립트.
+  `php/deployment-package-manifest.json`을 읽고 기본 `--without-vendor`
+  모드와 `--with-vendor` 모드의 입력 목록을 분리해 출력한다. 실제
+  아카이브 생성은 후속 패키징 태스크에서 추가한다.
 
 저장소 루트의 `scripts/qa.sh`가 이 스크립트를 선택 실행하도록 연결하는
 것은 이 태스크의 범위가 아니다 — 0431(Add root QA hook for optional PHP)
