@@ -26,7 +26,7 @@ fi
 
 PHP_QA_SH="$ROOT_DIR/php/scripts/qa.sh"
 if command -v php >/dev/null 2>&1; then
-  "$PHP_QA_SH"
+  "$PHP_QA_SH" "$@"
 else
   echo "php CLI를 찾을 수 없어 PHP/MariaDB 패키징 QA를 실행할 수 없습니다." >&2
   exit 1

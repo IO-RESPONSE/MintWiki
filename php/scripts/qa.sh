@@ -6,7 +6,11 @@ set -euo pipefail
 
 PHP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-"$PHP_ROOT/scripts/test.sh"
+if [ "${1:-}" = "--performance-budget" ]; then
+  php "$PHP_ROOT/tests/Http/UiPerformanceBudgetTest.php"
+else
+  "$PHP_ROOT/scripts/test.sh"
+fi
 
 # 정적 분석 단계(PHPStan/Psalm)는 docs/php-static-analysis-plan.md의 도입
 # 트리거 조건이 성립하면 여기에 추가한다 — 지금은 도구가 없어 생략한다.
