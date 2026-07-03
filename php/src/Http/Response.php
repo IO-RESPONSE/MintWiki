@@ -76,4 +76,72 @@ final class Response
 
         return new self($status, $defaultHeaders + $headers, $body);
     }
+
+    /**
+     * 정적 자산(CSS, JS, 이미지 등)을 body로 하고 적절한 캐시 헤더를 설정한
+     * Response를 생성한다 (태스크 0578).
+     *
+     * 캐시 정책은 파일명에 hash가 포함되어 있는지 여부에 따라 달라진다:
+     * - hash가 있는 파일(예: app.abc123def456.js): 1년 캐시, immutable
+     * - hash가 없는 파일(예: responsive-table.css): 1시간 캐시
+     *
+     * @param string $contentType Content-Type 헤더 값 (예: 'text/css', 'application/javascript')
+     * @param string $body 파일 내용
+     * @param string $filename 캐시 정책 결정에 사용할 파일명 (hash 감지용)
+     * @param array<string, string> $headers 기본 헤더들에 병합할 추가 헤더
+     */
+    public static function staticAsset(string $contentType, string $body, string $filename = '', int $status = 200, array $headers = []): self
+    {
+        // 파일명에서 hash 여부를 판단한다. hash는 일반적으로 점으로 구분된
+        // 중간 세그먼트로 나타난다 (예: app.abc123def456.js에서 abc123def456).
+        $hasHash = self::hasHashInFilename($filename);
+
+        if ($hasHash) {
+            // hash가 있는 파일은 1년 동안 캐시하고 재검증하지 않는다
+            $cacheControl = 'public, max-age=31536000, immutable';
+        } else {
+            // hash가 없는 파일은 1시간 동안 캐시한다
+            $cacheControl = 'public, max-age=3600';
+        }
+
+        $defaultHeaders = [
+            'Content-Type' => $contentType,
+            'Cache-Control' => $cacheControl,
+        ];
+
+        return new self($status, $defaultHeaders + $headers, $body);
+    }
+
+    /**
+     * 파일명에 hash가 포함되어 있는지 확인한다.
+     *
+     * hash는 일반적으로 점으로 구분된 중간 세그먼트로 나타난다.
+     * 예: app.abc123def456.js의 경우 abc123def456 부분을 감지한다.
+     */
+    private static function hasHashInFilename(string $filename): bool
+    {
+        // 파일명이 비어있으면 hash가 없는 것으로 간주한다
+        if (empty($filename)) {
+            return false;
+        }
+
+        // 점으로 분리된 부분들을 추출한다
+        $parts = explode('.', $filename);
+
+        // 파일명이 name.hash.ext 형태여야 hash가 있다고 본다
+        if (count($parts) < 3) {
+            return false;
+        }
+
+        // 중간 세그먼트(hash 위치)를 확인한다
+        // hash는 일반적으로 6자 이상의 문자(대소문자, 숫자만 포함)다
+        $middleSegments = array_slice($parts, 1, -1);
+        foreach ($middleSegments as $segment) {
+            if (strlen($segment) >= 6 && ctype_alnum($segment)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }
