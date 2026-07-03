@@ -1,0 +1,20 @@
+/*
+ * 인쇄 스타일시트 (태스크 0556)
+ *
+ * 인쇄 시 불필요한 네비게이션과 액션 요소를 숨긴다.
+ * print 미디어쿼리를 통해 인쇄 화면에만 적용된다.
+ */
+
+@media print {
+  nav {
+    display: none;
+  }
+
+  .pagination {
+    display: none;
+  }
+
+  .empty-state__action {
+    display: none;
+  }
+}
