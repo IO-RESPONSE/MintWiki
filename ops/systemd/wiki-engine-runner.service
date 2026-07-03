@@ -20,4 +20,4 @@ Environment=CODEX_SANDBOX=workspace-write
 Environment=CODEX_APPROVAL=never
 Environment=GITHUB_TOKEN_FILE=/root/.github-mintwiki-token
 ExecStart=/root/wiki-engine-blueprint/scripts/run-next-task.sh
-TimeoutStartSec=540
+TimeoutStartSec=1200

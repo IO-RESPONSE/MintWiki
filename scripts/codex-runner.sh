@@ -31,7 +31,10 @@ Repository rules:
 - Keep the change narrowly scoped to the task.
 - Prefer existing project patterns.
 - Add or update tests required by the task.
-- Run scripts/qa.sh before finishing if possible.
+- Run focused tests for the files you changed, then run scripts/qa.sh if possible.
+- Do not run the root scripts/test.sh unless the task specifically changes the
+  Python reference implementation. It is too slow for this non-interactive
+  systemd runner and the runner will execute the project QA gate after you exit.
 - Do not implement work listed as Out of Scope.
 - Do NOT run git commit or git push. The runner owns committing and pushing.
 - Do NOT create, move, rename, or delete any file under the tasks/ directory. The runner manages the task queue; touching tasks/ will break the runner.
