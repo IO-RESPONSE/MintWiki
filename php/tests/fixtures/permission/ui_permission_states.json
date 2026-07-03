@@ -1,0 +1,78 @@
+{
+  "description": "UI 권한 상태 fixtures. 사용자의 권한 상태(anonymous, user, admin, blocked)별로 기대되는 권한 목록과 접근 가능한 UI 요소를 정의한다.",
+  "states": [
+    {
+      "name": "anonymous",
+      "description": "로그인하지 않은 익명 사용자",
+      "permissions": [
+        "document:view",
+        "revision:view"
+      ],
+      "ui_elements": {
+        "navigation": ["home", "search", "recent"],
+        "actions": ["login"],
+        "restricted": ["edit", "create", "admin", "audit", "block_user"]
+      }
+    },
+    {
+      "name": "user",
+      "description": "로그인한 일반 사용자",
+      "permissions": [
+        "document:view",
+        "document:create",
+        "document:edit",
+        "revision:view",
+        "comment:view",
+        "comment:create",
+        "discussion:view",
+        "discussion:participate"
+      ],
+      "ui_elements": {
+        "navigation": ["home", "search", "recent", "my_documents"],
+        "actions": ["create", "edit", "delete_own", "comment", "discuss", "logout"],
+        "restricted": ["admin", "audit", "block_user", "manage_roles"]
+      }
+    },
+    {
+      "name": "admin",
+      "description": "관리자 권한을 가진 사용자",
+      "permissions": [
+        "document:view",
+        "document:create",
+        "document:edit",
+        "document:delete",
+        "revision:view",
+        "revision:revert",
+        "comment:view",
+        "comment:create",
+        "comment:delete",
+        "discussion:view",
+        "discussion:participate",
+        "discussion:moderate",
+        "admin:read",
+        "admin:write",
+        "audit:view",
+        "user:manage",
+        "user:block"
+      ],
+      "ui_elements": {
+        "navigation": ["home", "search", "recent", "my_documents", "admin", "audit"],
+        "actions": ["create", "edit", "delete", "comment", "discuss", "manage_users", "block_users", "view_audit", "manage_system", "logout"],
+        "restricted": []
+      }
+    },
+    {
+      "name": "blocked",
+      "description": "차단된 사용자",
+      "permissions": [
+        "document:view",
+        "revision:view"
+      ],
+      "ui_elements": {
+        "navigation": ["home", "search", "recent"],
+        "actions": ["logout"],
+        "restricted": ["edit", "create", "comment", "discuss", "admin", "audit"]
+      }
+    }
+  ]
+}
