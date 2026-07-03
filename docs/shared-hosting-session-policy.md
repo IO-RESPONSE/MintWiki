@@ -137,5 +137,5 @@ installer requirement check는 다음 순서로 세션 저장소를 평가한다
   PHP/PDO/MariaDB 공용 웹호스팅 요구사항.
 - [Repository Port Contracts](repository-port-contracts.md) —
   `SessionRepository` 계약.
-- 0634(cookie 보안 정책) — 쿠키 보안 속성은 후속 정책에서 별도로
-  확정한다.
+- [Cookie Security Policy](cookie-security-policy.md) — 쿠키
+  `Secure`/`HttpOnly`/`SameSite` 속성 기준.

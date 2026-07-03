@@ -136,6 +136,8 @@ path traversal 네 영역으로 나눠 고정한다. Phase B: PHP Runtime Skelet
   밖 저장, 실행 권한 제한 등 upload/path 기준의 배경).
 - `docs/shared-hosting-session-policy.md` — PHP 기본 세션, 파일 기반 세션,
   DB 기반 세션 선택 기준.
+- `docs/cookie-security-policy.md` — 세션 쿠키의 `Secure`/`HttpOnly`/
+  `SameSite` 속성 기준.
 - `docs/php-db-ui-micro-job-prompts-0351-0670.md` — 이 문서가 가리키는
   0540/0541/0554/0567/0571/0626/0629/0632/0633/0634/0635/0638/0658 등
   후속 태스크 정의.
