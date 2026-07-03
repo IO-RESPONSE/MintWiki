@@ -27,8 +27,9 @@ final class Layout
      * @param string $body 페이지 본문 (이미 escaping된 HTML)
      * @param string $lang HTML lang 속성 값
      * @param string|null $requestId 운영 문의 추적용 요청 id
+     * @param SeoMetadata|null $seo SEO 메타데이터 (description, canonical URL 등)
      */
-    public function render(string $title, string $body, string $lang = 'ko', ?string $requestId = null): string
+    public function render(string $title, string $body, string $lang = 'ko', ?string $requestId = null, ?SeoMetadata $seo = null): string
     {
         $escapedTitle = $this->escaper->html($title);
         $escapedLang = $this->escaper->attribute($lang);
@@ -40,11 +41,25 @@ final class Layout
         }
         $footer .= '</footer>';
 
+        $headContent = '<meta charset="utf-8">'
+            . '<meta name="viewport" content="width=device-width, initial-scale=1">';
+
+        if ($seo !== null) {
+            if ($seo->description() !== null) {
+                $escapedDescription = $this->escaper->attribute($seo->description());
+                $headContent .= '<meta name="description" content="' . $escapedDescription . '">';
+            }
+
+            if ($seo->canonicalUrl() !== null) {
+                $escapedCanonical = $this->escaper->attribute($seo->canonicalUrl());
+                $headContent .= '<link rel="canonical" href="' . $escapedCanonical . '">';
+            }
+        }
+
         return '<!doctype html>'
             . '<html lang="' . $escapedLang . '">'
             . '<head>'
-            . '<meta charset="utf-8">'
-            . '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            . $headContent
             . '<title>' . $escapedTitle . '</title>'
             . '<link rel="stylesheet" href="/assets/css/design-tokens.css">'
             . '<link rel="stylesheet" href="/assets/css/buttons.css">'

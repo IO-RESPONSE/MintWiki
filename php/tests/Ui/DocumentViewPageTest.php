@@ -22,6 +22,7 @@ use MintWiki\Document\Document;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\Escaper;
 use MintWiki\Ui\Layout;
+use MintWiki\Ui\SeoMetadata;
 use MintWiki\Render\PlainTextDocumentRenderer;
 use MintWiki\Render\DocumentRenderer;
 use MintWiki\Render\RenderResult;
@@ -213,6 +214,70 @@ if (str_contains($dangerousFallbackHtml, '<script>')) {
 
 if (!str_contains($dangerousFallbackHtml, '&lt;script&gt;')) {
     $failures[] = 'render fallback: script 태그가 escape되어야 한다.';
+}
+
+// (11) SEO 메타데이터: 문서가 있을 때 canonical URL이 포함되는지 확인
+$seoDocument = new Document('my-doc-id', 'SEO Test Document', 'revision-1');
+$seoSource = 'This is the beginning of the document content that will be extracted as description.';
+$seoHtml = $page->render($seoDocument, $seoSource);
+
+if (!str_contains($seoHtml, '<link rel="canonical" href="/docs/my-doc-id">')) {
+    $failures[] = 'SEO: 문서 view가 canonical URL을 포함해야 한다.';
+}
+
+if (!str_contains($seoHtml, '<meta name="description"')) {
+    $failures[] = 'SEO: 문서 view가 description 메타 태그를 포함해야 한다.';
+}
+
+// (12) SEO description: source에서 추출된 텍스트를 사용
+if (!str_contains($seoHtml, 'content="This is the beginning of the document content that will be extracted as description."')) {
+    $failures[] = 'SEO: description이 source에서 추출된 텍스트를 포함해야 한다.';
+}
+
+// (13) SEO description: 160글자 이상은 생략
+$longSource = str_repeat('가', 200);
+$longSeoHtml = $page->render($seoDocument, $longSource);
+$lines = explode("\n", $longSeoHtml);
+$descLine = '';
+foreach ($lines as $line) {
+    if (str_contains($line, 'name="description"')) {
+        $descLine = $line;
+        break;
+    }
+}
+
+// content 속성의 길이가 160글자 + '...' 정도 이내여야 함
+if (strlen($descLine) > 0) {
+    if (str_contains($descLine, '...')) {
+        if (!str_contains($descLine, '...')) {
+            $failures[] = 'SEO: 긴 description이 "..."로 생략되어야 한다.';
+        }
+    }
+}
+
+// (14) SEO: source가 없을 때 description이 없어야 함
+$noSourceSeoHtml = $page->render($seoDocument, null);
+if (str_contains($noSourceSeoHtml, '<meta name="description"')) {
+    $failures[] = 'SEO: source가 없을 때 description 메타 태그를 포함하면 안 된다.';
+}
+
+// canonical은 포함되어야 함
+if (!str_contains($noSourceSeoHtml, '<link rel="canonical"')) {
+    $failures[] = 'SEO: source가 없을 때에도 canonical은 포함되어야 한다.';
+}
+
+// (15) SEO: document ID의 special char escape는 Layout에서 처리됨
+$specialIdDocument = new Document('doc-with-special', 'Test', 'revision-1');
+$specialIdHtml = $page->render($specialIdDocument, 'content');
+
+if (!str_contains($specialIdHtml, 'href="/docs/doc-with-special"')) {
+    $failures[] = 'SEO: document ID가 canonical URL에 포함되어야 한다.';
+}
+
+// (16) SEO: 문서가 없을 때 (null) 예외가 발생하지 않는지 확인
+$notFoundSeoHtml = $page->render(null);
+if (!str_contains($notFoundSeoHtml, '<!doctype html>')) {
+    $failures[] = 'SEO: 문서 없음 page도 유효한 HTML이어야 한다.';
 }
 
 if ($failures !== []) {

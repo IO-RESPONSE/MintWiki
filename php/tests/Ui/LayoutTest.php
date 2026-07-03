@@ -16,6 +16,7 @@ if (!is_file($autoloadFile)) {
 require $autoloadFile;
 
 use MintWiki\Ui\Layout;
+use MintWiki\Ui\SeoMetadata;
 
 $failures = [];
 $layout = new Layout();
@@ -77,6 +78,60 @@ if (str_contains($noRequestIdHtml, '요청ID:')) {
 
 if (!str_contains($noRequestIdHtml, '<footer></footer>')) {
     $failures[] = 'requestId가 null일 때에도 footer landmark를 포함해야 한다.';
+}
+
+// SEO 메타데이터 테스트
+$seo = new SeoMetadata('문서 제목', '이것은 문서 설명입니다.', '/docs/test-doc');
+$seoHtml = $layout->render('문서 제목', '<p>body</p>', 'ko', null, $seo);
+
+if (!str_contains($seoHtml, '<meta name="description" content="이것은 문서 설명입니다.">')) {
+    $failures[] = 'SEO 메타데이터의 description을 포함해야 한다.';
+}
+
+if (!str_contains($seoHtml, '<link rel="canonical" href="/docs/test-doc">')) {
+    $failures[] = 'SEO 메타데이터의 canonical link를 포함해야 한다.';
+}
+
+// SEO description escape 테스트
+$seoEscapeHtml = $layout->render('Title', '<p>body</p>', 'ko', null, new SeoMetadata('Title', '설명 "따옴표" <test>', null));
+if (!str_contains($seoEscapeHtml, 'content="설명 &quot;따옴표&quot; &lt;test&gt;"')) {
+    $failures[] = 'SEO description의 속성값이 escape되어야 한다.';
+}
+
+// SEO canonical 링크 escape 테스트
+$seoCanonicalEscapeHtml = $layout->render('Title', '<p>body</p>', 'ko', null, new SeoMetadata('Title', null, '/docs/test?param="xss"'));
+if (!str_contains($seoCanonicalEscapeHtml, 'href="/docs/test?param=&quot;xss&quot;"')) {
+    $failures[] = 'SEO canonical URL의 속성값이 escape되어야 한다.';
+}
+
+// SEO 없을 때 테스트 (backward compatibility)
+$noSeoHtml = $layout->render('Title', '<p>body</p>', 'ko', null, null);
+if (str_contains($noSeoHtml, 'name="description"')) {
+    $failures[] = 'SEO가 없을 때 description 메타 태그를 포함하면 안 된다.';
+}
+
+if (str_contains($noSeoHtml, 'rel="canonical"')) {
+    $failures[] = 'SEO가 없을 때 canonical 링크를 포함하면 안 된다.';
+}
+
+// SEO 부분 설정 테스트: description만 있는 경우
+$partialSeoHtml = $layout->render('Title', '<p>body</p>', 'ko', null, new SeoMetadata('Title', '설명만 있음', null));
+if (!str_contains($partialSeoHtml, '<meta name="description" content="설명만 있음">')) {
+    $failures[] = 'SEO description만 있을 때 description 메타 태그를 포함해야 한다.';
+}
+
+if (str_contains($partialSeoHtml, 'rel="canonical"')) {
+    $failures[] = 'SEO canonical이 없을 때 canonical 링크를 포함하면 안 된다.';
+}
+
+// SEO 부분 설정 테스트: canonical만 있는 경우
+$partialSeo2Html = $layout->render('Title', '<p>body</p>', 'ko', null, new SeoMetadata('Title', null, '/docs/test'));
+if (str_contains($partialSeo2Html, 'name="description"')) {
+    $failures[] = 'SEO description이 없을 때 description 메타 태그를 포함하면 안 된다.';
+}
+
+if (!str_contains($partialSeo2Html, '<link rel="canonical" href="/docs/test">')) {
+    $failures[] = 'SEO canonical만 있을 때 canonical 링크를 포함해야 한다.';
 }
 
 if ($failures !== []) {

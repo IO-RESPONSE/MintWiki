@@ -7,6 +7,7 @@ namespace MintWiki\Ui;
 use MintWiki\Document\Document;
 use MintWiki\Render\DocumentRenderer;
 use MintWiki\Render\PlainTextDocumentRenderer;
+use MintWiki\Ui\SeoMetadata;
 
 /**
  * 단일 문서 view page의 서버 렌더링 (태스크 0529, 0582).
@@ -72,7 +73,13 @@ final class DocumentViewPage
             . $contentHtml
             . '</main>';
 
-        return $this->layout->render($document->title(), $body);
+        $seo = new SeoMetadata(
+            $document->title(),
+            $this->extractDescription($source),
+            '/docs/' . $document->id()
+        );
+
+        return $this->layout->render($document->title(), $body, 'ko', null, $seo);
     }
 
     /**
@@ -101,5 +108,28 @@ final class DocumentViewPage
             . '</main>';
 
         return $this->layout->render('문서를 찾을 수 없습니다', $body);
+    }
+
+    /**
+     * source에서 meta description으로 사용할 텍스트를 추출한다.
+     *
+     * 첫 160 글자 이내의 텍스트를 사용하며, 줄바꿈은 공백으로 정규화된다.
+     * source가 null이거나 비어있으면 null을 반환한다.
+     */
+    private function extractDescription(?string $source): ?string
+    {
+        if ($source === null || trim($source) === '') {
+            return null;
+        }
+
+        $text = trim($source);
+        $text = preg_replace('/\s+/', ' ', $text) ?? $text;
+
+        $maxLength = 160;
+        if (strlen($text) > $maxLength) {
+            $text = substr($text, 0, $maxLength) . '...';
+        }
+
+        return $text;
     }
 }
