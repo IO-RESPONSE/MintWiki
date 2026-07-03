@@ -47,7 +47,7 @@ REFERENCED_PHP_TEST_FILES = [
     "php/tests/Modules/Document/ServiceParityTest.php",
     "php/tests/Modules/Document/RevisionIntegrationTest.php",
     "php/tests/Modules/Parser/ParityPlaceholderTest.php",
-    "php/tests/Modules/Render/ParityPlaceholderTest.php",
+    "php/tests/Modules/Render/DocumentRendererFixtureRunnerTest.php",
 ]
 
 REFERENCED_PYTHON_TEST_FILES = [

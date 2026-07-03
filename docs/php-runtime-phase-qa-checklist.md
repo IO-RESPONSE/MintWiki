@@ -112,13 +112,14 @@ skip하므로, 이 체크리스트를 사람이 별도로 훑어봐야 한다.
       `php/tests/Modules/Document/RevisionIntegrationTest.php`,
       `php/src/Modules/Document/InMemoryRepository.php`,
       `php/src/Modules/Revision/InMemoryRepository.php`.
-- [ ] 아직 포팅되지 않은 `parser`/`render` 모듈은 실제 parity 비교
-      대신 expected-failure placeholder 정책(가드 + 미래 클래스
-      부재 확인 + fixture 무결성 검증 3단계)을 따른다 — 포트가
-      `ready`로 바뀌기 전까지는 이 정책 위반(예: 조용히 스킵되는 테스트)
-      이 없어야 한다. See
+- [ ] `parser` 모듈은 아직 포팅되지 않으므로 expected-failure
+      placeholder 정책(가드 + 미래 클래스 부재 확인 + fixture 무결성
+      검증 3단계)을 따른다. See
       `php/tests/Modules/Parser/ParityPlaceholderTest.php`,
-      `php/tests/Modules/Render/ParityPlaceholderTest.php`,
+      `docs/php-parity-test-plan.md`.
+- [ ] `render` 모듈은 document renderer adapter(태스크 0581)가
+      구현되어 placeholder에서 실제 fixture runner로 전환되었다. See
+      `php/tests/Modules/Render/DocumentRendererFixtureRunnerTest.php`,
       `docs/php-parity-test-plan.md`.
 - [ ] 위반이 있으면 `php/scripts/test.sh`가 파일별 `FAIL`과 실패
       원인을 stderr로 출력하고 exit code 1로 끝나며, `php` CLI가 있는

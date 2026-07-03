@@ -65,7 +65,7 @@ Phase A/B(0351-0440) 기간에는 `docs/php-replacement-strategy.md` 와
 | document | pass | partial | `php/src/Modules/Document/{Document,Repository,Service,Title}.php` 존재, `php/tests/Modules/Document/TitleFixtureRunnerTest.php` 가 `Title::normalize()` 만 비교(서비스 공개 메서드 전체는 아님) |
 | jobs | pass | partial | `php/src/Modules/Jobs/Runner.php` 존재, fixture parity 러너 없음 |
 | parser | pass | not-started | `php/src/Modules/Parser/` 는 `README.md` 뿐, 도메인 클래스 없음. `php/tests/Modules/Parser/ParityPlaceholderTest.php`(0428)가 fixture 무결성만 확인하는 expected-failure placeholder로 남아 있음 |
-| render | pass | not-started | `php/src/Modules/Render/` 는 `README.md` 뿐, 도메인 클래스 없음. `php/tests/Modules/Render/ParityPlaceholderTest.php`(0429)가 fixture 무결성만 확인하는 expected-failure placeholder로 남아 있음 |
+| render | pass | partial | `php/src/Modules/Render/{RenderResult,DocumentRenderer,PlainTextDocumentRenderer}.php` 존재(태스크 0581), fixture parity 러너 없음 |
 | revision | pass | partial | `php/src/Modules/Revision/{Repository,Revision}.php` 존재, fixture parity 러너 없음 |
 | search | pass | not-started | `php/src/Modules/Search/` 는 `README.md` 뿐, PHP 테스트 디렉터리도 아직 없음 |
 | user | pass | partial | `php/src/Modules/User/{User,AnonymousIdentity,IpIdentity}.php` 등 존재, fixture parity 러너 없음 |
