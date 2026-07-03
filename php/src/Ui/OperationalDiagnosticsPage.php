@@ -29,12 +29,14 @@ final class OperationalDiagnosticsPage
         $dbStatusSection = $this->renderDatabaseStatusSection();
         $schemaStatusSection = $this->renderSchemaStatusSection();
         $cacheStatusSection = $this->renderCacheStatusSection();
+        $filePermissionSection = $this->renderFilePermissionSection();
 
         $body = '<main>'
             . '<h1>운영 진단</h1>'
             . $dbStatusSection
             . $schemaStatusSection
             . $cacheStatusSection
+            . $filePermissionSection
             . '</main>';
 
         return $this->layout->render('운영 진단', $body);
@@ -79,6 +81,18 @@ final class OperationalDiagnosticsPage
             . '<dt>상태</dt><dd>대기 중</dd>'
             . '<dt>사용 현황</dt><dd>placeholder</dd>'
             . '</dl>'
+            . '</section>';
+    }
+
+    /**
+     * 파일 권한 진단 연결 섹션을 렌더링한다.
+     */
+    private function renderFilePermissionSection(): string
+    {
+        return '<section aria-label="파일 권한 진단">'
+            . '<h2>파일 권한</h2>'
+            . '<p>공유 호스팅 배포에 필요한 파일과 디렉터리 권한을 확인합니다.</p>'
+            . '<p><a href="/admin/status/file-permissions">파일 권한 진단 보기</a></p>'
             . '</section>';
     }
 }

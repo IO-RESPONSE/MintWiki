@@ -56,6 +56,10 @@ if (!str_contains($html, '<h2>캐시</h2>')) {
     $failures[] = '운영 진단 page가 "캐시" 섹션을 포함해야 한다.';
 }
 
+if (!str_contains($html, '<h2>파일 권한</h2>')) {
+    $failures[] = '운영 진단 page가 "파일 권한" 섹션을 포함해야 한다.';
+}
+
 if (!str_contains($html, '<section aria-label="데이터베이스 상태">')) {
     $failures[] = '운영 진단 page가 데이터베이스 상태 섹션을 포함해야 한다.';
 }
@@ -66,6 +70,14 @@ if (!str_contains($html, '<section aria-label="스키마 상태">')) {
 
 if (!str_contains($html, '<section aria-label="캐시 상태">')) {
     $failures[] = '운영 진단 page가 캐시 상태 섹션을 포함해야 한다.';
+}
+
+if (!str_contains($html, '<section aria-label="파일 권한 진단">')) {
+    $failures[] = '운영 진단 page가 파일 권한 진단 섹션을 포함해야 한다.';
+}
+
+if (!str_contains($html, '<a href="/admin/status/file-permissions">파일 권한 진단 보기</a>')) {
+    $failures[] = '운영 진단 page가 파일 권한 진단 page 링크를 포함해야 한다.';
 }
 
 if (!str_contains($html, '<main>')) {
