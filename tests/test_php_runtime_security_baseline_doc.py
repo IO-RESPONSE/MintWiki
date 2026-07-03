@@ -107,6 +107,7 @@ def test_php_runtime_security_baseline_doc_references_related_docs():
         "docs/php-no-framework-domain-rule.md",
         "docs/php-coding-standard.md",
         "docs/php-replacement-strategy.md",
+        "docs/shared-hosting-session-policy.md",
         "docs/php-db-ui-micro-job-prompts-0351-0670.md",
     ]:
         assert reference in content, f"missing related doc reference: {reference}"
