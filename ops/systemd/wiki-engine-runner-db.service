@@ -13,7 +13,7 @@ Environment=WIKI_ENGINE_TASK_MAX=0520
 Environment=WIKI_ENGINE_GIT_SYNC=0
 Environment=WIKI_ENGINE_SKIP_PROGRESS=1
 Environment=HOME=/root
-Environment=WIKI_ENGINE_AGENT=claude
+Environment=WIKI_ENGINE_AGENT=codex
 Environment=CLAUDE_BIN=/root/.local/bin/claude
 Environment=CLAUDE_MODEL=sonnet
 Environment=CLAUDE_PERMISSION_MODE=acceptEdits
