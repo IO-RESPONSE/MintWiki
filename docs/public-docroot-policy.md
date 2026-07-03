@@ -888,6 +888,7 @@ GET /src/Http/Router.php            → 404 (의도된 동작)
 - [PHP Static Asset Serving](php-static-asset-serving.md) — `assets/` 디렉토리 정책
 - [PHP UI Cache Header Policy](php-ui-cache-header-policy.md) — HTTP 캐싱
 - [PHP Runtime Security Baseline](php-runtime-security-baseline.md) — 보안 기초
+- [Writable Directories Policy](writable-directories-policy.md) — `storage/cache`, `storage/uploads`, `storage/logs` 분리
 
 ## 후속 태스크 연결
 

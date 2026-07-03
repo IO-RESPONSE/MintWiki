@@ -331,6 +331,7 @@ php scripts/qa.sh
 - `docs/db-web-hosting-constraints.md` — 데이터베이스 권한과 문자셋 제약.
 - `docs/php-runtime-docker-note.md` — 로컬 PHP 테스트 방법.
 - `docs/php-static-asset-serving.md` — 정적 asset 제공 방식.
+- `docs/writable-directories-policy.md` — `storage/cache`, `storage/uploads`, `storage/logs` 분리 정책.
 - 태스크 0613 — `.htaccess` 구현 (Apache front controller).
 - 태스크 0614 — `docs/nginx-rewrite-guide.md` (Nginx front controller).
 - 태스크 0616 — local config loader (환경변수/파일 기반 설정).
