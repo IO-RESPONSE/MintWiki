@@ -60,13 +60,15 @@ final class Response
      * 처리는 하지 않고, 이미 완성된 HTML 문자열을 그대로 감싼다.
      *
      * 태스크 0554에서 보안 헤더(CSP, nosniff, frame options)를 추가했다.
+     * 태스크 0577에서 캐시 정책 헤더(Cache-Control)를 추가했다.
      *
-     * @param array<string, string> $headers 기본 Content-Type 및 보안 헤더에 병합할 추가 헤더
+     * @param array<string, string> $headers 기본 헤더들에 병합할 추가 헤더
      */
     public static function html(string $body, int $status = 200, array $headers = []): self
     {
         $defaultHeaders = [
             'Content-Type' => 'text/html; charset=utf-8',
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'DENY',
             'Content-Security-Policy' => "default-src 'self'",

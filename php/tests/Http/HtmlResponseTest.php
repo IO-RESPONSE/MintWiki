@@ -27,6 +27,7 @@ if ($default->status() !== 200) {
 }
 $expectedHeaders = [
     'Content-Type' => 'text/html; charset=utf-8',
+    'Cache-Control' => 'no-cache, no-store, must-revalidate',
     'X-Content-Type-Options' => 'nosniff',
     'X-Frame-Options' => 'DENY',
     'Content-Security-Policy' => "default-src 'self'",
@@ -44,6 +45,7 @@ if ($withStatusAndHeaders->status() !== 404) {
 }
 $expectedHeadersWithExtra = [
     'Content-Type' => 'text/html; charset=utf-8',
+    'Cache-Control' => 'no-cache, no-store, must-revalidate',
     'X-Content-Type-Options' => 'nosniff',
     'X-Frame-Options' => 'DENY',
     'Content-Security-Policy' => "default-src 'self'",
