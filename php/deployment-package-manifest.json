@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "package_name": "wiki-engine-blueprint-php",
+  "base_path": "..",
+  "include": [
+    "php/composer.json",
+    "php/config/*.sample",
+    "php/public/**",
+    "php/src/**",
+    "db/schema/**"
+  ],
+  "optional_include": {
+    "with_vendor": [
+      "php/composer.lock",
+      "php/vendor/**"
+    ],
+    "without_vendor": []
+  },
+  "exclude": [
+    ".agents/**",
+    ".codex/**",
+    ".git/**",
+    "debug_test.php",
+    "docker-compose.yml",
+    "docs/**",
+    "ops/**",
+    "php/.gitignore",
+    "php/tests/**",
+    "scripts/**",
+    "tasks/**",
+    "tests/**",
+    "php/composer.lock",
+    "php/vendor/**"
+  ]
+}
