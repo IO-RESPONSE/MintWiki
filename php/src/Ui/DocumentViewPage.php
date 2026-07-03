@@ -56,8 +56,13 @@ final class DocumentViewPage
 
         // source가 제공되면 렌더러로 렌더링, 아니면 placeholder
         if ($source !== null) {
-            $renderResult = $this->renderer->render($source);
-            $contentHtml = $renderResult->html();
+            try {
+                $renderResult = $this->renderer->render($source);
+                $contentHtml = $renderResult->html();
+            } catch (\Throwable $e) {
+                // 렌더링 실패 시 fallback: source를 escape하여 표시
+                $contentHtml = $this->renderFallback($source);
+            }
         } else {
             $contentHtml = '<p>문서 내용이 여기에 표시됩니다.</p>';
         }
@@ -68,6 +73,21 @@ final class DocumentViewPage
             . '</main>';
 
         return $this->layout->render($document->title(), $body);
+    }
+
+    /**
+     * 렌더링 실패 시 fallback을 렌더링한다.
+     *
+     * source를 escape하여 사용자가 볼 수 있도록 표시하고,
+     * 렌더링 오류 안내를 제공한다.
+     */
+    private function renderFallback(string $source): string
+    {
+        $escapedSource = $this->escaper->html($source);
+        return '<div class="render-fallback">'
+            . '<p class="render-fallback-message">문서 렌더링에 실패했습니다. 아래는 원본 소스입니다:</p>'
+            . '<pre class="render-fallback-source">' . $escapedSource . '</pre>'
+            . '</div>';
     }
 
     /**

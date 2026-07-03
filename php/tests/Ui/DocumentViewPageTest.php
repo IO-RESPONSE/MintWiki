@@ -23,6 +23,8 @@ use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\Escaper;
 use MintWiki\Ui\Layout;
 use MintWiki\Render\PlainTextDocumentRenderer;
+use MintWiki\Render\DocumentRenderer;
+use MintWiki\Render\RenderResult;
 
 $failures = [];
 
@@ -162,6 +164,55 @@ if (str_contains($htmlWithAttr, '<div onclick')) {
 
 if (!str_contains($htmlWithAttr, '&lt;div')) {
     $failures[] = 'unsafe HTML 정책: div 태그가 escape되어야 한다.';
+}
+
+// (9) 렌더러 실패 fallback 상태: renderer가 exception을 던질 때
+// 테스트용 renderer 클래스: exception을 던지는 renderer
+class FailingDocumentRenderer implements DocumentRenderer
+{
+    public function render(string $source): RenderResult
+    {
+        throw new \RuntimeException('렌더링 중 오류 발생');
+    }
+}
+
+$failingRenderer = new FailingDocumentRenderer();
+$pageWithFailingRenderer = new DocumentViewPage($escaper, $layout, $failingRenderer);
+
+$documentForFailure = new Document('fail-id', 'Failing Document', 'revision-1');
+$sourceForFailure = "This is a source that will fail to render";
+$fallbackHtml = $pageWithFailingRenderer->render($documentForFailure, $sourceForFailure);
+
+if (!str_contains($fallbackHtml, 'render-fallback')) {
+    $failures[] = 'render fallback: fallback div가 있어야 한다.';
+}
+
+if (!str_contains($fallbackHtml, '문서 렌더링에 실패했습니다')) {
+    $failures[] = 'render fallback: 오류 메시지가 표시되어야 한다.';
+}
+
+if (!str_contains($fallbackHtml, '원본 소스입니다')) {
+    $failures[] = 'render fallback: 소스 안내 메시지가 있어야 한다.';
+}
+
+if (!str_contains($fallbackHtml, $sourceForFailure)) {
+    $failures[] = 'render fallback: escape된 source가 표시되어야 한다.';
+}
+
+if (!str_contains($fallbackHtml, '<pre')) {
+    $failures[] = 'render fallback: source가 pre 태그로 표시되어야 한다.';
+}
+
+// (10) render fallback: source의 특수문자가 escape되는지 확인
+$dangerousSource = "<script>alert('xss')</script>";
+$dangerousFallbackHtml = $pageWithFailingRenderer->render($documentForFailure, $dangerousSource);
+
+if (str_contains($dangerousFallbackHtml, '<script>')) {
+    $failures[] = 'render fallback: script 태그는 escape되어야 한다.';
+}
+
+if (!str_contains($dangerousFallbackHtml, '&lt;script&gt;')) {
+    $failures[] = 'render fallback: script 태그가 escape되어야 한다.';
 }
 
 if ($failures !== []) {
