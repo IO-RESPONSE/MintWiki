@@ -1,0 +1,36 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * 데이터베이스 설정 샘플.
+ *
+ * 웹호스팅에서 이 파일을 복사하여 local-config.php를 만들고,
+ * 실제 호스팅 환경의 데이터베이스 정보로 수정한다.
+ *
+ * @see docs/shared-hosting-target-baseline.md — PDO + MariaDB 연결 방식
+ */
+
+return [
+    'driver' => 'mysql',
+
+    // PDO DSN (Data Source Name)
+    // 호스팅 패널에서 제공되는 정보로 수정:
+    // - host: 호스팅사 MySQL 호스트 (예: localhost, db.example.com)
+    // - port: 포트 (기본값: 3306)
+    // - dbname: 데이터베이스명
+    'dsn' => 'mysql:host=localhost;port=3306;dbname=wiki_engine;charset=utf8mb4',
+
+    // 데이터베이스 사용자명
+    'user' => 'wiki_user',
+
+    // 데이터베이스 비밀번호
+    // 민감한 정보이므로 환경변수 또는 별도 파일에서 읽기를 권장한다.
+    'password' => 'your-database-password-here',
+
+    // 옵션 설정
+    'options' => [
+        \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+        \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+    ],
+];
