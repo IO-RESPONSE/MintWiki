@@ -214,6 +214,45 @@ try {
     $failures[] = "예상하지 않은 예외: " . get_class($e) . " - " . $e->getMessage();
 }
 
+$uploadDir = sys_get_temp_dir() . '/mintwiki_upload_check_' . getmypid();
+if (!is_dir($uploadDir) && !mkdir($uploadDir, 0777, true)) {
+    $failures[] = "upload 테스트 디렉터리를 만들 수 없다: {$uploadDir}";
+}
+
+if (is_dir($uploadDir)) {
+    try {
+        $checker = new RequirementCheck();
+        if (!$checker->isUploadDirectoryWritable($uploadDir)) {
+            $failures[] = 'upload 디렉터리가 쓰기 가능할 때 true를 반환해야 한다.';
+        }
+    } catch (Exception $e) {
+        $failures[] = "upload 디렉터리 쓰기 가능 검사 실패: " . $e->getMessage();
+    }
+
+    if (!rmdir($uploadDir)) {
+        $failures[] = "upload 테스트 디렉터리를 삭제할 수 없다: {$uploadDir}";
+    }
+}
+
+// upload 디렉터리 쓰기 권한 검사 - 실패 (존재하지 않는 디렉터리)
+try {
+    $checker = new RequirementCheck();
+    $checker->isUploadDirectoryWritable('/nonexistent_upload_directory_xyz');
+    $failures[] = '존재하지 않는 upload 디렉터리에 대해 RuntimeException을 던져야 한다.';
+} catch (RuntimeException $e) {
+    if (strpos($e->getMessage(), '쓰기 불가능한 디렉터리가 있습니다') === false) {
+        $failures[] = 'upload RuntimeException 메시지가 올바르지 않다: ' . $e->getMessage();
+    }
+    if (strpos($e->getMessage(), '/nonexistent_upload_directory_xyz') === false) {
+        $failures[] = 'upload RuntimeException이 upload directory를 포함해야 한다: ' . $e->getMessage();
+    }
+    if (strpos($e->getMessage(), '존재하지 않음') === false) {
+        $failures[] = 'upload RuntimeException이 디렉터리가 존재하지 않는다는 이유를 포함해야 한다: ' . $e->getMessage();
+    }
+} catch (Exception $e) {
+    $failures[] = "예상하지 않은 예외: " . get_class($e) . " - " . $e->getMessage();
+}
+
 // 테스트 결과 출력
 if ($failures !== []) {
     fwrite(STDERR, "Installer RequirementCheck 테스트 실패:\n");

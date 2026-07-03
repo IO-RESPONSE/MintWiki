@@ -99,6 +99,20 @@ final class RequirementCheck
     }
 
     /**
+     * 업로드 디렉터리가 쓰기 가능한지 확인한다.
+     *
+     * @return bool 업로드 디렉터리가 쓰기 가능하면 true.
+     *
+     * @throws RuntimeException 업로드 디렉터리가 없거나 쓰기 불가능하면.
+     */
+    public function isUploadDirectoryWritable(string $uploadDir): bool
+    {
+        $this->assertDirectoriesWritable([$uploadDir]);
+
+        return true;
+    }
+
+    /**
      * 주어진 디렉터리 목록이 모두 쓰기 가능한지 확인한다.
      *
      * @param array<string> $dirs 쓰기 가능해야 하는 디렉터리 목록.
