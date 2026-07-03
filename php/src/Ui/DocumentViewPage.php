@@ -5,48 +5,66 @@ declare(strict_types=1);
 namespace MintWiki\Ui;
 
 use MintWiki\Document\Document;
+use MintWiki\Render\DocumentRenderer;
+use MintWiki\Render\PlainTextDocumentRenderer;
 
 /**
- * 단일 문서 view page의 서버 렌더링 (태스크 0529).
+ * 단일 문서 view page의 서버 렌더링 (태스크 0529, 0582).
  *
  * 존재하는 문서를 표시하거나, 없는 경우 "문서를 찾을 수 없음" 메시지를 보여준다.
  * 모든 사용자 입력(문서 title 등)은 escaping되어 XSS를 방지한다.
+ * 문서 source는 DocumentRenderer를 통해 HTML로 렌더링되며, 렌더러가 생성한
+ * HTML은 이미 안전하게 처리되어 있다 (태스크 0582).
  */
 final class DocumentViewPage
 {
     private Escaper $escaper;
     private Layout $layout;
+    private DocumentRenderer $renderer;
 
-    public function __construct(?Escaper $escaper = null, ?Layout $layout = null)
-    {
+    public function __construct(
+        ?Escaper $escaper = null,
+        ?Layout $layout = null,
+        ?DocumentRenderer $renderer = null
+    ) {
         $this->escaper = $escaper ?? new Escaper();
         $this->layout = $layout ?? new Layout();
+        $this->renderer = $renderer ?? new PlainTextDocumentRenderer();
     }
 
     /**
      * 문서 view page를 렌더링한다.
      *
      * @param Document|null $document 조회한 문서, 없으면 null
+     * @param string|null $source 문서의 source 내용, 없으면 placeholder 표시
      */
-    public function render(?Document $document): string
+    public function render(?Document $document, ?string $source = null): string
     {
         if ($document === null) {
             return $this->renderNotFound();
         }
 
-        return $this->renderDocument($document);
+        return $this->renderDocument($document, $source);
     }
 
     /**
      * 존재하는 문서를 렌더링한다.
      */
-    private function renderDocument(Document $document): string
+    private function renderDocument(Document $document, ?string $source = null): string
     {
         $title = $this->escaper->html($document->title());
 
+        // source가 제공되면 렌더러로 렌더링, 아니면 placeholder
+        if ($source !== null) {
+            $renderResult = $this->renderer->render($source);
+            $contentHtml = $renderResult->html();
+        } else {
+            $contentHtml = '<p>문서 내용이 여기에 표시됩니다.</p>';
+        }
+
         $body = '<main>'
             . '<h1>' . $title . '</h1>'
-            . '<p>문서 내용이 여기에 표시됩니다.</p>'
+            . $contentHtml
             . '</main>';
 
         return $this->layout->render($document->title(), $body);

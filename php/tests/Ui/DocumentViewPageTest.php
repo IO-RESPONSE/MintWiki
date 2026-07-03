@@ -22,13 +22,15 @@ use MintWiki\Document\Document;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\Escaper;
 use MintWiki\Ui\Layout;
+use MintWiki\Render\PlainTextDocumentRenderer;
 
 $failures = [];
 
-// 테스트용 escaper와 layout 생성
+// 테스트용 escaper, layout, renderer 생성
 $escaper = new Escaper();
 $layout = new Layout();
-$page = new DocumentViewPage($escaper, $layout);
+$renderer = new PlainTextDocumentRenderer();
+$page = new DocumentViewPage($escaper, $layout, $renderer);
 
 // (1) 문서가 존재하는 경우
 $document = new Document('test-id', '테스트 문서', 'revision-1');
@@ -103,6 +105,63 @@ $specialHtml = $page->render($specialDocument);
 
 if (!str_contains($specialHtml, '문서 &amp; &lt; &gt; &quot;test&quot;')) {
     $failures[] = '특수 문자들이 올바르게 escape되어야 한다.';
+}
+
+// (5) render output 연결 테스트: source가 제공되면 렌더링된 내용을 표시해야 한다.
+$documentWithSource = new Document('doc-id', 'Test Document with Source', 'revision-1');
+$sourceContent = "Hello World\n\nThis is a test document.";
+$htmlWithSource = $page->render($documentWithSource, $sourceContent);
+
+if (!str_contains($htmlWithSource, '<p>Hello World</p>')) {
+    $failures[] = 'render output: 렌더링된 source 내용이 표시되어야 한다.';
+}
+
+if (!str_contains($htmlWithSource, '<p>This is a test document.</p>')) {
+    $failures[] = 'render output: 렌더링된 multiple paragraphs가 표시되어야 한다.';
+}
+
+// (6) unsafe HTML 정책 테스트: source의 HTML 태그는 escape되어야 한다.
+$documentWithHtml = new Document('html-id', 'Document with HTML', null);
+$sourceWithHtml = '<script>alert("xss")</script><p>content</p>';
+$htmlWithUnsafeHtml = $page->render($documentWithHtml, $sourceWithHtml);
+
+if (str_contains($htmlWithUnsafeHtml, '<script>')) {
+    $failures[] = 'unsafe HTML 정책: source의 script 태그는 escape되어야 한다.';
+}
+
+if (str_contains($htmlWithUnsafeHtml, '</script>')) {
+    $failures[] = 'unsafe HTML 정책: source의 script 닫는 태그는 escape되어야 한다.';
+}
+
+if (!str_contains($htmlWithUnsafeHtml, '&lt;script&gt;')) {
+    $failures[] = 'unsafe HTML 정책: source의 HTML 태그가 escape되어야 한다.';
+}
+
+if (!str_contains($htmlWithUnsafeHtml, '&lt;p&gt;')) {
+    $failures[] = 'unsafe HTML 정책: source의 p 태그도 escape되어야 한다.';
+}
+
+// (7) source가 없을 때: placeholder 표시
+$documentWithoutSource = new Document('no-source-id', 'Document without Source', 'revision-2');
+$htmlWithoutSource = $page->render($documentWithoutSource, null);
+
+if (!str_contains($htmlWithoutSource, '문서 내용이 여기에 표시됩니다.')) {
+    $failures[] = 'render output: source가 없을 때 placeholder를 표시해야 한다.';
+}
+
+// (8) unsafe HTML 정책: 동적 속성 시도
+$documentWithAttr = new Document('attr-id', 'Document with Attributes', null);
+$sourceWithAttr = '<div onclick="alert(1)">test</div>';
+$htmlWithAttr = $page->render($documentWithAttr, $sourceWithAttr);
+
+// onclick은 escaped 되면서 &lt;div onclick=&quot;...&quot;&gt; 형태가 되므로,
+// 실행 가능한 HTML 형태의 <div onclick 이 없고 &lt;div 로 escape되었는지만 확인
+if (str_contains($htmlWithAttr, '<div onclick')) {
+    $failures[] = 'unsafe HTML 정책: 실행 가능한 형태의 div onclick이 있으면 안 된다.';
+}
+
+if (!str_contains($htmlWithAttr, '&lt;div')) {
+    $failures[] = 'unsafe HTML 정책: div 태그가 escape되어야 한다.';
 }
 
 if ($failures !== []) {
