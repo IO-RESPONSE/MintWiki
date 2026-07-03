@@ -3,11 +3,12 @@
 declare(strict_types=1);
 
 /**
- * 문서 route 통합 테스트 (태스크 0563).
+ * 문서 route 통합 테스트 (태스크 0563, 0569).
  *
  * phpunit 없이 `php` CLI만으로 실행된다. 문서의 create/view/edit/history
  * 흐름 전체를 검증한다. 각 핸들러가 올바르게 작동하고, 리비전이 기록되며,
  * UI가 상태를 제대로 표시하는지 확인한다.
+ * Idempotency key 검증도 포함한다 (태스크 0569).
  */
 
 $autoloadFile = __DIR__ . '/../../vendor/autoload.php';
@@ -27,10 +28,17 @@ use MintWiki\Http\DocumentCreateHandler;
 use MintWiki\Http\DocumentEditHandler;
 use MintWiki\Revision\Repository as RevisionRepository;
 use MintWiki\Revision\Revision;
+use MintWiki\Security\IdempotencyKeyService;
 use MintWiki\Ui\DocumentHistoryPage;
 use MintWiki\Ui\DocumentViewPage;
 
 $failures = [];
+
+// 세션 초기화
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$_SESSION = [];
 
 // 테스트용 document repository 구현
 $documentRepository = new class implements Repository {
@@ -101,10 +109,11 @@ $revisionRepository = new class implements RevisionRepository {
 };
 
 $documentService = new Service($documentRepository);
+$idempotencyKeyService = new IdempotencyKeyService();
 $viewPage = new DocumentViewPage();
 $historyPage = new DocumentHistoryPage();
-$createHandler = new DocumentCreateHandler($documentService, $viewPage);
-$editHandler = new DocumentEditHandler($documentService, $revisionRepository, $viewPage);
+$createHandler = new DocumentCreateHandler($documentService, $idempotencyKeyService, $viewPage);
+$editHandler = new DocumentEditHandler($documentService, $revisionRepository, $idempotencyKeyService, $viewPage);
 
 // (1) 문서 생성 단계 (서비스를 통해 직접 생성)
 $createdDoc = $documentService->create('Integration Test Document');
@@ -118,7 +127,8 @@ $docId = $createdDoc->id();
 
 
 // 생성 핸들러의 응답이 올바른지도 검증
-$response = $createHandler->handle('Another Document For Handler Test');
+$key1 = $idempotencyKeyService->generate();
+$response = $createHandler->handle('Another Document For Handler Test', $key1);
 if ($response->status() !== 201) {
     $failures[] = '(1) 문서 생성은 201 상태코드를 반환해야 한다.';
 }
@@ -141,7 +151,8 @@ if ($retrieved === null) {
 }
 
 // (3) 문서 편집 단계
-$response = $editHandler->handle($docId, 'Updated Integration Test', 'Updated source content');
+$key2 = $idempotencyKeyService->generate();
+$response = $editHandler->handle($docId, 'Updated Integration Test', 'Updated source content', $key2);
 if ($response->status() !== 200) {
     $failures[] = '(3) 문서 편집은 200 상태코드를 반환해야 한다.';
 }
@@ -176,7 +187,8 @@ if ($updated === null) {
 }
 
 // (6) 빈 제목으로 편집 시도 (에러 처리)
-$response = $editHandler->handle($docId, '   ', 'Some content');
+$key3 = $idempotencyKeyService->generate();
+$response = $editHandler->handle($docId, '   ', 'Some content', $key3);
 if ($response->status() !== 400) {
     $failures[] = '(6) 빈 제목의 편집은 400 상태코드를 반환해야 한다.';
 }

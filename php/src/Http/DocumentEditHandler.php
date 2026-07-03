@@ -11,22 +11,25 @@ use MintWiki\Document\NotFoundError;
 use MintWiki\Document\Document;
 use MintWiki\Revision\Repository as RevisionRepository;
 use MintWiki\Revision\Revision;
+use MintWiki\Security\IdempotencyKeyService;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\Escaper;
 
 /**
- * POST /documents/{id} 요청을 처리하는 문서 편집 핸들러 (태스크 0533).
+ * POST /documents/{id} 요청을 처리하는 문서 편집 핸들러 (태스크 0533, 0569).
  *
  * 사용자가 제출한 title과 source를 받아서 DocumentService.update()를 호출하고,
  * 새 리비전을 생성한 후 업데이트된 문서를 표시한다.
  * 제목이 중복되거나 문서를 찾을 수 없으면 에러 메시지를 반환한다.
  * 모든 입력 데이터는 escape되어 XSS를 방지한다.
+ * Idempotency key를 검증하여 중복 제출을 방지한다 (태스크 0569).
  */
 final class DocumentEditHandler
 {
     public function __construct(
         private readonly Service $documentService,
         private readonly RevisionRepository $revisionRepository,
+        private readonly IdempotencyKeyService $idempotencyKeyService = new IdempotencyKeyService(),
         private readonly DocumentViewPage $documentViewPage = new DocumentViewPage()
     ) {
     }
@@ -37,10 +40,19 @@ final class DocumentEditHandler
      * @param string $documentId 편집할 문서의 ID
      * @param string $title 수정된 문서 제목
      * @param string $source 수정된 문서 내용
+     * @param string $idempotencyKey 중복 제출 방지를 위한 idempotency key
      * @return Response 성공 시 수정된 문서, 실패 시 에러 메시지
      */
-    public function handle(string $documentId, string $title, string $source): Response
+    public function handle(string $documentId, string $title, string $source, string $idempotencyKey = ''): Response
     {
+        // Idempotency key 검증
+        if (!$this->idempotencyKeyService->validate($idempotencyKey)) {
+            return Response::html(
+                $this->renderError('유효하지 않은 요청입니다.'),
+                400
+            );
+        }
+
         try {
             // 기존 문서 조회
             $existingDocument = $this->documentService->get($documentId);

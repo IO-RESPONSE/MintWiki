@@ -7,20 +7,23 @@ namespace MintWiki\Http;
 use MintWiki\Document\Service;
 use MintWiki\Document\DuplicateNormalizedTitleError;
 use MintWiki\Document\EmptyTitleError;
+use MintWiki\Security\IdempotencyKeyService;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\Escaper;
 
 /**
- * POST /documents 요청을 처리하는 문서 생성 핸들러 (태스크 0531).
+ * POST /documents 요청을 처리하는 문서 생성 핸들러 (태스크 0531, 0569).
  *
  * 사용자가 제출한 title을 받아서 DocumentService.create()를 호출하고,
  * 성공 시 생성된 문서를 표시하고, 실패 시 에러 메시지를 반환한다.
  * 입력 데이터는 모두 escape되어 XSS를 방지한다.
+ * Idempotency key를 검증하여 중복 제출을 방지한다 (태스크 0569).
  */
 final class DocumentCreateHandler
 {
     public function __construct(
         private readonly Service $documentService,
+        private readonly IdempotencyKeyService $idempotencyKeyService = new IdempotencyKeyService(),
         private readonly DocumentViewPage $documentViewPage = new DocumentViewPage()
     ) {
     }
@@ -29,10 +32,19 @@ final class DocumentCreateHandler
      * 문서 생성 요청을 처리한다.
      *
      * @param string $title 사용자가 입력한 문서 제목
+     * @param string $idempotencyKey 중복 제출 방지를 위한 idempotency key
      * @return Response 성공 시 생성된 문서, 실패 시 에러 메시지
      */
-    public function handle(string $title): Response
+    public function handle(string $title, string $idempotencyKey = ''): Response
     {
+        // Idempotency key 검증
+        if (!$this->idempotencyKeyService->validate($idempotencyKey)) {
+            return Response::html(
+                $this->renderError('유효하지 않은 요청입니다.'),
+                400
+            );
+        }
+
         try {
             $document = $this->documentService->create($title);
 

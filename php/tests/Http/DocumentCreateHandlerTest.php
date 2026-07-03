@@ -3,10 +3,11 @@
 declare(strict_types=1);
 
 /**
- * `MintWiki\Http\DocumentCreateHandler`의 동작을 확인하는 smoke test (태스크 0531).
+ * `MintWiki\Http\DocumentCreateHandler`의 동작을 확인하는 smoke test (태스크 0531, 0569).
  *
  * phpunit 없이 `php` CLI만으로 실행된다. 문서 생성 핸들러가 DocumentService를
  * 호출하고, 성공/실패 응답을 올바르게 반환하는지 확인한다.
+ * Idempotency key 검증도 확인한다 (태스크 0569).
  */
 
 $autoloadFile = __DIR__ . '/../../vendor/autoload.php';
@@ -24,9 +25,16 @@ use MintWiki\Document\EmptyTitleError;
 use MintWiki\Document\Repository;
 use MintWiki\Document\Service;
 use MintWiki\Http\DocumentCreateHandler;
+use MintWiki\Security\IdempotencyKeyService;
 use MintWiki\Ui\DocumentViewPage;
 
 $failures = [];
+
+// 세션 초기화
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$_SESSION = [];
 
 // 테스트용 repository 구현
 $repository = new class implements Repository {
@@ -67,8 +75,9 @@ $repository = new class implements Repository {
 };
 
 $service = new Service($repository);
+$idempotencyKeyService = new IdempotencyKeyService();
 $viewPage = new DocumentViewPage();
-$handler = new DocumentCreateHandler($service, $viewPage);
+$handler = new DocumentCreateHandler($service, $idempotencyKeyService, $viewPage);
 
 $expectedHtmlHeaders = [
     'Content-Type' => 'text/html; charset=utf-8',
@@ -78,7 +87,9 @@ $expectedHtmlHeaders = [
 ];
 
 // (1) 정상적인 문서 생성
-$response = $handler->handle('Test Document');
+$_SESSION = [];
+$key1 = $idempotencyKeyService->generate();
+$response = $handler->handle('Test Document', $key1);
 if ($response->status() !== 201) {
     $failures[] = '성공한 생성의 status는 201이어야 한다.';
 }
@@ -90,7 +101,9 @@ if (!str_contains($response->body(), 'Test Document')) {
 }
 
 // (2) 빈 제목으로 생성 시도
-$response = $handler->handle('   ');
+$_SESSION = [];
+$key2 = $idempotencyKeyService->generate();
+$response = $handler->handle('   ', $key2);
 if ($response->status() !== 400) {
     $failures[] = '빈 제목의 생성은 400 상태코드를 반환해야 한다.';
 }
@@ -99,12 +112,16 @@ if (!str_contains($response->body(), '제목이 비어있습니다')) {
 }
 
 // (3) 중복 제목으로 생성 시도
-$response = $handler->handle('Duplicate');
+$_SESSION = [];
+$key3 = $idempotencyKeyService->generate();
+$response = $handler->handle('Duplicate', $key3);
 if ($response->status() !== 201) {
     $failures[] = '첫 번째 생성은 성공해야 한다.';
 }
 
-$response = $handler->handle('Duplicate');
+$_SESSION = [];
+$key4 = $idempotencyKeyService->generate();
+$response = $handler->handle('Duplicate', $key4);
 if ($response->status() !== 409) {
     $failures[] = '중복 제목의 생성은 409 상태코드를 반환해야 한다.';
 }

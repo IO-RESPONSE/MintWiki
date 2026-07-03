@@ -3,11 +3,12 @@
 declare(strict_types=1);
 
 /**
- * `MintWiki\Http\DocumentEditHandler`의 동작을 확인하는 smoke test (태스크 0533).
+ * `MintWiki\Http\DocumentEditHandler`의 동작을 확인하는 smoke test (태스크 0533, 0569).
  *
  * phpunit 없이 `php` CLI만으로 실행된다. 문서 편집 핸들러가 DocumentService를
  * 호출하고, 성공/실패 응답을 올바르게 반환하는지 확인한다. 새 리비전을 생성하고
  * 문서를 업데이트한다.
+ * Idempotency key 검증도 확인한다 (태스크 0569).
  */
 
 $autoloadFile = __DIR__ . '/../../vendor/autoload.php';
@@ -28,9 +29,16 @@ use MintWiki\Document\Service;
 use MintWiki\Http\DocumentEditHandler;
 use MintWiki\Revision\Repository as RevisionRepository;
 use MintWiki\Revision\Revision;
+use MintWiki\Security\IdempotencyKeyService;
 use MintWiki\Ui\DocumentViewPage;
 
 $failures = [];
+
+// 세션 초기화
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$_SESSION = [];
 
 // 테스트용 repository 구현
 $documentRepository = new class implements Repository {
@@ -110,8 +118,9 @@ $revisionRepository = new class implements RevisionRepository {
 };
 
 $documentService = new Service($documentRepository);
+$idempotencyKeyService = new IdempotencyKeyService();
 $viewPage = new DocumentViewPage();
-$handler = new DocumentEditHandler($documentService, $revisionRepository, $viewPage);
+$handler = new DocumentEditHandler($documentService, $revisionRepository, $idempotencyKeyService, $viewPage);
 
 $expectedHtmlHeaders = [
     'Content-Type' => 'text/html; charset=utf-8',
@@ -125,7 +134,9 @@ $document1 = new Document('doc-1', 'Original Title', 'rev-1');
 $documentRepository->addDocument($document1);
 
 // (1) 정상적인 문서 편집 (제목과 내용 변경)
-$response = $handler->handle('doc-1', 'Updated Title', 'New source content');
+$_SESSION = [];
+$key1 = $idempotencyKeyService->generate();
+$response = $handler->handle('doc-1', 'Updated Title', 'New source content', $key1);
 if ($response->status() !== 200) {
     $failures[] = '성공한 편집의 status는 200이어야 한다.';
 }
@@ -137,7 +148,9 @@ if (!str_contains($response->body(), 'Updated Title')) {
 }
 
 // (2) 존재하지 않는 문서 편집
-$response = $handler->handle('nonexistent', 'Title', 'Source');
+$_SESSION = [];
+$key2 = $idempotencyKeyService->generate();
+$response = $handler->handle('nonexistent', 'Title', 'Source', $key2);
 if ($response->status() !== 404) {
     $failures[] = '존재하지 않는 문서의 편집은 404 상태코드를 반환해야 한다.';
 }
@@ -146,7 +159,9 @@ if (!str_contains($response->body(), '문서를 찾을 수 없습니다')) {
 }
 
 // (3) 빈 제목으로 편집
-$response = $handler->handle('doc-1', '   ', 'New source');
+$_SESSION = [];
+$key3 = $idempotencyKeyService->generate();
+$response = $handler->handle('doc-1', '   ', 'New source', $key3);
 if ($response->status() !== 400) {
     $failures[] = '빈 제목의 편집은 400 상태코드를 반환해야 한다.';
 }
@@ -157,7 +172,9 @@ if (!str_contains($response->body(), '제목이 비어있습니다')) {
 // (4) 제목만 변경 (내용은 그대로)
 $document2 = new Document('doc-2', 'Second Doc');
 $documentRepository->addDocument($document2);
-$response = $handler->handle('doc-2', 'Second Doc Updated', 'Old source');
+$_SESSION = [];
+$key4 = $idempotencyKeyService->generate();
+$response = $handler->handle('doc-2', 'Second Doc Updated', 'Old source', $key4);
 if ($response->status() !== 200) {
     $failures[] = '제목만 변경한 편집은 200 상태코드를 반환해야 한다.';
 }
@@ -168,7 +185,9 @@ if (!str_contains($response->body(), 'Second Doc Updated')) {
 // (5) 내용만 변경 (제목은 그대로)
 $document3 = new Document('doc-3', 'Third Doc');
 $documentRepository->addDocument($document3);
-$response = $handler->handle('doc-3', 'Third Doc', 'Updated source content');
+$_SESSION = [];
+$key5 = $idempotencyKeyService->generate();
+$response = $handler->handle('doc-3', 'Third Doc', 'Updated source content', $key5);
 if ($response->status() !== 200) {
     $failures[] = '내용만 변경한 편집은 200 상태코드를 반환해야 한다.';
 }
