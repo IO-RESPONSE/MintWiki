@@ -30,6 +30,13 @@ $failures = [];
 $router = new Router();
 $layout = new Layout();
 
+$expectedHtmlHeaders = [
+    'Content-Type' => 'text/html; charset=utf-8',
+    'X-Content-Type-Options' => 'nosniff',
+    'X-Frame-Options' => 'DENY',
+    'Content-Security-Policy' => "default-src 'self'",
+];
+
 $router->register('GET', '/', static function () use ($layout): Response {
     $body = '<main>'
         . '<h1>문서 검색</h1>'
@@ -51,7 +58,7 @@ if ($handler === null) {
     if ($response->status() !== 200) {
         $failures[] = 'GET / 응답의 status는 200이어야 한다.';
     }
-    if ($response->headers() !== ['Content-Type' => 'text/html; charset=utf-8']) {
+    if ($response->headers() !== $expectedHtmlHeaders) {
         $failures[] = 'GET / 응답의 Content-Type은 text/html; charset=utf-8이어야 한다.';
     }
 }

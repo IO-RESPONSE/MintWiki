@@ -59,10 +59,19 @@ final class Response
      * (태스크 0418). 서버 렌더링 기반만 두는 단계이므로 이스케이프나 템플릿
      * 처리는 하지 않고, 이미 완성된 HTML 문자열을 그대로 감싼다.
      *
-     * @param array<string, string> $headers 기본 Content-Type 헤더에 병합할 추가 헤더
+     * 태스크 0554에서 보안 헤더(CSP, nosniff, frame options)를 추가했다.
+     *
+     * @param array<string, string> $headers 기본 Content-Type 및 보안 헤더에 병합할 추가 헤더
      */
     public static function html(string $body, int $status = 200, array $headers = []): self
     {
-        return new self($status, ['Content-Type' => 'text/html; charset=utf-8'] + $headers, $body);
+        $defaultHeaders = [
+            'Content-Type' => 'text/html; charset=utf-8',
+            'X-Content-Type-Options' => 'nosniff',
+            'X-Frame-Options' => 'DENY',
+            'Content-Security-Policy' => "default-src 'self'",
+        ];
+
+        return new self($status, $defaultHeaders + $headers, $body);
     }
 }

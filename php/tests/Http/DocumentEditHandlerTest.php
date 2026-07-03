@@ -113,6 +113,13 @@ $documentService = new Service($documentRepository);
 $viewPage = new DocumentViewPage();
 $handler = new DocumentEditHandler($documentService, $revisionRepository, $viewPage);
 
+$expectedHtmlHeaders = [
+    'Content-Type' => 'text/html; charset=utf-8',
+    'X-Content-Type-Options' => 'nosniff',
+    'X-Frame-Options' => 'DENY',
+    'Content-Security-Policy' => "default-src 'self'",
+];
+
 // 테스트용 문서 생성
 $document1 = new Document('doc-1', 'Original Title', 'rev-1');
 $documentRepository->addDocument($document1);
@@ -122,7 +129,7 @@ $response = $handler->handle('doc-1', 'Updated Title', 'New source content');
 if ($response->status() !== 200) {
     $failures[] = '성공한 편집의 status는 200이어야 한다.';
 }
-if ($response->headers() !== ['Content-Type' => 'text/html; charset=utf-8']) {
+if ($response->headers() !== $expectedHtmlHeaders) {
     $failures[] = '성공한 편집의 Content-Type은 text/html; charset=utf-8이어야 한다.';
 }
 if (!str_contains($response->body(), 'Updated Title')) {

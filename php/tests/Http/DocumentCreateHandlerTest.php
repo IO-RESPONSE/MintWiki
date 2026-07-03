@@ -70,12 +70,19 @@ $service = new Service($repository);
 $viewPage = new DocumentViewPage();
 $handler = new DocumentCreateHandler($service, $viewPage);
 
+$expectedHtmlHeaders = [
+    'Content-Type' => 'text/html; charset=utf-8',
+    'X-Content-Type-Options' => 'nosniff',
+    'X-Frame-Options' => 'DENY',
+    'Content-Security-Policy' => "default-src 'self'",
+];
+
 // (1) 정상적인 문서 생성
 $response = $handler->handle('Test Document');
 if ($response->status() !== 201) {
     $failures[] = '성공한 생성의 status는 201이어야 한다.';
 }
-if ($response->headers() !== ['Content-Type' => 'text/html; charset=utf-8']) {
+if ($response->headers() !== $expectedHtmlHeaders) {
     $failures[] = '성공한 생성의 Content-Type은 text/html; charset=utf-8이어야 한다.';
 }
 if (!str_contains($response->body(), 'Test Document')) {

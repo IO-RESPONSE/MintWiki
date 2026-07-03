@@ -25,8 +25,14 @@ $default = Response::html('<p>hi</p>');
 if ($default->status() !== 200) {
     $failures[] = '기본 status는 200이어야 한다.';
 }
-if ($default->headers() !== ['Content-Type' => 'text/html; charset=utf-8']) {
-    $failures[] = 'Content-Type 헤더가 text/html; charset=utf-8로 설정되어야 한다.';
+$expectedHeaders = [
+    'Content-Type' => 'text/html; charset=utf-8',
+    'X-Content-Type-Options' => 'nosniff',
+    'X-Frame-Options' => 'DENY',
+    'Content-Security-Policy' => "default-src 'self'",
+];
+if ($default->headers() !== $expectedHeaders) {
+    $failures[] = 'Content-Type, X-Content-Type-Options, X-Frame-Options, Content-Security-Policy 헤더가 올바르게 설정되어야 한다.';
 }
 if ($default->body() !== '<p>hi</p>') {
     $failures[] = 'body는 전달한 HTML 문자열을 그대로 담아야 한다.';
@@ -36,8 +42,15 @@ $withStatusAndHeaders = Response::html('<p>not found</p>', 404, ['X-Request-Id' 
 if ($withStatusAndHeaders->status() !== 404) {
     $failures[] = 'status()가 전달한 값을 반환하지 않았다.';
 }
-if ($withStatusAndHeaders->headers() !== ['Content-Type' => 'text/html; charset=utf-8', 'X-Request-Id' => 'abc']) {
-    $failures[] = '추가 헤더가 Content-Type과 함께 병합되어야 한다.';
+$expectedHeadersWithExtra = [
+    'Content-Type' => 'text/html; charset=utf-8',
+    'X-Content-Type-Options' => 'nosniff',
+    'X-Frame-Options' => 'DENY',
+    'Content-Security-Policy' => "default-src 'self'",
+    'X-Request-Id' => 'abc',
+];
+if ($withStatusAndHeaders->headers() !== $expectedHeadersWithExtra) {
+    $failures[] = '추가 헤더가 보안 헤더와 함께 병합되어야 한다.';
 }
 if ($withStatusAndHeaders->body() !== '<p>not found</p>') {
     $failures[] = 'body()가 전달한 HTML 문자열을 반환하지 않았다.';
