@@ -29,6 +29,7 @@ foreach ([
     '<meta name="viewport" content="width=device-width, initial-scale=1">' => 'viewport meta를 포함해야 한다.',
     '<title>MintWiki &lt;Home&gt;</title>' => 'title은 escape해야 한다.',
     '<link rel="stylesheet" href="/assets/css/design-tokens.css">' => 'design-tokens CSS를 포함해야 한다.',
+    '<link rel="stylesheet" href="/assets/css/buttons.css">' => 'buttons CSS를 포함해야 한다.',
     '<link rel="stylesheet" href="/assets/css/print.css" media="print">' => 'print CSS를 포함해야 한다.',
     '<header></header>' => 'header landmark를 포함해야 한다.',
     '<main><h1>홈</h1></main>' => 'body HTML은 layout 안에 포함해야 한다.',

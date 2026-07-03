@@ -106,7 +106,39 @@ if (!is_file($designTokensCssPath)) {
 }
 
 // ============================================================================
-// 4. Print CSS의 media query 확인
+// 4. Buttons CSS의 상태 스타일 확인
+// ============================================================================
+
+$buttonsCssPath = __DIR__ . '/../../public/assets/css/buttons.css';
+
+if (!is_file($buttonsCssPath)) {
+    $failures[] = '[buttons-css] buttons.css 파일이 존재해야 한다.';
+} else {
+    $buttonsCssContent = file_get_contents($buttonsCssPath);
+
+    // (4-1) 비활성화 상태 스타일
+    if (!str_contains($buttonsCssContent, ':disabled')) {
+        $failures[] = '[buttons-css] buttons.css에 :disabled 상태 스타일이 포함되어야 한다.';
+    }
+
+    // (4-2) 로딩 상태 스타일
+    if (!str_contains($buttonsCssContent, 'data-loading')) {
+        $failures[] = '[buttons-css] buttons.css에 data-loading 상태 스타일이 포함되어야 한다.';
+    }
+
+    // (4-3) 감소된 모션 설정
+    if (!str_contains($buttonsCssContent, '@media (prefers-reduced-motion: reduce)')) {
+        $failures[] = '[buttons-css] buttons.css에 감소된 모션 설정이 포함되어야 한다.';
+    }
+
+    // (4-4) 다크모드 설정
+    if (!str_contains($buttonsCssContent, '@media (prefers-color-scheme: dark)')) {
+        $failures[] = '[buttons-css] buttons.css에 다크모드 설정이 포함되어야 한다.';
+    }
+}
+
+// ============================================================================
+// 5. Print CSS의 media query 확인
 // ============================================================================
 
 $printCssPath = __DIR__ . '/../../public/assets/css/print.css';
@@ -116,22 +148,27 @@ if (!is_file($printCssPath)) {
 } else {
     $printCssContent = file_get_contents($printCssPath);
 
-    // (4-1) print media query
+    // (5-1) print media query
     if (!str_contains($printCssContent, '@media print')) {
         $failures[] = '[print-css] print.css에 @media print가 포함되어야 한다.';
     }
 }
 
 // ============================================================================
-// 5. HTML에 CSS 파일 링크 확인
+// 6. HTML에 CSS 파일 링크 확인
 // ============================================================================
 
-// (5-1) design-tokens.css가 링크되어 있어야 한다.
+// (6-1) design-tokens.css가 링크되어 있어야 한다.
 if (!str_contains($html, '<link rel="stylesheet" href="/assets/css/design-tokens.css">')) {
     $failures[] = '[css-links] 레이아웃이 design-tokens.css를 링크해야 한다.';
 }
 
-// (5-2) print.css가 올바른 media 속성과 함께 링크되어야 한다.
+// (6-2) buttons.css가 링크되어 있어야 한다.
+if (!str_contains($html, '<link rel="stylesheet" href="/assets/css/buttons.css">')) {
+    $failures[] = '[css-links] 레이아웃이 buttons.css를 링크해야 한다.';
+}
+
+// (6-3) print.css가 올바른 media 속성과 함께 링크되어야 한다.
 if (!str_contains($html, '<link rel="stylesheet" href="/assets/css/print.css" media="print">')) {
     $failures[] = '[css-links] 레이아웃이 print.css를 media="print" 속성과 함께 링크해야 한다.';
 }

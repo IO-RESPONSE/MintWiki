@@ -1,0 +1,105 @@
+/*
+ * 버튼 스타일 및 상태 CSS (태스크 0575)
+ *
+ * 기본 버튼 스타일과 로딩/비활성화 상태를 정의한다.
+ * 중복 클릭 방지 UX를 위해 폼 제출 중 버튼 비활성화 처리를 지원한다.
+ */
+
+button {
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-size: inherit;
+  font-family: inherit;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  background-color: var(--color-bg-tertiary);
+}
+
+button:active:not(:disabled) {
+  opacity: 0.85;
+}
+
+/*
+ * 비활성화 상태 스타일
+ *
+ * 비활성화된 버튼은 클릭 불가능한 상태를 시각적으로 나타낸다.
+ * 폼 제출 중이나 기타 조건에 따라 비활성화될 수 있다.
+ */
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-tertiary);
+}
+
+button:disabled:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+/*
+ * 로딩 상태 스타일
+ *
+ * [data-loading="true"] 속성을 사용하여 로딩 중인 버튼을 표시한다.
+ * aria-busy="true"와 함께 사용하여 접근성을 지원한다.
+ * 로딩 중인 버튼은 클릭을 방지하기 위해 비활성화된 것처럼 보인다.
+ */
+
+button[data-loading='true'] {
+  opacity: 0.7;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+button[data-loading='true']:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+/*
+ * 감소된 모션 설정 (prefers-reduced-motion: reduce)
+ *
+ * 트랜지션을 비활성화하여 민감한 사용자를 배려한다.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
+}
+
+/*
+ * 다크모드 버튼 스타일
+ *
+ * 다크모드에서도 충분한 대비를 유지한다.
+ */
+
+@media (prefers-color-scheme: dark) {
+  button {
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+  }
+
+  button:hover:not(:disabled) {
+    background-color: var(--color-bg-tertiary);
+  }
+
+  button:disabled {
+    background-color: var(--color-bg-secondary);
+    color: var(--color-text-tertiary);
+  }
+
+  button:disabled:hover {
+    background-color: var(--color-bg-secondary);
+  }
+
+  button[data-loading='true']:hover {
+    background-color: var(--color-bg-secondary);
+  }
+}

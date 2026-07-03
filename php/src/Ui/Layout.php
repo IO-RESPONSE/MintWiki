@@ -47,6 +47,7 @@ final class Layout
             . '<meta name="viewport" content="width=device-width, initial-scale=1">'
             . '<title>' . $escapedTitle . '</title>'
             . '<link rel="stylesheet" href="/assets/css/design-tokens.css">'
+            . '<link rel="stylesheet" href="/assets/css/buttons.css">'
             . '<link rel="stylesheet" href="/assets/css/print.css" media="print">'
             . '</head>'
             . '<body>'
