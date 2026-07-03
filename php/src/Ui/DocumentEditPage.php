@@ -43,6 +43,8 @@ final class DocumentEditPage
 
         $body = '<main>'
             . '<h1>문서 편집</h1>'
+            . '<div class="editor-container">'
+            . '<div class="editor-form">'
             . '<form method="post" action="/documents/' . $id . '">'
             . '<input type="hidden" name="csrf_token" value="' . $csrfTokenEscaped . '">'
             . '<label for="title">제목</label>'
@@ -51,6 +53,14 @@ final class DocumentEditPage
             . '<textarea id="source" name="source" required>' . $sourceContent . '</textarea>'
             . '<button type="submit">저장</button>'
             . '</form>'
+            . '</div>'
+            . '<div class="editor-preview">'
+            . '<h2>미리보기</h2>'
+            . '<div id="preview-content" class="preview-placeholder">'
+            . '<p>입력된 내용의 미리보기가 여기에 표시됩니다.</p>'
+            . '</div>'
+            . '</div>'
+            . '</div>'
             . '</main>';
 
         return $this->layout->render('문서 편집', $body);

@@ -94,6 +94,23 @@ if (!str_contains($html, '<main>')) {
     $failures[] = '편집 form이 main 요소를 포함해야 한다.';
 }
 
+// (7) 미리보기 placeholder 확인
+if (!str_contains($html, '<div class="editor-preview">')) {
+    $failures[] = '편집 form이 미리보기 section을 포함해야 한다.';
+}
+
+if (!str_contains($html, '<h2>미리보기</h2>')) {
+    $failures[] = '미리보기 section이 "미리보기" 제목을 포함해야 한다.';
+}
+
+if (!str_contains($html, '<div id="preview-content" class="preview-placeholder">')) {
+    $failures[] = '미리보기 content div가 올바른 id와 class를 가져야 한다.';
+}
+
+if (!str_contains($html, '<p>입력된 내용의 미리보기가 여기에 표시됩니다.</p>')) {
+    $failures[] = '미리보기 placeholder가 설명 텍스트를 포함해야 한다.';
+}
+
 if (!str_contains($html, '<header></header>')) {
     $failures[] = '편집 form이 header landmark를 포함해야 한다.';
 }
