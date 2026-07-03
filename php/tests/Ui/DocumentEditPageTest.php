@@ -23,13 +23,22 @@ use MintWiki\Document\Document;
 use MintWiki\Ui\DocumentEditPage;
 use MintWiki\Ui\Escaper;
 use MintWiki\Ui\Layout;
+use MintWiki\Security\CsrfTokenService;
 
 $failures = [];
 
 // 테스트용 escaper와 layout 생성
 $escaper = new Escaper();
 $layout = new Layout();
-$page = new DocumentEditPage($escaper, $layout);
+
+// 세션 초기화
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$_SESSION = [];
+
+$csrfTokenService = new CsrfTokenService();
+$page = new DocumentEditPage($escaper, $layout, $csrfTokenService);
 
 // (1) 기본 편집 form 렌더링
 $document = new Document('doc-123', '테스트 문서', 'revision-1');
@@ -50,6 +59,11 @@ if (!str_contains($html, '<h1>문서 편집</h1>')) {
 
 if (!str_contains($html, '<form method="post" action="/documents/doc-123">')) {
     $failures[] = '편집 form이 POST form을 포함해야 하고, 정확한 document id를 사용해야 한다.';
+}
+
+// CSRF 토큰 확인
+if (!preg_match('/<input type="hidden" name="csrf_token" value="[a-f0-9]{64}">/', $html)) {
+    $failures[] = '편집 form이 CSRF 토큰 hidden input을 포함해야 한다.';
 }
 
 if (!str_contains($html, '<label for="title">제목</label>')) {
@@ -134,6 +148,23 @@ $specialIdHtml = $page->render($specialIdDocument);
 
 if (!str_contains($specialIdHtml, 'action="/documents/id-&amp;-test"')) {
     $failures[] = 'Document id가 form action에서 escape되어야 한다.';
+}
+
+// (6) 각 render 호출마다 다른 CSRF 토큰 생성 확인
+$_SESSION = [];
+preg_match('/<input type="hidden" name="csrf_token" value="([a-f0-9]{64})">/', $html, $matches1);
+$token1 = $matches1[1] ?? null;
+
+$html2 = $page->render($document, $source);
+preg_match('/<input type="hidden" name="csrf_token" value="([a-f0-9]{64})">/', $html2, $matches2);
+$token2 = $matches2[1] ?? null;
+
+if ($token1 === null || $token2 === null) {
+    $failures[] = 'CSRF 토큰이 올바른 형식이어야 한다.';
+}
+
+if ($token1 === $token2) {
+    $failures[] = '각 render 호출마다 다른 CSRF 토큰을 생성해야 한다.';
 }
 
 if ($failures !== []) {

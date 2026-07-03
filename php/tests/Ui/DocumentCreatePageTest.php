@@ -21,13 +21,22 @@ require $autoloadFile;
 use MintWiki\Ui\DocumentCreatePage;
 use MintWiki\Ui\Escaper;
 use MintWiki\Ui\Layout;
+use MintWiki\Security\CsrfTokenService;
 
 $failures = [];
 
 // 테스트용 escaper와 layout 생성
 $escaper = new Escaper();
 $layout = new Layout();
-$page = new DocumentCreatePage($escaper, $layout);
+
+// 세션 초기화
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+$_SESSION = [];
+
+$csrfTokenService = new CsrfTokenService();
+$page = new DocumentCreatePage($escaper, $layout, $csrfTokenService);
 
 // (1) 기본 form 렌더링
 $html = $page->render();
@@ -46,6 +55,11 @@ if (!str_contains($html, '<h1>새 문서 만들기</h1>')) {
 
 if (!str_contains($html, '<form method="post" action="/documents">')) {
     $failures[] = '생성 form이 POST form을 포함해야 한다.';
+}
+
+// CSRF 토큰 확인
+if (!preg_match('/<input type="hidden" name="csrf_token" value="[a-f0-9]{64}">/', $html)) {
+    $failures[] = '생성 form이 CSRF 토큰 hidden input을 포함해야 한다.';
 }
 
 if (!str_contains($html, '<label for="title">제목</label>')) {
@@ -78,6 +92,23 @@ if (!str_contains($html, '<header></header>')) {
 
 if (!str_contains($html, '<footer></footer>')) {
     $failures[] = '생성 form이 footer landmark를 포함해야 한다.';
+}
+
+// (2) 각 render 호출마다 다른 CSRF 토큰 생성 확인
+$_SESSION = [];
+preg_match('/<input type="hidden" name="csrf_token" value="([a-f0-9]{64})">/', $html, $matches1);
+$token1 = $matches1[1] ?? null;
+
+$html2 = $page->render();
+preg_match('/<input type="hidden" name="csrf_token" value="([a-f0-9]{64})">/', $html2, $matches2);
+$token2 = $matches2[1] ?? null;
+
+if ($token1 === null || $token2 === null) {
+    $failures[] = 'CSRF 토큰이 올바른 형식이어야 한다.';
+}
+
+if ($token1 === $token2) {
+    $failures[] = '각 render 호출마다 다른 CSRF 토큰을 생성해야 한다.';
 }
 
 if ($failures !== []) {
