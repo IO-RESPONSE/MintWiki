@@ -158,7 +158,7 @@ final class LocalConfigLoader
         }
 
         // 기타 직접 매핑 가능한 키들 (소문자로 통일)
-        foreach (['app_name', 'environment', 'database_url', 'redis_url'] as $key) {
+        foreach (['app_name', 'environment', 'database_url', 'redis_url', 'storage_path'] as $key) {
             if (isset($config[$key])) {
                 $values[strtolower($key)] = $config[$key];
             }

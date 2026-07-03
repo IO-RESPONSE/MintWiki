@@ -15,6 +15,10 @@
   `local-config.php`)을 읽어서 ConfigLoader에 전달할 값 배열을
   구성한다. 환경변수가 없어도 파일 설정으로부터 값을 읽을 수 있다.
   `.env` 파일이 `local-config.php`보다 우선한다.
+- `StoragePathConfig.php` (태스크 0627) — `storage_path` 설정에서
+  런타임 저장소 루트와 `cache`, `uploads`, `logs` 하위 경로를 계산한다.
+  공유 호스팅의 쓰기 가능 경로 차이는 `WIKI_STORAGE_PATH` 또는
+  `local-config.php`의 `storage_path` 값으로 흡수한다.
 - `ErrorCodeRegistry.php` (태스크 0416) — `docs/portable-exception-code-
   policy.md`가 정한 `<module>.<reason>` error code 형식 검증과 등록된
   code 조회를 한 곳에서 제공한다. code 값의 정본은 여전히 각 모듈 예외

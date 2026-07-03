@@ -51,6 +51,7 @@ WIKI_MARIADB_DSN=mysql:host=localhost;dbname=test
 # 또 다른 주석
 INVALID_LINE_WITHOUT_EQUALS
 WIKI_EMPTY_VALUE=
+WIKI_STORAGE_PATH=/home/account/wiki-storage
 
 # 빈 라인도 스킵
 
@@ -77,6 +78,10 @@ ENV
         $failures[] = '.env에서 WIKI_DATABASE_URL을 파싱해야 한다.';
     }
 
+    if (($result['storage_path'] ?? null) !== '/home/account/wiki-storage') {
+        $failures[] = '.env에서 WIKI_STORAGE_PATH를 파싱해야 한다.';
+    }
+
     if (($result['empty_value'] ?? 'NOT_FOUND') === 'NOT_FOUND') {
         $failures[] = '.env에서 빈 값도 파싱해야 한다 (empty string로 설정).';
     }
@@ -94,6 +99,7 @@ return [
     'user' => 'wiki_user',
     'password' => 'secret123',
     'app_name' => 'wiki-engine',
+    'storage_path' => '/home/account/private/storage',
 ];
 PHP
     );
@@ -119,6 +125,10 @@ PHP
 
     if (($result['app_name'] ?? null) !== 'wiki-engine') {
         $failures[] = 'local-config.php에서 app_name을 직접 매핑해야 한다.';
+    }
+
+    if (($result['storage_path'] ?? null) !== '/home/account/private/storage') {
+        $failures[] = 'local-config.php에서 storage_path를 직접 매핑해야 한다.';
     }
 
     // Test 4: .env가 local-config.php보다 우선
