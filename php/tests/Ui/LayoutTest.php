@@ -44,6 +44,40 @@ if (!str_contains($langHtml, '<html lang="ko&quot; data-x=&quot;1">')) {
     $failures[] = 'lang attribute는 escape해야 한다.';
 }
 
+// requestId 테스트
+$requestIdHtml = $layout->render('Title', '<p>body</p>', 'ko', 'req-12345');
+if (!str_contains($requestIdHtml, 'data-request-id="req-12345"')) {
+    $failures[] = 'data-request-id attribute를 포함해야 한다.';
+}
+
+if (!str_contains($requestIdHtml, '요청ID: req-12345')) {
+    $failures[] = 'footer에 요청ID 텍스트를 포함해야 한다.';
+}
+
+// requestId XSS 테스트
+$requestIdXssHtml = $layout->render('Title', '<p>body</p>', 'ko', '<script>alert("xss")</script>');
+if (str_contains($requestIdXssHtml, '<script>')) {
+    $failures[] = 'requestId의 script 태그는 escape되어야 한다.';
+}
+
+if (!str_contains($requestIdXssHtml, '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;')) {
+    $failures[] = 'requestId이 escape되어야 한다.';
+}
+
+// requestId가 null일 때 footer가 비어있어야 함
+$noRequestIdHtml = $layout->render('Title', '<p>body</p>', 'ko', null);
+if (str_contains($noRequestIdHtml, 'data-request-id')) {
+    $failures[] = 'requestId가 null일 때 data-request-id attribute를 포함하면 안 된다.';
+}
+
+if (str_contains($noRequestIdHtml, '요청ID:')) {
+    $failures[] = 'requestId가 null일 때 "요청ID:" 텍스트를 포함하면 안 된다.';
+}
+
+if (!str_contains($noRequestIdHtml, '<footer></footer>')) {
+    $failures[] = 'requestId가 null일 때에도 footer landmark를 포함해야 한다.';
+}
+
 if ($failures !== []) {
     fwrite(STDERR, "Layout 테스트 실패:\n");
     foreach ($failures as $failure) {

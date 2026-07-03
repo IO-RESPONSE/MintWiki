@@ -9,6 +9,7 @@ namespace MintWiki\Ui;
  *
  * 화면별 템플릿이 만든 HTML body를 문서 구조로 감싼다. body는 호출자가 이미
  * escaping한 HTML로 간주하고, title/lang 같은 layout 값만 여기서 escape한다.
+ * requestId는 운영 문의 추적을 위해 footer에 표시된다.
  */
 final class Layout
 {
@@ -19,10 +20,25 @@ final class Layout
         $this->escaper = $escaper ?? new Escaper();
     }
 
-    public function render(string $title, string $body, string $lang = 'ko'): string
+    /**
+     * HTML 페이지를 렌더링한다.
+     *
+     * @param string $title 페이지 제목
+     * @param string $body 페이지 본문 (이미 escaping된 HTML)
+     * @param string $lang HTML lang 속성 값
+     * @param string|null $requestId 운영 문의 추적용 요청 id
+     */
+    public function render(string $title, string $body, string $lang = 'ko', ?string $requestId = null): string
     {
         $escapedTitle = $this->escaper->html($title);
         $escapedLang = $this->escaper->attribute($lang);
+
+        $footer = '<footer>';
+        if ($requestId !== null) {
+            $escapedRequestId = $this->escaper->html($requestId);
+            $footer .= '<div data-request-id="' . $this->escaper->attribute($requestId) . '">요청ID: ' . $escapedRequestId . '</div>';
+        }
+        $footer .= '</footer>';
 
         return '<!doctype html>'
             . '<html lang="' . $escapedLang . '">'
@@ -36,7 +52,7 @@ final class Layout
             . '<body>'
             . '<header></header>'
             . $body
-            . '<footer></footer>'
+            . $footer
             . '</body>'
             . '</html>';
     }
