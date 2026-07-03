@@ -9,10 +9,12 @@
 
 - `ConfigLoader.php` (태스크 0415) — Python `src/app/config.py`의
   `Settings`와 대응하는 설정 읽기 계약. `WIKI_` 접두어 환경변수를
-  최우선으로 하고, 없으면 생성자로 전달된 file-value 배열(파일 파싱은
-  아직 이 태스크 범위 밖)을, 그것도 없으면 호출자가 넘긴 `$default`를
-  반환한다. `.env`/config 파일 자체를 읽는 실제 파서는 0616 "local
-  config loader"에서 추가된다.
+  최우선으로 하고, 없으면 생성자로 전달된 file-value 배열을, 그것도
+  없으면 호출자가 넘긴 `$default`를 반환한다.
+- `LocalConfigLoader.php` (태스크 0616) — 로컬 설정 파일들(`.env`와
+  `local-config.php`)을 읽어서 ConfigLoader에 전달할 값 배열을
+  구성한다. 환경변수가 없어도 파일 설정으로부터 값을 읽을 수 있다.
+  `.env` 파일이 `local-config.php`보다 우선한다.
 - `ErrorCodeRegistry.php` (태스크 0416) — `docs/portable-exception-code-
   policy.md`가 정한 `<module>.<reason>` error code 형식 검증과 등록된
   code 조회를 한 곳에서 제공한다. code 값의 정본은 여전히 각 모듈 예외
