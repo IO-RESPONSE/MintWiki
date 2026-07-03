@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace MintWiki\Http;
 
+use MintWiki\Audit\AuditRecorder;
+use MintWiki\Audit\NoOpAuditRecorder;
+use MintWiki\Audit\AuditEvent;
 use MintWiki\Document\Service;
 use MintWiki\Document\DuplicateNormalizedTitleError;
 use MintWiki\Document\EmptyTitleError;
@@ -30,7 +33,8 @@ final class DocumentEditHandler
         private readonly Service $documentService,
         private readonly RevisionRepository $revisionRepository,
         private readonly IdempotencyKeyService $idempotencyKeyService = new IdempotencyKeyService(),
-        private readonly DocumentViewPage $documentViewPage = new DocumentViewPage()
+        private readonly DocumentViewPage $documentViewPage = new DocumentViewPage(),
+        private readonly AuditRecorder $auditRecorder = new NoOpAuditRecorder()
     ) {
     }
 
@@ -90,6 +94,30 @@ final class DocumentEditHandler
                 $newRevision->id()
             );
             $updatedDocument = $this->documentService->update($updatedDocument);
+
+            // 감사 hook 호출
+            try {
+                $metadata = [
+                    'document_id' => $updatedDocument->id(),
+                    'source_length' => strlen($source)
+                ];
+                if ($existingDocument->title() !== $updatedDocument->title()) {
+                    $metadata['title_before'] = $existingDocument->title();
+                    $metadata['title_after'] = $updatedDocument->title();
+                }
+                $event = new AuditEvent(
+                    id: self::generateId(),
+                    module: 'document',
+                    action: 'updated',
+                    occurredAt: new \DateTimeImmutable('now'),
+                    actorId: null,
+                    metadata: $metadata
+                );
+                $this->auditRecorder->record($event);
+            } catch (\Exception $e) {
+                // 감사 기록 실패는 request 처리를 방해하지 않음
+                \error_log('Audit recording failed: ' . $e->getMessage());
+            }
 
             // 수정 성공 — 문서 view page 렌더링
             $html = $this->documentViewPage->render($updatedDocument);

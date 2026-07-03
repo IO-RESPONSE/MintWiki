@@ -20,6 +20,8 @@ if (!is_file($autoloadFile)) {
 
 require $autoloadFile;
 
+use MintWiki\Audit\AuditRecorder;
+use MintWiki\Audit\AuditEvent;
 use MintWiki\Document\Document;
 use MintWiki\Document\DuplicateNormalizedTitleError;
 use MintWiki\Document\EmptyTitleError;
@@ -117,10 +119,21 @@ $revisionRepository = new class implements RevisionRepository {
     }
 };
 
+// 감사 hook 테스트를 위한 mock recorder
+$mockAuditRecorder = new class implements AuditRecorder {
+    /** @var AuditEvent[] */
+    public array $recordedEvents = [];
+
+    public function record(AuditEvent $event): void
+    {
+        $this->recordedEvents[] = $event;
+    }
+};
+
 $documentService = new Service($documentRepository);
 $idempotencyKeyService = new IdempotencyKeyService();
 $viewPage = new DocumentViewPage();
-$handler = new DocumentEditHandler($documentService, $revisionRepository, $idempotencyKeyService, $viewPage);
+$handler = new DocumentEditHandler($documentService, $revisionRepository, $idempotencyKeyService, $viewPage, $mockAuditRecorder);
 
 $expectedHtmlHeaders = [
     'Content-Type' => 'text/html; charset=utf-8',
@@ -191,6 +204,68 @@ $key5 = $idempotencyKeyService->generate();
 $response = $handler->handle('doc-3', 'Third Doc', 'Updated source content', $key5);
 if ($response->status() !== 200) {
     $failures[] = '내용만 변경한 편집은 200 상태코드를 반환해야 한다.';
+}
+
+// (6) 감사 hook이 호출되는지 확인 (제목 변경)
+$_SESSION = [];
+$mockAuditRecorder->recordedEvents = [];
+$document4 = new Document('doc-4', 'Fourth Doc');
+$documentRepository->addDocument($document4);
+$key6 = $idempotencyKeyService->generate();
+$response = $handler->handle('doc-4', 'Fourth Doc Updated', 'New content', $key6);
+if (count($mockAuditRecorder->recordedEvents) !== 1) {
+    $failures[] = '문서 편집 시 정확히 1개의 감사 이벤트가 기록되어야 한다.';
+}
+if (!empty($mockAuditRecorder->recordedEvents)) {
+    $event = $mockAuditRecorder->recordedEvents[0];
+    if ($event->module() !== 'document') {
+        $failures[] = '감사 이벤트의 module은 "document"여야 한다.';
+    }
+    if ($event->action() !== 'updated') {
+        $failures[] = '감사 이벤트의 action은 "updated"여야 한다.';
+    }
+    $metadata = $event->metadata();
+    if (!isset($metadata['document_id'])) {
+        $failures[] = '감사 이벤트 metadata에 document_id가 포함되어야 한다.';
+    }
+    if (!isset($metadata['source_length'])) {
+        $failures[] = '감사 이벤트 metadata에 source_length가 포함되어야 한다.';
+    }
+    if ($metadata['title_before'] !== 'Fourth Doc' || $metadata['title_after'] !== 'Fourth Doc Updated') {
+        $failures[] = '제목 변경 시 title_before와 title_after가 올바르지 않다.';
+    }
+}
+
+// (7) 감사 hook (내용만 변경, 제목 미변경)
+$_SESSION = [];
+$mockAuditRecorder->recordedEvents = [];
+$document5 = new Document('doc-5', 'Fifth Doc');
+$documentRepository->addDocument($document5);
+$key7 = $idempotencyKeyService->generate();
+$response = $handler->handle('doc-5', 'Fifth Doc', 'Updated content', $key7);
+if (!empty($mockAuditRecorder->recordedEvents)) {
+    $event = $mockAuditRecorder->recordedEvents[0];
+    $metadata = $event->metadata();
+    if (isset($metadata['title_before']) || isset($metadata['title_after'])) {
+        $failures[] = '제목이 변경되지 않은 경우 title_before/title_after를 포함하면 안 된다.';
+    }
+}
+
+// (8) 감사 기록 실패 시에도 request는 성공해야 함
+$failingRecorder = new class implements AuditRecorder {
+    public function record(AuditEvent $event): void
+    {
+        throw new \Exception('Audit recording failure');
+    }
+};
+$handler2 = new DocumentEditHandler($documentService, $revisionRepository, $idempotencyKeyService, $viewPage, $failingRecorder);
+$_SESSION = [];
+$document6 = new Document('doc-6', 'Sixth Doc');
+$documentRepository->addDocument($document6);
+$key8 = $idempotencyKeyService->generate();
+$response = $handler2->handle('doc-6', 'Sixth Doc Updated', 'Content', $key8);
+if ($response->status() !== 200) {
+    $failures[] = '감사 기록이 실패해도 편집 요청은 성공해야 한다.';
 }
 
 if ($failures !== []) {

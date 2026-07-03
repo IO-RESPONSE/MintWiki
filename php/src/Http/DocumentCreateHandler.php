@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace MintWiki\Http;
 
+use MintWiki\Audit\AuditRecorder;
+use MintWiki\Audit\NoOpAuditRecorder;
+use MintWiki\Audit\AuditEvent;
 use MintWiki\Document\Service;
 use MintWiki\Document\DuplicateNormalizedTitleError;
 use MintWiki\Document\EmptyTitleError;
@@ -24,7 +27,8 @@ final class DocumentCreateHandler
     public function __construct(
         private readonly Service $documentService,
         private readonly IdempotencyKeyService $idempotencyKeyService = new IdempotencyKeyService(),
-        private readonly DocumentViewPage $documentViewPage = new DocumentViewPage()
+        private readonly DocumentViewPage $documentViewPage = new DocumentViewPage(),
+        private readonly AuditRecorder $auditRecorder = new NoOpAuditRecorder()
     ) {
     }
 
@@ -47,6 +51,25 @@ final class DocumentCreateHandler
 
         try {
             $document = $this->documentService->create($title);
+
+            // 감사 hook 호출
+            try {
+                $event = new AuditEvent(
+                    id: self::generateId(),
+                    module: 'document',
+                    action: 'created',
+                    occurredAt: new \DateTimeImmutable('now'),
+                    actorId: null,
+                    metadata: [
+                        'document_id' => $document->id(),
+                        'title' => $document->title()
+                    ]
+                );
+                $this->auditRecorder->record($event);
+            } catch (\Exception $e) {
+                // 감사 기록 실패는 request 처리를 방해하지 않음
+                \error_log('Audit recording failed: ' . $e->getMessage());
+            }
 
             // 생성 성공 — 문서 view page 렌더링
             $html = $this->documentViewPage->render($document);
@@ -88,5 +111,25 @@ final class DocumentCreateHandler
             . '</main>'
             . '</body>'
             . '</html>';
+    }
+
+    /**
+     * UUID v4 문자열을 생성한다 (감사 이벤트 id 발급용).
+     */
+    private static function generateId(): string
+    {
+        $bytes = random_bytes(16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+        $hex = bin2hex($bytes);
+
+        return sprintf(
+            '%s-%s-%s-%s-%s',
+            substr($hex, 0, 8),
+            substr($hex, 8, 4),
+            substr($hex, 12, 4),
+            substr($hex, 16, 4),
+            substr($hex, 20, 12)
+        );
     }
 }
