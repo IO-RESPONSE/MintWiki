@@ -1,0 +1,136 @@
+/*
+ * 반응형 테이블 스타일 (태스크 0551)
+ *
+ * 모바일과 데스크톱에서 모두 사용 가능한 반응형 테이블을 제공한다.
+ * 디자인 토큰을 사용하여 일관성 있는 스타일을 유지한다.
+ */
+
+.responsive-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.responsive-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border-secondary);
+}
+
+.responsive-table caption {
+  caption-side: top;
+  padding: var(--spacing-md) var(--spacing-lg);
+  text-align: left;
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.responsive-table thead {
+  background-color: var(--color-bg-secondary);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.responsive-table th {
+  padding: var(--spacing-md) var(--spacing-lg);
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
+
+.responsive-table tbody tr {
+  border-bottom: 1px solid var(--color-border-secondary);
+  transition: background-color 0.15s ease;
+}
+
+.responsive-table tbody tr:hover {
+  background-color: var(--color-bg-tertiary);
+}
+
+.responsive-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.responsive-table td {
+  padding: var(--spacing-md) var(--spacing-lg);
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
+
+/*
+ * 모바일 반응형 스타일
+ * 화면 너비가 640px 이하에서 활성화된다.
+ */
+
+@media (max-width: 640px) {
+  .responsive-table-wrapper {
+    overflow-x: auto;
+  }
+
+  .responsive-table {
+    font-size: 14px;
+  }
+
+  .responsive-table th,
+  .responsive-table td {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+
+  .responsive-table caption {
+    padding: var(--spacing-sm) var(--spacing-md);
+  }
+}
+
+/*
+ * 타블렛 이상에서는 기본 테이블 레이아웃 사용
+ * 화면 너비 641px 이상에서 활성화된다.
+ */
+
+@media (min-width: 641px) {
+  .responsive-table-wrapper {
+    overflow-x: visible;
+  }
+}
+
+/*
+ * 포커스 접근성
+ * 키보드 네비게이션 시 셀이 포커스되도록 한다.
+ */
+
+.responsive-table td:focus-visible,
+.responsive-table th:focus-visible {
+  outline: var(--focus-outline-width) var(--focus-outline-style) var(--focus-outline-color);
+  outline-offset: -var(--focus-outline-width);
+}
+
+/*
+ * 감소된 모션 설정
+ * 프리페르 설정에 따라 트랜지션을 비활성화한다.
+ */
+
+@media (prefers-reduced-motion: reduce) {
+  .responsive-table tbody tr {
+    transition: none;
+  }
+}
+
+/*
+ * 다크모드 테이블 스타일
+ * 다크모드에서는 대비를 유지하면서 어두운 색상을 사용한다.
+ */
+
+@media (prefers-color-scheme: dark) {
+  .responsive-table {
+    background-color: var(--color-bg-primary);
+    border-color: var(--color-border);
+  }
+
+  .responsive-table thead {
+    background-color: var(--color-bg-secondary);
+    border-bottom-color: var(--color-border);
+  }
+
+  .responsive-table tbody tr:hover {
+    background-color: var(--color-bg-secondary);
+  }
+}
