@@ -27,11 +27,13 @@ final class AuditViewerPage
     public function render(): string
     {
         $filterArea = $this->renderFilterArea();
+        $exportAction = $this->renderExportAction();
         $emptyState = $this->renderEmptyState();
 
         $body = '<main>'
             . '<h1>감사 로그</h1>'
             . $filterArea
+            . $exportAction
             . $emptyState
             . '</main>';
 
@@ -45,6 +47,16 @@ final class AuditViewerPage
     {
         return '<section aria-label="필터">'
             . '<p>필터</p>'
+            . '</section>';
+    }
+
+    /**
+     * export 액션 영역을 렌더링한다.
+     */
+    private function renderExportAction(): string
+    {
+        return '<section aria-label="export 액션">'
+            . '<button class="audit-export-button" aria-label="감사 로그를 CSV로 export">CSV로 export (준비 중)</button>'
             . '</section>';
     }
 

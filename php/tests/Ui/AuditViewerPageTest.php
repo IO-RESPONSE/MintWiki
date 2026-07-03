@@ -52,6 +52,18 @@ if (!str_contains($html, '<section aria-label="필터">')) {
     $failures[] = '감사 로그 page가 필터 영역을 포함해야 한다.';
 }
 
+if (!str_contains($html, '<section aria-label="export 액션">')) {
+    $failures[] = '감사 로그 page가 export 액션 영역을 포함해야 한다.';
+}
+
+if (!str_contains($html, '<button class="audit-export-button"')) {
+    $failures[] = '감사 로그 page가 export 버튼을 포함해야 한다.';
+}
+
+if (!str_contains($html, 'CSV로 export')) {
+    $failures[] = '감사 로그 page의 export 버튼에 "CSV로 export" 텍스트가 있어야 한다.';
+}
+
 if (!str_contains($html, '<section aria-label="감사 로그 목록">')) {
     $failures[] = '감사 로그 page가 감사 로그 목록 영역을 포함해야 한다.';
 }
