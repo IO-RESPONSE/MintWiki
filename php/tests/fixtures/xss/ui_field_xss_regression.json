@@ -1,0 +1,110 @@
+{
+  "description": "UI 필드(title, source, comment/summary, report)의 XSS 회귀 테스트. 이 payload들이 사용자 입력으로 들어온 경우, 서버 렌더링 HTML에서 완전히 이스케이프되어야 하고, HTML 문맥이나 attribute 문맥에서도 안전해야 한다.",
+  "cases": [
+    {
+      "field": "title",
+      "name": "title_script_injection",
+      "description": "문서 제목에 script 태그가 포함된 경우",
+      "payload": "<script>alert('title-xss')</script>",
+      "safe_in_html": true
+    },
+    {
+      "field": "title",
+      "name": "title_img_onerror",
+      "description": "문서 제목에 img 태그의 onerror 이벤트가 포함된 경우",
+      "payload": "\"><img src=x onerror=alert('title')>",
+      "safe_in_html": true
+    },
+    {
+      "field": "title",
+      "name": "title_svg_onload",
+      "description": "문서 제목에 SVG onload 이벤트가 포함된 경우",
+      "payload": "<svg/onload=alert('title')>",
+      "safe_in_html": true
+    },
+    {
+      "field": "source",
+      "name": "source_script_injection",
+      "description": "문서 소스에 script 태그가 포함된 경우",
+      "payload": "<script>eval('xss')</script>",
+      "safe_in_html": true
+    },
+    {
+      "field": "source",
+      "name": "source_iframe_injection",
+      "description": "문서 소스에 iframe이 포함된 경우",
+      "payload": "<iframe src='javascript:alert(1)'></iframe>",
+      "safe_in_html": true
+    },
+    {
+      "field": "source",
+      "name": "source_data_uri_link",
+      "description": "문서 소스에 data URI 링크가 포함된 경우",
+      "payload": "<a href='data:text/html,<script>alert(1)</script>'>click</a>",
+      "safe_in_html": true
+    },
+    {
+      "field": "comment",
+      "name": "comment_summary_single_quote_event",
+      "description": "리비전 요약(코멘트)에 single quote와 event handler가 포함된 경우",
+      "payload": "' onmouseover='alert(1)",
+      "safe_in_html": true
+    },
+    {
+      "field": "comment",
+      "name": "comment_summary_double_quote_event",
+      "description": "리비전 요약(코멘트)에 double quote와 event handler가 포함된 경우",
+      "payload": "\" onmouseover=\"alert(1)",
+      "safe_in_html": true
+    },
+    {
+      "field": "comment",
+      "name": "comment_summary_backtick",
+      "description": "리비전 요약(코멘트)에 backtick이 포함된 경우",
+      "payload": "`onload=alert(1)`",
+      "safe_in_html": true
+    },
+    {
+      "field": "report",
+      "name": "report_body_mixed_markup",
+      "description": "신고 본문에 다양한 마크업이 섞여 있는 경우",
+      "payload": "User <b>malicious</b> <script>steal()</script>",
+      "safe_in_html": true
+    },
+    {
+      "field": "report",
+      "name": "report_body_event_handler",
+      "description": "신고 본문에 event handler가 포함된 경우",
+      "payload": "<p onclick='alert(1)'>Report issue</p>",
+      "safe_in_html": true
+    },
+    {
+      "field": "title",
+      "name": "title_ampersand_entity",
+      "description": "문서 제목에 ampersand와 HTML entity가 포함된 경우",
+      "payload": "Tom & Jerry & Co. <tag>",
+      "safe_in_html": true
+    },
+    {
+      "field": "source",
+      "name": "source_style_tag",
+      "description": "문서 소스에 style 태그가 포함된 경우",
+      "payload": "<style>body { display: none; }</style>",
+      "safe_in_html": true
+    },
+    {
+      "field": "comment",
+      "name": "comment_meta_tag",
+      "description": "리비전 요약에 meta 태그가 포함된 경우",
+      "payload": "<meta http-equiv='refresh' content='0'>",
+      "safe_in_html": true
+    },
+    {
+      "field": "report",
+      "name": "report_base_href",
+      "description": "신고에 base href 변경 시도가 포함된 경우",
+      "payload": "<base href='http://evil.com/'>",
+      "safe_in_html": true
+    }
+  ]
+}
