@@ -175,6 +175,45 @@ try {
     $failures[] = "커스텀 확장과 디렉터리 목록 테스트 실패: " . $e->getMessage();
 }
 
+$cacheDir = sys_get_temp_dir() . '/mintwiki_cache_check_' . getmypid();
+if (!is_dir($cacheDir) && !mkdir($cacheDir, 0777, true)) {
+    $failures[] = "cache 테스트 디렉터리를 만들 수 없다: {$cacheDir}";
+}
+
+if (is_dir($cacheDir)) {
+    try {
+        $checker = new RequirementCheck();
+        if (!$checker->isCacheDirectoryWritable($cacheDir)) {
+            $failures[] = 'cache 디렉터리가 쓰기 가능할 때 true를 반환해야 한다.';
+        }
+    } catch (Exception $e) {
+        $failures[] = "cache 디렉터리 쓰기 가능 검사 실패: " . $e->getMessage();
+    }
+
+    if (!rmdir($cacheDir)) {
+        $failures[] = "cache 테스트 디렉터리를 삭제할 수 없다: {$cacheDir}";
+    }
+}
+
+// cache 디렉터리 쓰기 권한 검사 - 실패 (존재하지 않는 디렉터리)
+try {
+    $checker = new RequirementCheck();
+    $checker->isCacheDirectoryWritable('/nonexistent_cache_directory_xyz');
+    $failures[] = '존재하지 않는 cache 디렉터리에 대해 RuntimeException을 던져야 한다.';
+} catch (RuntimeException $e) {
+    if (strpos($e->getMessage(), '쓰기 불가능한 디렉터리가 있습니다') === false) {
+        $failures[] = 'cache RuntimeException 메시지가 올바르지 않다: ' . $e->getMessage();
+    }
+    if (strpos($e->getMessage(), '/nonexistent_cache_directory_xyz') === false) {
+        $failures[] = 'cache RuntimeException이 cache directory를 포함해야 한다: ' . $e->getMessage();
+    }
+    if (strpos($e->getMessage(), '존재하지 않음') === false) {
+        $failures[] = 'cache RuntimeException이 디렉터리가 존재하지 않는다는 이유를 포함해야 한다: ' . $e->getMessage();
+    }
+} catch (Exception $e) {
+    $failures[] = "예상하지 않은 예외: " . get_class($e) . " - " . $e->getMessage();
+}
+
 // 테스트 결과 출력
 if ($failures !== []) {
     fwrite(STDERR, "Installer RequirementCheck 테스트 실패:\n");

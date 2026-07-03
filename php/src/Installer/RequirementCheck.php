@@ -79,9 +79,37 @@ final class RequirementCheck
      */
     public function areRequiredDirectoriesWritable(): bool
     {
+        $this->assertDirectoriesWritable($this->requiredWritableDirs);
+
+        return true;
+    }
+
+    /**
+     * 캐시 디렉터리가 쓰기 가능한지 확인한다.
+     *
+     * @return bool 캐시 디렉터리가 쓰기 가능하면 true.
+     *
+     * @throws RuntimeException 캐시 디렉터리가 없거나 쓰기 불가능하면.
+     */
+    public function isCacheDirectoryWritable(string $cacheDir): bool
+    {
+        $this->assertDirectoriesWritable([$cacheDir]);
+
+        return true;
+    }
+
+    /**
+     * 주어진 디렉터리 목록이 모두 쓰기 가능한지 확인한다.
+     *
+     * @param array<string> $dirs 쓰기 가능해야 하는 디렉터리 목록.
+     *
+     * @throws RuntimeException 쓰기 불가능한 디렉터리가 있으면.
+     */
+    private function assertDirectoriesWritable(array $dirs): void
+    {
         $nonWritableDirs = [];
 
-        foreach ($this->requiredWritableDirs as $dir) {
+        foreach ($dirs as $dir) {
             if (!is_dir($dir)) {
                 $nonWritableDirs[] = $dir . ' (존재하지 않음)';
             } elseif (!is_writable($dir)) {
@@ -92,7 +120,5 @@ final class RequirementCheck
         if ($nonWritableDirs !== []) {
             throw new RuntimeException('쓰기 불가능한 디렉터리가 있습니다: ' . implode(', ', $nonWritableDirs));
         }
-
-        return true;
     }
 }
