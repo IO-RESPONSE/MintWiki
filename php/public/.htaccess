@@ -1,0 +1,18 @@
+# Front controller 규칙 — 모든 요청을 index.php로 라우팅한다 (태스크 0613).
+#
+# Apache shared hosting에서 mod_rewrite를 사용하여 다음을 수행한다:
+# 1. 정적 파일(CSS, 이미지 등)이 직접 서빙되도록 한다.
+# 2. 디렉토리도 그대로 서빙되도록 한다.
+# 3. 나머지 모든 요청을 index.php로 리라이트한다.
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # 정적 파일과 디렉토리는 그냥 서빙한다.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # 나머지는 front controller로 리라이트한다.
+    RewriteRule ^ index.php [L]
+</IfModule>

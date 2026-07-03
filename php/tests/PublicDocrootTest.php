@@ -105,6 +105,12 @@ if (is_dir($publicDir)) {
     }
 }
 
+// 15. public/.htaccess 파일이 있는지 확인 (태스크 0613)
+$htaccessFile = $publicDir . '/.htaccess';
+if (!file_exists($htaccessFile)) {
+    $failures[] = 'public/.htaccess must exist (front controller rules for Apache)';
+}
+
 if ($failures !== []) {
     fwrite(STDERR, "Public Docroot Policy validation 실패:\n");
     foreach ($failures as $failure) {
