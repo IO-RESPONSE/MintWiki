@@ -314,6 +314,14 @@ PHP test suite.
   `/api/documents/{id}/revisions`) are out of scope until `Router` supports
   dynamic segments. Run it with `php tests/Http/DocumentApiRoutesTest.php`
   from `php/` after `composer install`.
+- `Http/DocumentRouteIntegrationTest.php` (0563) — confirms the
+  create/view/edit/history flow for documents works end-to-end by testing
+  `DocumentCreateHandler`, `DocumentEditHandler`, `DocumentViewPage`, and
+  `DocumentHistoryPage` together with in-memory repositories. Validates
+  that documents are created successfully, can be viewed and edited, and
+  that revisions are tracked and displayed in history. Run it with
+  `php tests/Http/DocumentRouteIntegrationTest.php` from `php/` after
+  `composer install`.
 - `App/ConfigLoaderTest.php` (0415) — confirms `MintWiki\App\ConfigLoader::get()`
   prefers a `WIKI_`-prefixed environment variable when set, falls back to
   the constructor-provided file-value array when the environment variable
