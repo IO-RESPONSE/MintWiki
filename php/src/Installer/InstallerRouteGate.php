@@ -39,14 +39,22 @@ final class InstallerRouteGate
     /**
      * 설치가 이미 완료되었는지 확인한다.
      *
-     * schema_version 테이블에 데이터가 1개 이상 있으면 설치가 완료된 것으로 판단한다.
+     * lock 파일(`InstallerLock`)이 설치 완료의 최종 신호다. 설치 마법사는
+     * 스키마 적용(schema_version 기록) → 관리자 생성 → 완료(lock 기록) 순으로
+     * 진행하므로, schema_version 유무만으로 완료를 판정하면 스키마만 적용된
+     * 중간 단계(아직 관리자 생성/lock 전)를 완료로 오판해 후속 설치 route를
+     * 막아버린다. 따라서 lock 을 쓰는 구성(운영 프론트 컨트롤러)에서는 lock
+     * 만으로 완료를 판정한다.
+     *
+     * lock 을 쓰지 않는 구성(installerLock 이 null)에서는 예전처럼
+     * schema_version 테이블에 데이터가 1개 이상 있으면 완료로 판단한다.
      *
      * @return bool 설치가 완료되었으면 true.
      */
     public function isInstallationComplete(): bool
     {
-        if ($this->installerLock !== null && $this->installerLock->isLocked()) {
-            return true;
+        if ($this->installerLock !== null) {
+            return $this->installerLock->isLocked();
         }
 
         try {
