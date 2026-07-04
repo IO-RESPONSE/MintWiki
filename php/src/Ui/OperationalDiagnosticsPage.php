@@ -23,13 +23,18 @@ final class OperationalDiagnosticsPage
 
     /**
      * 운영 진단 page를 렌더링한다.
+     *
+     * @param array<string, string>|null $environmentDiagnostics 환경 진단 export 미리보기 값
      */
-    public function render(): string
+    public function render(?array $environmentDiagnostics = null): string
     {
         $dbStatusSection = $this->renderDatabaseStatusSection();
         $schemaStatusSection = $this->renderSchemaStatusSection();
         $cacheStatusSection = $this->renderCacheStatusSection();
         $filePermissionSection = $this->renderFilePermissionSection();
+        $environmentExportSection = $this->renderEnvironmentExportSection(
+            $environmentDiagnostics ?? $this->defaultEnvironmentDiagnostics(),
+        );
 
         $body = '<main>'
             . '<h1>운영 진단</h1>'
@@ -37,6 +42,7 @@ final class OperationalDiagnosticsPage
             . $schemaStatusSection
             . $cacheStatusSection
             . $filePermissionSection
+            . $environmentExportSection
             . '</main>';
 
         return $this->layout->render('운영 진단', $body);
@@ -94,5 +100,81 @@ final class OperationalDiagnosticsPage
             . '<p>공유 호스팅 배포에 필요한 파일과 디렉터리 권한을 확인합니다.</p>'
             . '<p><a href="/admin/status/file-permissions">파일 권한 진단 보기</a></p>'
             . '</section>';
+    }
+
+    /**
+     * 환경 진단 export placeholder 섹션을 렌더링한다.
+     *
+     * @param array<string, string> $diagnostics 환경 진단 값
+     */
+    private function renderEnvironmentExportSection(array $diagnostics): string
+    {
+        $html = '<section aria-label="환경 진단 export">'
+            . '<h2>환경 진단 export</h2>'
+            . '<p>지원 요청에 첨부할 환경 진단 export 파일 생성을 준비 중입니다.</p>'
+            . '<p>민감 정보는 export 대상에서 제외됩니다.</p>'
+            . '<button type="button" disabled>진단 export 준비 중</button>'
+            . '<table>'
+            . '<thead><tr>'
+            . '<th scope="col">항목</th>'
+            . '<th scope="col">값</th>'
+            . '</tr></thead>'
+            . '<tbody>';
+
+        foreach ($this->safeEnvironmentDiagnostics($diagnostics) as $key => $value) {
+            $html .= '<tr>'
+                . '<th scope="row">' . $this->escaper->html($key) . '</th>'
+                . '<td>' . $this->escaper->html($value) . '</td>'
+                . '</tr>';
+        }
+
+        return $html . '</tbody></table></section>';
+    }
+
+    /**
+     * 기본 환경 진단 export placeholder 값을 반환한다.
+     *
+     * @return array<string, string>
+     */
+    private function defaultEnvironmentDiagnostics(): array
+    {
+        return [
+            'PHP_VERSION' => PHP_VERSION,
+            'PHP_SAPI' => PHP_SAPI,
+            'APP_ENV' => 'placeholder',
+        ];
+    }
+
+    /**
+     * 민감한 환경 값이 export preview에 포함되지 않도록 제외한다.
+     *
+     * @param array<string, string> $diagnostics 환경 진단 값
+     *
+     * @return array<string, string>
+     */
+    private function safeEnvironmentDiagnostics(array $diagnostics): array
+    {
+        $safeDiagnostics = [];
+
+        foreach ($diagnostics as $key => $value) {
+            if ($this->isSensitiveEnvironmentKey($key)) {
+                continue;
+            }
+
+            $safeDiagnostics[$key] = $value;
+        }
+
+        return $safeDiagnostics;
+    }
+
+    /**
+     * 환경 변수 이름만 보고 민감 정보 가능성이 큰 항목을 판정한다.
+     */
+    private function isSensitiveEnvironmentKey(string $key): bool
+    {
+        $pattern = '/(password|passwd|secret|token|credential|auth|cookie|session'
+            . '|api[_-]?key|private[_-]?key|(^|[_-])key($|[_-]))/i';
+
+        return preg_match($pattern, $key) === 1;
     }
 }
