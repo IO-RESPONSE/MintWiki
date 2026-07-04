@@ -40,14 +40,20 @@ declare(strict_types=1);
  * `InstallCompletionPage`를 보여준다. 위 `InstallerRouteGate` 생성 시에도
  * `InstallerLock::atDefaultPath()`를 전달해, lock 파일과 `schema_version` 중
  * 하나라도 설치 완료를 나타내면 이후 모든 `/install*` 접근을 차단하게 했다.
- * 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후
- * 태스크에서 이어진다.
+ * 0683에서 `GET /api/documents/by-title`(`DocumentApiRoutes`)을 등록했다 —
+ * DB가 연결된 경우에만 `MintWiki\Document\PdoRepository`를 만들어 넘기고,
+ * 미설정/오류 상태(`$pdo === null`)에서는 저장소 없이 등록해 핸들러가 503을
+ * 반환하게 한다(0674 계약과 동일하게 죽지 않는다). 나머지
+ * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
+ * 이어진다.
  */
 
 require __DIR__ . '/../vendor/autoload.php';
 
 use MintWiki\App\AppBootstrap;
 use MintWiki\App\ConfigLoader;
+use MintWiki\Document\PdoRepository;
+use MintWiki\Http\DocumentApiRoutes;
 use MintWiki\Http\Request;
 use MintWiki\Http\Response;
 use MintWiki\Http\Router;
@@ -230,6 +236,13 @@ $router->register('GET', '/install/complete', static function (): Response {
 
     return $installCompletionHandler->handle();
 });
+
+// GET /api/documents, POST /api/documents, GET /api/documents/by-title
+// (태스크 0683). DB가 연결된 경우에만 PdoRepository를 만들어 넘긴다 —
+// 미설정/오류 상태에서는 저장소 없이 등록해 by-title 핸들러가 503을
+// 반환하게 한다.
+$documentRepository = $pdo !== null ? new PdoRepository($pdo) : null;
+DocumentApiRoutes::register($router, $documentRepository);
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)
 $router->register('GET', '/health', static function () use ($dbStatus): Response {

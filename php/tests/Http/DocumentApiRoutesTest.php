@@ -7,9 +7,10 @@ declare(strict_types=1);
  * test. phpunit 없이 `php` CLI만으로 실행된다(0398 RouteRegistrationTest.php,
  * 0419 HealthRouteTest.php와 동일한 방식).
  *
- * 저장소/서비스 연결 없이 501 JSON 계약만 지키는지 확인한다 — 실제 문서
- * 생성/조회 동작은 검증 대상이 아니다. `public/index.php`에 연결하는 것은
- * 이 태스크의 범위 밖이라 프론트 컨트롤러는 건드리지 않는다.
+ * `GET`/`POST /api/documents`는 여전히 저장소/서비스 연결 없이 501 JSON
+ * 계약만 지키는지 확인한다 — 실제 문서 생성/목록 조회 동작은 검증 대상이
+ * 아니다. `GET /api/documents/by-title`은 0683에서 실제 조회 동작으로
+ * 바뀌었으므로 `DocumentByTitleRouteTest.php`가 별도로 검증한다.
  */
 
 $autoloadFile = __DIR__ . '/../../vendor/autoload.php';
@@ -33,7 +34,6 @@ DocumentApiRoutes::register($router);
 $routesUnderTest = [
     ['GET', '/api/documents'],
     ['POST', '/api/documents'],
-    ['GET', '/api/documents/by-title'],
 ];
 
 foreach ($routesUnderTest as [$method, $path]) {
@@ -52,6 +52,19 @@ foreach ($routesUnderTest as [$method, $path]) {
     }
     if ($response->body() !== '{"error":"not_implemented"}') {
         $failures[] = "{$method} {$path} 응답 body는 not_implemented 계약을 담아야 한다.";
+    }
+}
+
+// GET /api/documents/by-title는 등록되어 있지만(0683), 저장소를 주입하지
+// 않으면(register()의 기본값) DB 미설정으로 간주해 503을 반환해야 한다 —
+// 성공/미존재 조회 동작은 DocumentByTitleRouteTest.php가 검증한다.
+$byTitleHandler = $router->match(new Request('GET', '/api/documents/by-title'));
+if ($byTitleHandler === null) {
+    $failures[] = 'GET /api/documents/by-title route는 등록되어 있어야 한다.';
+} else {
+    $byTitleResponse = $byTitleHandler();
+    if ($byTitleResponse->status() !== 503) {
+        $failures[] = '저장소가 주입되지 않은 GET /api/documents/by-title는 503을 반환해야 한다.';
     }
 }
 

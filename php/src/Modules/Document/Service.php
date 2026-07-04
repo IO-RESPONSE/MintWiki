@@ -46,6 +46,19 @@ final class Service
     }
 
     /**
+     * 제목으로 문서를 조회한다 (태스크 0683). `Title::normalize()`로 정규화한
+     * 뒤 저장소의 `getByNormalizedTitle()`에 위임한다. 없으면 null을 반환한다.
+     *
+     * @throws EmptyTitleError title이 비어있거나 공백만 있는 경우
+     */
+    public function getByTitle(string $title): ?Document
+    {
+        $normalizedTitle = Title::normalize($title);
+
+        return $this->documentRepository->getByNormalizedTitle($normalizedTitle);
+    }
+
+    /**
      * 기존 문서를 업데이트한다 (태스크 0533).
      *
      * @throws DuplicateNormalizedTitleError normalizedTitle이 이미 존재하는 경우
