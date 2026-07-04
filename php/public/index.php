@@ -24,7 +24,12 @@ declare(strict_types=1);
  * `POST /install/database`(`DatabaseSetupHandler`)를 등록했다 — CSRF 토큰과
  * 입력값을 검증하고, 실제 접속을 시험해 성공할 때만 `config/local-config.php`에
  * 기록한다. 접속 실패/검증 실패 시에는 폼으로 되돌아가고 아무것도 기록하지
- * 않는다. 다음 단계(스키마 적용, 0680)로 이어진다.
+ * 않는다. 0680에서 `GET /install/schema`(`InstallSchemaApplyPage`)와
+ * `POST /install/schema`(`SchemaApplyHandler`)를 등록했다 — 0679가 기록한
+ * DB 설정을 0673 `AppBootstrap`으로 읽어 만든 PDO에 `SchemaApply`로
+ * `db/schema`의 SQL을 FK 의존 순서로 적용한다. CSRF 검증 실패/DB 미접속/적용
+ * 실패 시에는 오류를 표시하고 다음 단계로 넘어가지 않으며, 성공하면
+ * `schema_version`이 채워진다.
  * 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후
  * 태스크에서 이어진다.
  */
@@ -39,9 +44,11 @@ use MintWiki\Http\Router;
 use MintWiki\Installer\DatabaseSetupHandler;
 use MintWiki\Installer\InstallerRouteGate;
 use MintWiki\Installer\RequirementCheck;
+use MintWiki\Installer\SchemaApplyHandler;
 use MintWiki\Ui\ErrorPage;
 use MintWiki\Ui\InstallDBFormPage;
 use MintWiki\Ui\InstallRequiredPage;
+use MintWiki\Ui\InstallSchemaApplyPage;
 use MintWiki\Ui\InstallWelcomePage;
 use MintWiki\Ui\Layout;
 
@@ -160,6 +167,24 @@ $router->register('POST', '/install/database', static function (): Response {
     $databaseSetupHandler = new DatabaseSetupHandler();
 
     return $databaseSetupHandler->handle($_POST);
+});
+
+// GET /install/schema — 스키마 적용 진행 화면 (태스크 0680). 설치가 이미 끝난
+// 경우 위 InstallerRouteGate가 이 route에 도달하기 전에 403으로 막는다.
+$router->register('GET', '/install/schema', static function (): Response {
+    $installSchemaApplyPage = new InstallSchemaApplyPage();
+
+    return Response::html($installSchemaApplyPage->render());
+});
+
+// POST /install/schema — 스키마 적용 처리 (태스크 0680). CSRF 토큰을 검증한 뒤
+// `AppBootstrap`(0673)이 0679가 기록한 설정으로 만든 PDO에 `SchemaApply`로
+// `db/schema`의 SQL을 FK 의존 순서로 적용한다. 실패 시에는 진행 화면으로
+// 되돌아가 오류를 보여주고 다음 단계로 넘어가지 않는다.
+$router->register('POST', '/install/schema', static function (): Response {
+    $schemaApplyHandler = new SchemaApplyHandler();
+
+    return $schemaApplyHandler->handle($_POST);
 });
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)
