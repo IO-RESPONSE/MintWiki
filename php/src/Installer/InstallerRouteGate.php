@@ -16,6 +16,8 @@ use MintWiki\Http\Response;
  */
 final class InstallerRouteGate
 {
+    private const INSTALLER_ROUTE_PREFIX = '/install';
+
     private PDO $connection;
     private DBCheck $dbCheck;
     private ?InstallerLock $installerLock;
@@ -82,5 +84,53 @@ final class InstallerRouteGate
             'error' => 'installation_already_complete',
             'message' => 'Installation has already been completed. The installer is not available.',
         ], 403);
+    }
+
+    /**
+     * 프론트 컨트롤러(태스크 0676)가 호출하는 진입점.
+     *
+     * installer 라우트(`/install`, `/install/...`) 요청은 설치 완료 여부에
+     * 따라 차단 응답을 반환하고, 그 외 요청은 설치가 아직 끝나지 않았을 때
+     * `/install`로 유도하는 리다이렉트 응답을 반환한다. API 요청(`/api/`)은
+     * 리다이렉트 대상에서 제외한다 — API 클라이언트는 JSON 계약을 기대하므로
+     * HTML 리다이렉트로 유도하지 않는다.
+     *
+     * 게이트가 개입할 필요가 없으면(정상적으로 라우팅을 계속해야 하면)
+     * null을 반환한다.
+     *
+     * @param string $requestPath 요청 경로.
+     * @param bool $isApiRequest `/api/`로 시작하는 요청인지 여부.
+     *
+     * @return Response|null 게이트가 개입해야 하면 Response, 아니면 null.
+     */
+    public function resolveFrontControllerResponse(string $requestPath, bool $isApiRequest): ?Response
+    {
+        if ($this->isInstallerRoutePath($requestPath)) {
+            return $this->canAccessInstallerRoute() ? null : $this->createBlockedResponse();
+        }
+
+        if ($isApiRequest || $this->isInstallationComplete()) {
+            return null;
+        }
+
+        return $this->createInstallerRedirectResponse();
+    }
+
+    /**
+     * 설치가 아직 끝나지 않았을 때 `/install`로 유도하는 리다이렉트 응답을
+     * 생성한다. HTTP 302 Found 상태 코드를 사용한다.
+     */
+    public function createInstallerRedirectResponse(): Response
+    {
+        return new Response(302, ['Location' => self::INSTALLER_ROUTE_PREFIX], '');
+    }
+
+    /**
+     * 주어진 경로가 installer 라우트(`/install` 또는 `/install/...`)인지 확인한다.
+     */
+    private function isInstallerRoutePath(string $requestPath): bool
+    {
+        return $requestPath === self::INSTALLER_ROUTE_PREFIX
+            || str_starts_with($requestPath, self::INSTALLER_ROUTE_PREFIX . '/');
     }
 }

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -11,8 +11,13 @@ declare(strict_types=1);
  * 0674에서 0673의 `AppBootstrap`을 연결해 PDO(또는 미설정/오류 상태)를
  * 얻는다 — DB 설정이 없거나 접속에 실패해도 치명적 오류로 죽지 않고
  * "미설정"/"오류" 상태로 취급해 `GET /`, `GET /health`가 계속 동작하게
- * 한다. 나머지 route (`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는
- * 이후 태스크에서 이어진다.
+ * 한다. 0676에서 `InstallerRouteGate`를 연결해, DB는 연결됐지만 아직
+ * 설치(schema_version)가 끝나지 않은 상태에서는 요청을 `/install`로
+ * 유도하고, 설치가 이미 끝난 상태에서는 installer 라우트 접근을 차단한다.
+ * DB가 미설정/오류 상태이면(`$pdo === null`) 게이트를 아예 적용하지 않아
+ * 0674 계약(`GET /`, `GET /health` 계속 동작)을 유지한다. 나머지 route
+ * (`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
+ * 이어진다.
  */
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -22,12 +27,29 @@ use MintWiki\App\ConfigLoader;
 use MintWiki\Http\Request;
 use MintWiki\Http\Response;
 use MintWiki\Http\Router;
+use MintWiki\Installer\InstallerRouteGate;
 use MintWiki\Ui\Layout;
 use MintWiki\Ui\ErrorPage;
+
+/**
+ * Response를 실제 HTTP 응답(상태 코드/헤더/본문)으로 내보낸다.
+ */
+function mintwiki_send_response(Response $response): void
+{
+    if (!headers_sent()) {
+        http_response_code($response->status());
+        foreach ($response->headers() as $name => $value) {
+            header("{$name}: {$value}");
+        }
+    }
+
+    echo $response->body();
+}
 
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI';
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $requestPath = parse_url($requestUri, PHP_URL_PATH) ?? '/';
+$isApiRequest = str_starts_with($requestPath, '/api/');
 
 // DB 설정/연결 상태 판단 (태스크 0674). connectionConfig()가 null이면
 // "미설정", 설정은 있으나 실제 접속(pdo())이 예외를 던지면 "오류"로
@@ -42,6 +64,19 @@ if ($bootstrap->connectionConfig() !== null) {
         $dbStatus = 'connected';
     } catch (\Throwable $exception) {
         $dbStatus = 'error';
+    }
+}
+
+// 설치 게이트 (태스크 0676). DB가 연결된 경우에만 적용한다 — 미설정/오류
+// 상태에서는 게이트를 건너뛰어 위 0674 계약을 지킨다.
+if ($pdo !== null) {
+    $installerRouteGate = new InstallerRouteGate($pdo);
+    $gateResponse = $installerRouteGate->resolveFrontControllerResponse($requestPath, $isApiRequest);
+
+    if ($gateResponse !== null) {
+        mintwiki_send_response($gateResponse);
+
+        return;
     }
 }
 
@@ -77,22 +112,13 @@ $handler = $router->match(new Request($requestMethod, $requestPath));
 if ($handler !== null) {
     $response = $handler();
 
-    if (!headers_sent()) {
-        http_response_code($response->status());
-        foreach ($response->headers() as $name => $value) {
-            header("{$name}: {$value}");
-        }
-    }
-
-    echo $response->body();
+    mintwiki_send_response($response);
 
     return;
 }
 
 // 라우팅되지 않은 요청에 대한 오류 응답 (태스크 0592).
 // API 요청은 JSON으로, UI 요청은 HTML로 응답한다.
-$isApiRequest = str_starts_with($requestPath, '/api/');
-
 if ($isApiRequest) {
     $response = Response::json([
         'error' => 'not_found',
@@ -105,11 +131,4 @@ if ($isApiRequest) {
     $response = Response::html($html, 404);
 }
 
-if (!headers_sent()) {
-    http_response_code($response->status());
-    foreach ($response->headers() as $name => $value) {
-        header("{$name}: {$value}");
-    }
-}
-
-echo $response->body();
+mintwiki_send_response($response);
