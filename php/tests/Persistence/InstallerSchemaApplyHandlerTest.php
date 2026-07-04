@@ -14,7 +14,7 @@ declare(strict_types=1);
  * (3) PDO는 얻었지만 스키마 파일 중 하나의 SQL 실행이 실패하면 500으로 오류 화면을
  *     보여주고 다음 단계 링크를 포함하지 않는다.
  * (4) CSRF 검증과 PDO 확보, 스키마 적용이 모두 성공하면 200으로 다음 단계
- *     (`/install/admin-account`) 링크를 보여주고 `schema_version`이 채워진다.
+ *     (`/install/admin`) 링크를 보여주고 `schema_version`이 채워진다.
  */
 
 $autoloadFile = __DIR__ . '/../../vendor/autoload.php';
@@ -126,7 +126,7 @@ try {
     if (!str_contains($response3->body(), '스키마 적용에 실패했습니다')) {
         $failures[] = '적용 실패 응답에 오류 메시지가 표시되어야 한다.';
     }
-    if (str_contains($response3->body(), 'href="/install/admin-account"')) {
+    if (str_contains($response3->body(), 'href="/install/admin"')) {
         $failures[] = '적용 실패 응답에 다음 단계 링크가 있으면 안 된다.';
     }
 
@@ -162,8 +162,8 @@ try {
     if ($response4->status() !== 200) {
         $failures[] = '적용 성공은 200을 반환해야 하는데 ' . $response4->status() . '이었다.';
     }
-    if (!str_contains($response4->body(), 'href="/install/admin-account"')) {
-        $failures[] = '적용 성공 응답에 다음 단계(/install/admin-account)로 가는 링크가 있어야 한다.';
+    if (!str_contains($response4->body(), 'href="/install/admin"')) {
+        $failures[] = '적용 성공 응답에 다음 단계(/install/admin)로 가는 링크가 있어야 한다.';
     }
 
     $versionRow = $fakePdo4->query('SELECT version FROM schema_version')->fetch(PDO::FETCH_ASSOC);

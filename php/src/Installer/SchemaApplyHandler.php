@@ -88,7 +88,7 @@ final class SchemaApplyHandler
         $body = '<main>'
             . '<h1>스키마 적용 완료</h1>'
             . '<p>데이터베이스에 위키 테이블을 생성했습니다.</p>'
-            . '<p><a href="/install/admin-account">다음 단계: 관리자 계정 생성</a></p>'
+            . '<p><a href="/install/admin">다음 단계: 관리자 계정 생성</a></p>'
             . '</main>';
 
         return $this->layout->render('스키마 적용 완료', $body);

@@ -14,6 +14,14 @@
 -- 다루는 별도 컬럼/테이블(번호 미배정)로, 세션은 user_session
 -- 테이블(0464)로 분리한다.
 --
+-- password_hash (태스크 0681 추가): 위 분리 원칙은 Python
+-- `password.py`(PasswordHasher) 쪽 설계를 가리키지만, PHP installer가
+-- 최초 관리자 계정을 만들 때 저장할 곳이 아직 없어 이 테이블에 최소
+-- 컬럼으로 추가한다. 별도 테이블 설계는 여전히 범위 밖이므로, 이후
+-- password.py 쪽 설계가 확정되면 그 태스크가 이 컬럼을 별도 테이블로
+-- 옮길지 재검토한다. 평문 비밀번호는 저장하지 않고 `password_hash()`
+-- 등으로 해시된 값만 저장한다.
+--
 -- created_at/updated_at 없음: User(model.py)가 이 필드를 갖지 않는다 —
 -- document/revision과 달리 아직 DatabaseUserRepository도 Alembic
 -- 마이그레이션도 없어(user-portable-repository-plan.md §1) 이 파일이
@@ -37,6 +45,7 @@ CREATE TABLE account (
     id VARCHAR(255) NOT NULL,
     username VARCHAR(255) NOT NULL,
     display_name VARCHAR(255) NULL,
+    password_hash VARCHAR(255) NULL,
     CONSTRAINT pk_account PRIMARY KEY (id),
     CONSTRAINT uq_account_username UNIQUE (username)
 );

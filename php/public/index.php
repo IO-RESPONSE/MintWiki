@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -29,7 +29,12 @@ declare(strict_types=1);
  * DB 설정을 0673 `AppBootstrap`으로 읽어 만든 PDO에 `SchemaApply`로
  * `db/schema`의 SQL을 FK 의존 순서로 적용한다. CSRF 검증 실패/DB 미접속/적용
  * 실패 시에는 오류를 표시하고 다음 단계로 넘어가지 않으며, 성공하면
- * `schema_version`이 채워진다.
+ * `schema_version`이 채워진다. 0681에서 `GET /install/admin`
+ * (`InstallAdminAccountFormPage`)과 `POST /install/admin`
+ * (`AdminAccountSetupHandler`)을 등록했다 — 0673 `AppBootstrap`으로 얻은
+ * PDO에 `AccountRepository`로 최초 관리자 계정을 생성한다. 비밀번호는
+ * `password_hash()`로 해시해 `account` 테이블에 저장하며, CSRF 검증 실패/DB
+ * 미접속/입력 검증 실패 시에는 폼으로 되돌아가고 계정을 생성하지 않는다.
  * 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후
  * 태스크에서 이어진다.
  */
@@ -41,11 +46,13 @@ use MintWiki\App\ConfigLoader;
 use MintWiki\Http\Request;
 use MintWiki\Http\Response;
 use MintWiki\Http\Router;
+use MintWiki\Installer\AdminAccountSetupHandler;
 use MintWiki\Installer\DatabaseSetupHandler;
 use MintWiki\Installer\InstallerRouteGate;
 use MintWiki\Installer\RequirementCheck;
 use MintWiki\Installer\SchemaApplyHandler;
 use MintWiki\Ui\ErrorPage;
+use MintWiki\Ui\InstallAdminAccountFormPage;
 use MintWiki\Ui\InstallDBFormPage;
 use MintWiki\Ui\InstallRequiredPage;
 use MintWiki\Ui\InstallSchemaApplyPage;
@@ -185,6 +192,24 @@ $router->register('POST', '/install/schema', static function (): Response {
     $schemaApplyHandler = new SchemaApplyHandler();
 
     return $schemaApplyHandler->handle($_POST);
+});
+
+// GET /install/admin — 최초 관리자 계정 생성 화면 (태스크 0681). 설치가 이미
+// 끝난 경우 위 InstallerRouteGate가 이 route에 도달하기 전에 403으로 막는다.
+$router->register('GET', '/install/admin', static function (): Response {
+    $installAdminAccountFormPage = new InstallAdminAccountFormPage();
+
+    return Response::html($installAdminAccountFormPage->render());
+});
+
+// POST /install/admin — 관리자 계정 생성 처리 (태스크 0681). CSRF 토큰을
+// 검증한 뒤 0673 `AppBootstrap`으로 얻은 PDO에 `AccountRepository`로 최초
+// 관리자 계정을 생성한다. 비밀번호는 해시해 저장하며, 검증 실패/DB 미접속
+// 시에는 폼으로 되돌아가 오류를 보여주고 계정을 생성하지 않는다.
+$router->register('POST', '/install/admin', static function (): Response {
+    $adminAccountSetupHandler = new AdminAccountSetupHandler();
+
+    return $adminAccountSetupHandler->handle($_POST);
 });
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)

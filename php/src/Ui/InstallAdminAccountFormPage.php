@@ -46,7 +46,7 @@ final class InstallAdminAccountFormPage
             . '<h1>관리자 계정 생성</h1>'
             . '<p>MintWiki 최초 관리자 계정 정보를 입력하세요.</p>'
             . $errorSummary
-            . '<form method="post" action="/install/admin-account">'
+            . '<form method="post" action="/install/admin">'
             . '<input type="hidden" name="csrf_token" value="' . $csrfTokenEscaped . '">'
             . '<label for="username">관리자 ID</label>'
             . '<input type="text" id="username" name="username" autocomplete="username" required>'
