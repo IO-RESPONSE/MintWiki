@@ -7,6 +7,14 @@
 도움말, 오류 처리, 시나리오 커버리지)만 확인한다. 실제 대상
 (`https://iowiki.iwinv.net/`)에 대한 실행 결과는
 `docs/live-hosting-e2e-smoke-log.md`에 기록되어 있다.
+
+0688에서 시나리오 이름과 대상 route를 갱신했다: 0672 작성 시점에는
+`php/public/index.php`가 `GET /`/`GET /health`만 연결되어 있어
+`/documents`, `/admin/users` 같은 가상의 route를 대상으로 했지만,
+0673-0687에서 실제로 연결된 route는 `/install*`, `/login`, `/logout`,
+`/wiki/{title}`, `/wiki/{title}/edit`뿐이다(사용자 역할별 계정을 만드는
+관리자 route는 아직 없다). 이 테스트는 그 실제 route를 대상으로 하는
+새 시나리오 이름을 검증한다.
 """
 
 import os
@@ -82,35 +90,49 @@ def test_live_e2e_smoke_test_script_never_puts_password_literal_in_argv_helpers(
 
 
 def test_live_e2e_smoke_test_script_covers_all_acceptance_scenarios():
-    """0672 acceptance criteria가 요구하는 시나리오 이름이 모두 스크립트에
-    있어야 한다."""
+    """0688 acceptance criteria(설치 마법사 -> 로그인 -> 문서 생성/편집/조회
+    -> 권한 확인)가 요구하는, 실제로 연결된 route를 대상으로 하는 시나리오
+    이름이 모두 스크립트에 있어야 한다."""
     content = SCRIPT_PATH.read_text(encoding="utf-8")
 
     required_scenarios = [
         "health_check",
         "anonymous_read_home",
-        "admin_login_or_create",
+        "install_wizard_reachability",
+        "admin_login",
         "admin_create_document",
+        "admin_view_document",
         "admin_edit_document",
-        "admin_delete_or_hide_document",
-        "admin_create_normal_user",
-        "admin_create_readonly_user",
-        "normal_user_login",
-        "normal_user_document_write_check",
-        "readonly_user_login",
-        "readonly_user_read_check",
-        "readonly_user_write_denied_check",
+        "anonymous_read_document_check",
+        "anonymous_edit_denied_check",
     ]
     for scenario in required_scenarios:
         assert scenario in content, f"missing scenario: {scenario}"
 
 
+def test_live_e2e_smoke_test_script_targets_actually_wired_routes():
+    """0672 작성 당시 가상의 route(`/documents`, `/admin/users`)가 아니라,
+    0673-0687에서 실제로 연결된 route만 대상으로 해야 한다."""
+    content = SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert "/wiki/${DOC_TITLE}/edit" in content
+    assert "/wiki/${DOC_TITLE}" in content
+    assert "/install" in content
+    assert "${BASE_URL}/documents" not in content
+    assert "${BASE_URL}/admin/users" not in content
+
+
+def test_live_e2e_smoke_test_script_skips_safely_without_admin_credentials():
+    """SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD가 없으면 러너에서 실패하지
+    않고 안전하게 skip해야 한다."""
+    content = SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert "SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD not provided" in content
+
+
 def test_live_e2e_smoke_test_script_uses_required_naming_prefixes():
     content = SCRIPT_PATH.read_text(encoding="utf-8")
 
-    assert "smoke_admin_" in content
-    assert "smoke_user_" in content
-    assert "smoke_readonly_" in content
     assert "SmokeTest-" in content
 
 

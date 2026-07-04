@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
-# 라이브 호스팅 배포본에 대한 API/HTTP 기반 end-to-end smoke test (태스크 0672).
+# 라이브 호스팅 배포본에 대한 API/HTTP 기반 end-to-end smoke test (태스크 0672,
+# 실사용 흐름에 맞춘 0688 갱신).
 #
 # post-cutover-validate.sh(골격)나 live-http-smoke-test.sh(루트 응답/민감
-# 경로 차단만 확인)와 달리, 이 스크립트는 관리자/일반 사용자/읽기 전용
-# 사용자/익명 사용자 네 종류의 세션으로 실제 로그인, 문서 생성/수정/삭제,
-# 계정 생성, 권한 거부 흐름을 curl로 직접 수행하고 결과를 기록한다.
+# 경로 차단만 확인)와 달리, 이 스크립트는 관리자 세션으로 실제 로그인,
+# 설치 마법사(`/install`) 접속 상태, 문서 생성/편집/조회, 익명 사용자에 대한
+# 권한(읽기 허용/쓰기 거부) 확인을 curl로 직접 수행하고 결과를 기록한다.
 #
-# 이 저장소의 PHP 프런트 컨트롤러(php/public/index.php)는 현재
-# `GET /`와 `GET /health`만 실제로 연결되어 있고, 로그인/문서/관리자 관련
-# route들(php/src/Http/*Routes.php)은 아직 프런트 컨트롤러에 연결되지
-# 않았다(0673+ 대상). 이 스크립트는 그 상태에서도 안전하게 실행되도록,
-# 각 시나리오가 차단(blocked)되면 나머지를 스킵하고 이유를 기록한 뒤
-# 계속 진행한다 — 실패/차단 시나리오를 이유와 함께 남기는 것이 이
-# 태스크의 목적이다("실패한 시나리오는 0673+로 넘긴다").
+# 0672 작성 시점에는 `php/public/index.php`가 `GET /`와 `GET /health`만
+# 연결되어 있어 `/documents`, `/admin/users` 같은 가상의 route를 대상으로
+# 했다. 0673-0687에서 실제로 연결된 route는 `/install*`, `/login`,
+# `/logout`, `GET /wiki/{title}`, `GET`/`POST /wiki/{title}/edit`뿐이고
+# (사용자 역할별 계정을 만드는 관리자 route는 아직 존재하지 않는다), 이
+# 스크립트는 그 실제 route만 대상으로 한다. 각 시나리오는 실패해도
+# 스크립트를 중단하지 않는다 — route가 없거나(404) 이전 단계가 실패하면
+# "blocked"/"skip"으로 기록하고 다음 단계로 넘어간다.
 set -uo pipefail
 
 BASE_URL=""
@@ -24,18 +26,24 @@ Usage: php/scripts/live-e2e-smoke-test.sh --base-url URL [options]
 
 라이브 배포본에 대해 아래 순서로 실제 HTTP 요청을 보내고 결과를 기록한다:
   1. GET /health 로 배포 상태를 확인한다(전제 조건).
-  2. 관리자 계정 생성 또는 로그인(SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD).
-  3. 관리자 세션으로 테스트 문서 생성/수정/삭제(또는 숨김) 시도.
-  4. 관리자 세션으로 일반 사용자 계정, 읽기 전용 사용자 계정 생성 시도.
-  5. 일반 사용자 로그인 후 문서 생성/편집 허용 여부 확인.
-  6. 읽기 전용 사용자 로그인 후 읽기 가능/쓰기 거부 여부 확인.
-  7. 익명 사용자로 공개 페이지 읽기 확인.
-  8. 생성한 데이터 정리를 시도하고, 정리하지 못한 데이터를 기록한다.
+  2. 익명 사용자로 공개 홈페이지 읽기를 확인한다.
+  3. GET /install 로 설치 마법사 접속 상태(설치 필요/이미 완료)를 확인한다.
+  4. 기존 관리자 계정(SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD)으로 로그인한다.
+  5. 관리자 세션으로 테스트 문서를 생성한다(GET/POST /wiki/{title}/edit).
+  6. 생성한 문서를 조회한다(GET /wiki/{title}).
+  7. 관리자 세션으로 테스트 문서를 편집한다(GET/POST /wiki/{title}/edit).
+  8. 익명 사용자로 같은 문서를 읽을 수 있는지 확인한다(권한 확인: 읽기 허용).
+  9. 익명 사용자가 같은 문서 편집을 시도하면 거부되는지 확인한다(권한 확인:
+     쓰기 거부, `/login`으로 리다이렉트).
 
-각 단계는 실패해도 스크립트를 중단하지 않는다 — 라우트가 아직 연결되지
-않았거나(404) 기능이 아직 없으면 "blocked"로 기록하고 다음 단계로
-넘어간다. 계정 생성에 실패하면 그 계정에 의존하는 이후 단계는
-"skip"으로 기록된다.
+각 단계는 실패해도 스크립트를 중단하지 않는다 — route가 아직 연결되지
+않았거나(404) 전제 단계가 실패하면 "blocked"/"skip"으로 기록하고 다음
+단계로 넘어간다. SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD가 없으면 로그인이
+필요한 모든 단계(5-9)를 안전하게 skip한다 — 설치 마법사를 거쳐 관리자
+계정을 만드는 것은 실제 자격 증명을 가진 운영자가 브라우저로 수행할 일이며
+(이 저장소의 `/install`은 DB 접속 정보·schema 적용·관리자 계정 생성을
+여러 단계로 나눠 처리하는 실제 설치 절차다), 이 스크립트가 대신 만들지
+않는다.
 
 Options:
   --base-url URL           확인할 공개 URL (필수).
@@ -43,12 +51,12 @@ Options:
   -h, --help                 도움말을 출력한다.
 
 환경변수(선택, 값은 출력/로그에 남기지 않는다):
-  SMOKE_ADMIN_USER, SMOKE_ADMIN_PASSWORD   0671에서 만든 기존 관리자 계정.
-                                             비어 있으면 새 관리자 계정 생성을
-                                             먼저 시도한다.
+  SMOKE_ADMIN_USER, SMOKE_ADMIN_PASSWORD   설치 마법사로 이미 만들어진
+                                             관리자 계정. 비어 있으면
+                                             로그인이 필요한 단계를 모두
+                                             skip한다.
 
-테스트 계정 이름은 smoke_admin_*, smoke_user_*, smoke_readonly_* 접두사를,
-테스트 문서 제목은 SmokeTest-YYYYMMDD-HHMMSS-* 접두사를 사용한다.
+테스트 문서 제목은 SmokeTest-YYYYMMDD-HHMMSS 접두사를 사용한다.
 USAGE
 }
 
@@ -91,19 +99,14 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 RUN_ID="$(date +%Y%m%d-%H%M%S)"
-DOC_PREFIX="SmokeTest-${RUN_ID}"
+DOC_TITLE="SmokeTest-${RUN_ID}"
 ADMIN_USER_NAME="${SMOKE_ADMIN_USER:-}"
 ADMIN_PASSWORD="${SMOKE_ADMIN_PASSWORD:-}"
-NEW_ADMIN_USER_NAME="smoke_admin_${RUN_ID}"
-NORMAL_USER_NAME="smoke_user_${RUN_ID}"
-READONLY_USER_NAME="smoke_readonly_${RUN_ID}"
 
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "${WORKDIR}"' EXIT
 
 ADMIN_JAR="${WORKDIR}/admin-cookies.txt"
-USER_JAR="${WORKDIR}/user-cookies.txt"
-READONLY_JAR="${WORKDIR}/readonly-cookies.txt"
 ANON_JAR="${WORKDIR}/anon-cookies.txt"
 
 PASS_COUNT=0
@@ -177,17 +180,9 @@ fresh_csrf_token() {
   extract_csrf_token "${LAST_BODY_FILE}"
 }
 
-random_password() {
-  if command -v openssl >/dev/null 2>&1; then
-    openssl rand -hex 16
-  else
-    head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'
-  fi
-}
-
 echo "base_url=${BASE_URL}"
 echo "run_id=${RUN_ID}"
-echo "doc_prefix=${DOC_PREFIX}"
+echo "doc_title=${DOC_TITLE}"
 echo ""
 
 # 0. 배포 상태 전제 조건 확인: /health
@@ -207,21 +202,36 @@ case "${LAST_STATUS}" in
     ;;
 esac
 
-# 1. 익명 사용자 공개 페이지 읽기 확인 (홈페이지 — 별도 공개 문서 read
-#    route가 아직 없으므로 GET / 을 대상으로 한다).
+# 1. 익명 사용자 공개 페이지 읽기 확인 (홈페이지).
 http_get "${BASE_URL}/" "${ANON_JAR}"
 case "${LAST_STATUS}" in
   2*) record pass anonymous_read_home GET "${BASE_URL}/" "${LAST_STATUS}" "${LAST_REDIRECT}" "public home page readable" ;;
   *) record fail anonymous_read_home GET "${BASE_URL}/" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 2xx" ;;
 esac
 
-ADMIN_AUTHENTICATED=0
-ADMIN_LOGIN_USER=""
-
+# 2. 설치 마법사(/install) 접속 상태 확인. 200이면 아직 설치 전, 403이면
+#    이미 설치가 끝나 InstallerRouteGate가 차단한 것 — 둘 다 정상 상태이며,
+#    이 스크립트는 실제 DB 자격 증명이 필요한 설치 절차 자체는 대신
+#    수행하지 않는다(브라우저로 운영자가 수행, Notes 참고).
 if [ "${APP_REACHABLE}" -ne 1 ]; then
-  record blocked admin_login_or_create GET/POST "${BASE_URL}/login" "n/a" "" "skipped: /health precondition failed"
-elif [ -n "${ADMIN_USER_NAME}" ] && [ -n "${ADMIN_PASSWORD}" ]; then
-  # 2a. 0671에서 만든 기존 관리자 계정으로 로그인 시도.
+  record blocked install_wizard_reachability GET "${BASE_URL}/install" "n/a" "" "skipped: /health precondition failed"
+else
+  http_get "${BASE_URL}/install" "${ANON_JAR}"
+  case "${LAST_STATUS}" in
+    200) record pass install_wizard_reachability GET "${BASE_URL}/install" "${LAST_STATUS}" "${LAST_REDIRECT}" "install wizard reachable (not yet installed)" ;;
+    403) record pass install_wizard_reachability GET "${BASE_URL}/install" "${LAST_STATUS}" "${LAST_REDIRECT}" "install wizard blocked (already installed)" ;;
+    *) record fail install_wizard_reachability GET "${BASE_URL}/install" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 200 (not installed) or 403 (already installed)" ;;
+  esac
+fi
+
+# 3. 기존 관리자 계정으로 로그인. 자격 증명이 없으면 이후 관리자 세션이
+#    필요한 모든 단계를 안전하게 skip한다.
+ADMIN_AUTHENTICATED=0
+if [ "${APP_REACHABLE}" -ne 1 ]; then
+  record blocked admin_login GET/POST "${BASE_URL}/login" "n/a" "" "skipped: /health precondition failed"
+elif [ -z "${ADMIN_USER_NAME}" ] || [ -z "${ADMIN_PASSWORD}" ]; then
+  record skip admin_login GET/POST "${BASE_URL}/login" "n/a" "" "skipped: SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD not provided"
+else
   http_get "${BASE_URL}/login" "${ADMIN_JAR}"
   if [ "${LAST_STATUS}" = "200" ]; then
     token="$(extract_csrf_token "${LAST_BODY_FILE}")"
@@ -229,8 +239,7 @@ elif [ -n "${ADMIN_USER_NAME}" ] && [ -n "${ADMIN_PASSWORD}" ]; then
     case "${LAST_STATUS}" in
       200|302)
         ADMIN_AUTHENTICATED=1
-        ADMIN_LOGIN_USER="${ADMIN_USER_NAME}"
-        record pass admin_login POST "${BASE_URL}/login" "${LAST_STATUS}" "${LAST_REDIRECT}" "logged in as existing admin account"
+        record pass admin_login POST "${BASE_URL}/login" "${LAST_STATUS}" "${LAST_REDIRECT}" "logged in as ${ADMIN_USER_NAME}"
         ;;
       *)
         record fail admin_login POST "${BASE_URL}/login" "${LAST_STATUS}" "${LAST_REDIRECT}" "login rejected for existing admin account"
@@ -239,229 +248,93 @@ elif [ -n "${ADMIN_USER_NAME}" ] && [ -n "${ADMIN_PASSWORD}" ]; then
   else
     record blocked admin_login GET "${BASE_URL}/login" "${LAST_STATUS}" "${LAST_REDIRECT}" "login form route not available"
   fi
-else
-  # 2b. 관리자 계정이 제공되지 않았으므로 설치 마법사(installer)를 통한
-  #     신규 관리자 계정 생성을 시도한다.
-  http_get "${BASE_URL}/install" "${ADMIN_JAR}"
-  if [ "${LAST_STATUS}" = "200" ]; then
-    token="$(extract_csrf_token "${LAST_BODY_FILE}")"
-    generated_password="$(random_password)"
-    http_post_form "${BASE_URL}/install" "${ADMIN_JAR}" "username=${NEW_ADMIN_USER_NAME}" "password=${generated_password}" "csrf_token=${token}"
-    case "${LAST_STATUS}" in
-      200|302)
-        ADMIN_AUTHENTICATED=1
-        ADMIN_LOGIN_USER="${NEW_ADMIN_USER_NAME}"
-        record pass admin_login_or_create POST "${BASE_URL}/install" "${LAST_STATUS}" "${LAST_REDIRECT}" "created admin account ${NEW_ADMIN_USER_NAME} via installer"
-        ;;
-      *)
-        record fail admin_login_or_create POST "${BASE_URL}/install" "${LAST_STATUS}" "${LAST_REDIRECT}" "installer admin account step rejected the submission"
-        ;;
-    esac
-  else
-    record blocked admin_login_or_create GET "${BASE_URL}/install" "${LAST_STATUS}" "${LAST_REDIRECT}" "no SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD given and /install unavailable (already installed or route not wired)"
-  fi
 fi
 
-DOC_ID=""
-DOC_TITLE="${DOC_PREFIX}-doc"
-
+# 4. 관리자 세션에서 테스트 문서 생성 (GET/POST /wiki/{title}/edit).
+DOC_CREATED=0
 if [ "${ADMIN_AUTHENTICATED}" -ne 1 ]; then
-  record skip admin_create_document POST "${BASE_URL}/documents" "n/a" "" "skipped: no authenticated admin session"
+  record skip admin_create_document GET/POST "${BASE_URL}/wiki/${DOC_TITLE}/edit" "n/a" "" "skipped: no authenticated admin session"
 else
-  # 3. 관리자 세션에서 테스트 문서 생성.
-  http_get "${BASE_URL}/documents/new" "${ADMIN_JAR}"
+  http_get "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${ADMIN_JAR}"
   if [ "${LAST_STATUS}" = "200" ]; then
     token="$(extract_csrf_token "${LAST_BODY_FILE}")"
-    http_post_form "${BASE_URL}/documents" "${ADMIN_JAR}" "title=${DOC_TITLE}" "source=smoke test body ${RUN_ID}" "csrf_token=${token}"
+    http_post_form "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${ADMIN_JAR}" "title=${DOC_TITLE}" "source=smoke test body ${RUN_ID}" "csrf_token=${token}"
     case "${LAST_STATUS}" in
-      200|201|302)
-        DOC_ID="$(grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' "${LAST_BODY_FILE}" 2>/dev/null | head -1 | sed 's/.*:[[:space:]]*"//; s/"$//')"
-        if [ -z "${DOC_ID}" ] && [ -n "${LAST_REDIRECT}" ]; then
-          DOC_ID="$(basename "${LAST_REDIRECT}")"
-        fi
-        record pass admin_create_document POST "${BASE_URL}/documents" "${LAST_STATUS}" "${LAST_REDIRECT}" "created document title=${DOC_TITLE} id=${DOC_ID:-unknown}"
+      302)
+        DOC_CREATED=1
+        record pass admin_create_document POST "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "created document title=${DOC_TITLE}"
         ;;
       *)
-        record fail admin_create_document POST "${BASE_URL}/documents" "${LAST_STATUS}" "${LAST_REDIRECT}" "document create rejected"
+        record fail admin_create_document POST "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "document create rejected"
         ;;
     esac
   else
-    record blocked admin_create_document GET "${BASE_URL}/documents/new" "${LAST_STATUS}" "${LAST_REDIRECT}" "document create form route not available"
+    record blocked admin_create_document GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "document create form route not available"
   fi
 fi
 
-if [ -z "${DOC_ID}" ]; then
-  record skip admin_edit_document POST "${BASE_URL}/documents/{id}" "n/a" "" "skipped: no document id from create step"
+# 5. 생성한 문서 조회 확인 (GET /wiki/{title}).
+if [ "${DOC_CREATED}" -ne 1 ]; then
+  record skip admin_view_document GET "${BASE_URL}/wiki/${DOC_TITLE}" "n/a" "" "skipped: document was not created"
 else
-  # 4. 관리자 세션에서 테스트 문서 수정.
-  http_get "${BASE_URL}/documents/${DOC_ID}/edit" "${ADMIN_JAR}"
+  http_get "${BASE_URL}/wiki/${DOC_TITLE}" "${ADMIN_JAR}"
+  case "${LAST_STATUS}" in
+    200) record pass admin_view_document GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "document viewable after create" ;;
+    *) record fail admin_view_document GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 200" ;;
+  esac
+fi
+
+# 6. 관리자 세션에서 테스트 문서 편집 (GET/POST /wiki/{title}/edit).
+DOC_EDITED=0
+if [ "${DOC_CREATED}" -ne 1 ]; then
+  record skip admin_edit_document GET/POST "${BASE_URL}/wiki/${DOC_TITLE}/edit" "n/a" "" "skipped: document was not created"
+else
+  http_get "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${ADMIN_JAR}"
   if [ "${LAST_STATUS}" = "200" ]; then
     token="$(extract_csrf_token "${LAST_BODY_FILE}")"
-    http_post_form "${BASE_URL}/documents/${DOC_ID}" "${ADMIN_JAR}" "title=${DOC_TITLE}-edited" "source=smoke test body edited ${RUN_ID}" "csrf_token=${token}"
+    http_post_form "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${ADMIN_JAR}" "title=${DOC_TITLE}" "source=smoke test body edited ${RUN_ID}" "csrf_token=${token}"
     case "${LAST_STATUS}" in
-      200|302) record pass admin_edit_document POST "${BASE_URL}/documents/${DOC_ID}" "${LAST_STATUS}" "${LAST_REDIRECT}" "edited document" ;;
-      *) record fail admin_edit_document POST "${BASE_URL}/documents/${DOC_ID}" "${LAST_STATUS}" "${LAST_REDIRECT}" "document edit rejected" ;;
+      302)
+        DOC_EDITED=1
+        record pass admin_edit_document POST "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "edited document"
+        ;;
+      *)
+        record fail admin_edit_document POST "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "document edit rejected"
+        ;;
     esac
   else
-    record blocked admin_edit_document GET "${BASE_URL}/documents/${DOC_ID}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "document edit form route not available"
+    record blocked admin_edit_document GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "document edit form route not available"
   fi
 fi
 
-DOC_DELETED=0
-if [ -z "${DOC_ID}" ]; then
-  record skip admin_delete_or_hide_document POST "${BASE_URL}/documents/{id}/delete" "n/a" "" "skipped: no document id from create step"
+# 7. 권한 확인(읽기): 익명 사용자가 같은 문서를 읽을 수 있는지 확인한다
+#    (DefaultPolicy: 공개 읽기 허용).
+if [ "${DOC_CREATED}" -ne 1 ]; then
+  record skip anonymous_read_document_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "n/a" "" "skipped: document was not created"
 else
-  # 5. 관리자 세션에서 테스트 문서 삭제(불가하면 숨김/보호 상태로 전환).
-  delete_token="$(fresh_csrf_token "${BASE_URL}/documents/${DOC_ID}/edit" "${ADMIN_JAR}")"
-  http_post_form "${BASE_URL}/documents/${DOC_ID}/delete" "${ADMIN_JAR}" "csrf_token=${delete_token}"
+  http_get "${BASE_URL}/wiki/${DOC_TITLE}" "${ANON_JAR}"
   case "${LAST_STATUS}" in
-    200|204|302)
-      DOC_DELETED=1
-      record pass admin_delete_or_hide_document POST "${BASE_URL}/documents/${DOC_ID}/delete" "${LAST_STATUS}" "${LAST_REDIRECT}" "document deleted"
-      ;;
-    *)
-      # 삭제 route가 없으면 숨김 상태 전환을 대신 시도한다.
-      hide_token="$(fresh_csrf_token "${BASE_URL}/documents/${DOC_ID}/edit" "${ADMIN_JAR}")"
-      http_post_form "${BASE_URL}/documents/${DOC_ID}" "${ADMIN_JAR}" "status=hidden" "csrf_token=${hide_token}"
-      case "${LAST_STATUS}" in
-        200|302)
-          DOC_DELETED=1
-          record pass admin_delete_or_hide_document POST "${BASE_URL}/documents/${DOC_ID}" "${LAST_STATUS}" "${LAST_REDIRECT}" "document hidden instead of deleted"
-          ;;
-        *)
-          record blocked admin_delete_or_hide_document POST "${BASE_URL}/documents/${DOC_ID}/delete" "${LAST_STATUS}" "${LAST_REDIRECT}" "no delete or hide route available"
-          LEFTOVER_NOTES+=("document id=${DOC_ID} title=${DOC_TITLE} could not be deleted or hidden")
-          ;;
+    200) record pass anonymous_read_document_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "anonymous user can read document" ;;
+    403) record fail anonymous_read_document_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "anonymous user denied read, expected allowed by default policy" ;;
+    *) record blocked anonymous_read_document_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "unexpected status" ;;
+  esac
+fi
+
+# 8. 권한 확인(쓰기 거부): 익명 사용자가 같은 문서 편집을 시도하면
+#    거부되는지 확인한다 (DefaultPolicy: 익명 편집 거부, /login으로 redirect).
+if [ "${DOC_CREATED}" -ne 1 ]; then
+  record skip anonymous_edit_denied_check GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "n/a" "" "skipped: document was not created"
+else
+  http_get "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${ANON_JAR}"
+  case "${LAST_STATUS}" in
+    302)
+      case "${LAST_REDIRECT}" in
+        */login) record pass anonymous_edit_denied_check GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "anonymous user correctly redirected to login" ;;
+        *) record fail anonymous_edit_denied_check GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "redirected somewhere other than /login" ;;
       esac
       ;;
-  esac
-fi
-
-NORMAL_USER_CREATED=0
-if [ "${ADMIN_AUTHENTICATED}" -ne 1 ]; then
-  record skip admin_create_normal_user POST "${BASE_URL}/admin/users" "n/a" "" "skipped: no authenticated admin session"
-else
-  # 6. 관리자 세션에서 일반 사용자 계정 생성.
-  NORMAL_USER_PASSWORD="$(random_password)"
-  http_get "${BASE_URL}/admin/users/new" "${ADMIN_JAR}"
-  token="$(extract_csrf_token "${LAST_BODY_FILE}")"
-  http_post_form "${BASE_URL}/admin/users" "${ADMIN_JAR}" "username=${NORMAL_USER_NAME}" "password=${NORMAL_USER_PASSWORD}" "role=user" "csrf_token=${token}"
-  case "${LAST_STATUS}" in
-    200|201|302)
-      NORMAL_USER_CREATED=1
-      record pass admin_create_normal_user POST "${BASE_URL}/admin/users" "${LAST_STATUS}" "${LAST_REDIRECT}" "created ${NORMAL_USER_NAME}"
-      ;;
-    *)
-      record blocked admin_create_normal_user POST "${BASE_URL}/admin/users" "${LAST_STATUS}" "${LAST_REDIRECT}" "user creation route not available"
-      ;;
-  esac
-fi
-
-READONLY_USER_CREATED=0
-if [ "${ADMIN_AUTHENTICATED}" -ne 1 ]; then
-  record skip admin_create_readonly_user POST "${BASE_URL}/admin/users" "n/a" "" "skipped: no authenticated admin session"
-else
-  # 7. 관리자 세션에서 읽기 전용 사용자 계정 생성.
-  READONLY_USER_PASSWORD="$(random_password)"
-  http_get "${BASE_URL}/admin/users/new" "${ADMIN_JAR}"
-  token="$(extract_csrf_token "${LAST_BODY_FILE}")"
-  http_post_form "${BASE_URL}/admin/users" "${ADMIN_JAR}" "username=${READONLY_USER_NAME}" "password=${READONLY_USER_PASSWORD}" "role=readonly" "csrf_token=${token}"
-  case "${LAST_STATUS}" in
-    200|201|302)
-      READONLY_USER_CREATED=1
-      record pass admin_create_readonly_user POST "${BASE_URL}/admin/users" "${LAST_STATUS}" "${LAST_REDIRECT}" "created ${READONLY_USER_NAME}"
-      ;;
-    *)
-      record blocked admin_create_readonly_user POST "${BASE_URL}/admin/users" "${LAST_STATUS}" "${LAST_REDIRECT}" "user creation route not available"
-      ;;
-  esac
-fi
-
-NORMAL_USER_AUTHENTICATED=0
-if [ "${NORMAL_USER_CREATED}" -ne 1 ]; then
-  record skip normal_user_login POST "${BASE_URL}/login" "n/a" "" "skipped: normal user account not created"
-else
-  # 8. 일반 사용자 세션으로 로그인.
-  http_get "${BASE_URL}/login" "${USER_JAR}"
-  token="$(extract_csrf_token "${LAST_BODY_FILE}")"
-  http_post_form "${BASE_URL}/login" "${USER_JAR}" "username=${NORMAL_USER_NAME}" "password=${NORMAL_USER_PASSWORD}" "csrf_token=${token}"
-  case "${LAST_STATUS}" in
-    200|302)
-      NORMAL_USER_AUTHENTICATED=1
-      record pass normal_user_login POST "${BASE_URL}/login" "${LAST_STATUS}" "${LAST_REDIRECT}" "logged in as ${NORMAL_USER_NAME}"
-      ;;
-    *)
-      record fail normal_user_login POST "${BASE_URL}/login" "${LAST_STATUS}" "${LAST_REDIRECT}" "login rejected for newly created normal user"
-      ;;
-  esac
-fi
-
-if [ "${NORMAL_USER_AUTHENTICATED}" -ne 1 ]; then
-  record skip normal_user_document_write_check POST "${BASE_URL}/documents" "n/a" "" "skipped: normal user session not authenticated"
-else
-  # 9. 일반 사용자 세션에서 문서 생성/편집 허용 여부 확인.
-  http_get "${BASE_URL}/documents/new" "${USER_JAR}"
-  token="$(extract_csrf_token "${LAST_BODY_FILE}")"
-  http_post_form "${BASE_URL}/documents" "${USER_JAR}" "title=${DOC_PREFIX}-by-user" "source=smoke test by normal user ${RUN_ID}" "csrf_token=${token}"
-  case "${LAST_STATUS}" in
-    200|201|302)
-      record pass normal_user_document_write_check POST "${BASE_URL}/documents" "${LAST_STATUS}" "${LAST_REDIRECT}" "normal user allowed to create/edit documents"
-      LEFTOVER_NOTES+=("document titled ${DOC_PREFIX}-by-user created by normal user — verify cleanup manually")
-      ;;
-    401|403)
-      record fail normal_user_document_write_check POST "${BASE_URL}/documents" "${LAST_STATUS}" "${LAST_REDIRECT}" "normal user was denied document write, expected allowed"
-      ;;
-    *)
-      record blocked normal_user_document_write_check POST "${BASE_URL}/documents" "${LAST_STATUS}" "${LAST_REDIRECT}" "document create route not available"
-      ;;
-  esac
-fi
-
-READONLY_USER_AUTHENTICATED=0
-if [ "${READONLY_USER_CREATED}" -ne 1 ]; then
-  record skip readonly_user_login POST "${BASE_URL}/login" "n/a" "" "skipped: readonly user account not created"
-else
-  # 10. 읽기 전용 사용자 세션으로 로그인.
-  http_get "${BASE_URL}/login" "${READONLY_JAR}"
-  token="$(extract_csrf_token "${LAST_BODY_FILE}")"
-  http_post_form "${BASE_URL}/login" "${READONLY_JAR}" "username=${READONLY_USER_NAME}" "password=${READONLY_USER_PASSWORD}" "csrf_token=${token}"
-  case "${LAST_STATUS}" in
-    200|302)
-      READONLY_USER_AUTHENTICATED=1
-      record pass readonly_user_login POST "${BASE_URL}/login" "${LAST_STATUS}" "${LAST_REDIRECT}" "logged in as ${READONLY_USER_NAME}"
-      ;;
-    *)
-      record fail readonly_user_login POST "${BASE_URL}/login" "${LAST_STATUS}" "${LAST_REDIRECT}" "login rejected for newly created readonly user"
-      ;;
-  esac
-fi
-
-if [ "${READONLY_USER_AUTHENTICATED}" -ne 1 ]; then
-  record skip readonly_user_read_check GET "${BASE_URL}/" "n/a" "" "skipped: readonly user session not authenticated"
-  record skip readonly_user_write_denied_check POST "${BASE_URL}/documents" "n/a" "" "skipped: readonly user session not authenticated"
-else
-  # 11. 읽기 전용 사용자 세션에서 문서 읽기 가능 여부 확인.
-  http_get "${BASE_URL}/" "${READONLY_JAR}"
-  case "${LAST_STATUS}" in
-    2*) record pass readonly_user_read_check GET "${BASE_URL}/" "${LAST_STATUS}" "${LAST_REDIRECT}" "readonly user can read" ;;
-    *) record fail readonly_user_read_check GET "${BASE_URL}/" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 2xx for read" ;;
-  esac
-
-  # 12. 읽기 전용 사용자 세션에서 문서 생성/편집이 거부되는지 확인.
-  http_get "${BASE_URL}/documents/new" "${READONLY_JAR}"
-  token="$(extract_csrf_token "${LAST_BODY_FILE}")"
-  http_post_form "${BASE_URL}/documents" "${READONLY_JAR}" "title=${DOC_PREFIX}-by-readonly" "source=should be denied ${RUN_ID}" "csrf_token=${token}"
-  case "${LAST_STATUS}" in
-    401|403)
-      record pass readonly_user_write_denied_check POST "${BASE_URL}/documents" "${LAST_STATUS}" "${LAST_REDIRECT}" "readonly user correctly denied write access"
-      ;;
-    200|201|302)
-      record fail readonly_user_write_denied_check POST "${BASE_URL}/documents" "${LAST_STATUS}" "${LAST_REDIRECT}" "SECURITY: readonly user was allowed to write"
-      LEFTOVER_NOTES+=("document titled ${DOC_PREFIX}-by-readonly may have been created by readonly user — verify and remove manually")
-      ;;
-    *)
-      record blocked readonly_user_write_denied_check POST "${BASE_URL}/documents" "${LAST_STATUS}" "${LAST_REDIRECT}" "document create route not available, cannot confirm denial"
-      ;;
+    200) record fail anonymous_edit_denied_check GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "SECURITY: anonymous user was allowed to see the edit form" ;;
+    *) record blocked anonymous_edit_denied_check GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "unexpected status" ;;
   esac
 fi
 
@@ -469,26 +342,8 @@ echo ""
 echo "=== cleanup ==="
 if [ "${KEEP_DATA}" -eq 1 ]; then
   echo "cleanup skipped (--keep-data)"
-else
-  if [ -n "${DOC_ID}" ] && [ "${DOC_DELETED}" -ne 1 ]; then
-    echo "retry cleanup: document id=${DOC_ID}"
-    retry_token="$(fresh_csrf_token "${BASE_URL}/documents/${DOC_ID}/edit" "${ADMIN_JAR}")"
-    http_post_form "${BASE_URL}/documents/${DOC_ID}/delete" "${ADMIN_JAR}" "csrf_token=${retry_token}"
-    case "${LAST_STATUS}" in
-      200|204|302) echo "cleanup: document ${DOC_ID} deleted on retry" ;;
-      *) LEFTOVER_NOTES+=("document id=${DOC_ID} title=${DOC_TITLE} still not cleaned up after retry (status=${LAST_STATUS})") ;;
-    esac
-  fi
-
-  if [ "${NORMAL_USER_CREATED}" -eq 1 ]; then
-    LEFTOVER_NOTES+=("account ${NORMAL_USER_NAME} has no delete-user route in this codebase yet — remove manually or via DB once available")
-  fi
-  if [ "${READONLY_USER_CREATED}" -eq 1 ]; then
-    LEFTOVER_NOTES+=("account ${READONLY_USER_NAME} has no delete-user route in this codebase yet — remove manually or via DB once available")
-  fi
-  if [ "${ADMIN_LOGIN_USER}" = "${NEW_ADMIN_USER_NAME}" ]; then
-    LEFTOVER_NOTES+=("account ${NEW_ADMIN_USER_NAME} was created by this run and has no delete-user route yet — remove manually or via DB once available")
-  fi
+elif [ "${DOC_CREATED}" -eq 1 ]; then
+  LEFTOVER_NOTES+=("document title=${DOC_TITLE} has no delete route in this codebase yet — remove manually via DB once available")
 fi
 
 echo ""

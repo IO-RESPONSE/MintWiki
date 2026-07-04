@@ -12,6 +12,8 @@ declare -a FAILURES=()
 SENSITIVE_PATHS=(
   "config/"
   "config/database.php"
+  "config/local-config.php"
+  "config/install.lock"
   "vendor/"
   "vendor/autoload.php"
   "storage/"

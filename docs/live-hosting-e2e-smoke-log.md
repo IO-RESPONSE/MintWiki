@@ -115,6 +115,41 @@ live_e2e_smoke_test_status=blocked (exit code 1)
   https://iowiki.iwinv.net`를 다시 실행해 이 문서를 갱신하고, 그때
   실제로 실패하는 시나리오가 있으면 별도 버그픽스 태스크로 넘긴다.
 
+## 6. 0688 갱신: 시나리오/route 이름 변경
+
+0673-0687에서 실제로 연결된 route는 이 문서가 §3에서 예상했던
+`/documents`, `/admin/users` 계열이 아니라 `/install*`, `/login`,
+`/logout`, `/wiki/{title}`, `/wiki/{title}/edit`이었다(사용자 역할별
+계정을 만드는 관리자 route는 여전히 없다). `php/scripts/live-e2e-smoke-test.sh`를
+그 실제 route를 대상으로 다시 작성했고, 시나리오 이름도 아래처럼
+바뀌었다 — 이후 이 문서를 실제 실행 결과로 갱신할 때는 새 이름을
+기준으로 삼는다.
+
+| 0672 시나리오 이름 (구) | 0688 시나리오 이름 (신) |
+|---|---|
+| `admin_login_or_create` | `admin_login`(installer를 통한 신규 계정 생성 시도는 제거 — installer는 DB 설정/schema 적용/관리자 생성이 분리된 다단계 절차라 한 번의 POST로 계정을 만들 수 없다) |
+| `admin_create_document`, `admin_edit_document` | 동일 이름, 대상만 `/wiki/{title}/edit`으로 변경 |
+| `admin_delete_or_hide_document` | 삭제됨(`/wiki/{title}`에는 삭제/숨김 route 자체가 없다) |
+| `admin_create_normal_user`, `admin_create_readonly_user`, `normal_user_login`, `normal_user_document_write_check`, `readonly_user_login`, `readonly_user_read_check`, `readonly_user_write_denied_check` | 삭제됨(역할별 계정 생성 admin route가 없다) → `anonymous_read_document_check`, `anonymous_edit_denied_check`(익명 사용자의 읽기 허용/쓰기 거부로 권한 확인을 대체) |
+| (신규) | `install_wizard_reachability`, `admin_view_document` |
+
+이 문서 §2의 실행 기록(2026-07-04, run_id=20260704-192053)은 배포 자체가
+아직 완료되지 않은 상태에서 얻은 것이라 route 이름 변경과 무관하게
+유효하다(대부분 `blocked`/`skip`이었다). 실제 배포가 끝나고 관리자
+계정이 만들어진 뒤 새 스크립트로 다시 실행한 결과는 아직 기록되지
+않았다 — 실제 FTP/DB 자격증명이 있는 세션에서 이어서 수행한다.
+
+로컬(도커 MariaDB 컨테이너)에서 새 스크립트를 설치 마법사 → 로그인 →
+문서 생성/편집/조회 → 권한 확인까지 전체 흐름으로 실행해 9개 시나리오
+모두 `pass`임을 확인했다(자격 증명이 없을 때는 3 `pass`/6 `skip`으로
+안전하게 끝나는 것도 함께 확인했다). 이 검증 과정에서 설치 마법사
+자체를 막고 있던 버그 두 개(CSRF 토큰의 세션 미고정, schema 미적용
+상태에서 ACL 조회로 인한 500 오류)를 발견해 함께 고쳤다 — 자세한 내용은
+`docs/iowiki-shared-hosting-porting-log.md` §4, `docs/installer-lock-file-policy.md`
+"알려진 이슈"를 참고한다. `db/schema` 사설 위치 깊이 불일치(이 계정의
+FTP 배치에서 `/install/schema`가 schema 파일을 찾지 못하는 문제)는 코드
+수정이 필요해 이번에는 고치지 않고 알려진 이슈로만 남겼다.
+
 ## 관련 문서
 
 - `docs/iowiki-shared-hosting-porting-log.md` — 0671 FTP 배포 실행

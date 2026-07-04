@@ -349,13 +349,22 @@ $sessionAdapter = new PhpSessionAdapter();
 // DEFAULT_NAMESPACE("*")에 DB 규칙이 아직 없으면(신규 설치, seed 데이터
 // 없음) `DefaultPolicy`(공개 읽기 허용/익명 편집 거부/로그인 사용자 편집
 // 허용)로 대체해 문서가 계속 정상 동작하게 한다.
+// 0688 라이브 smoke test에서 발견: DB는 연결됐지만 아직 schema가 적용되지
+// 않은 상태(설치 마법사가 `/install/database`까지만 끝낸 상태)에서는
+// `acl_namespace_rule` 테이블이 없어 이 조회가 예외를 던진다 — try/catch
+// 없이는 `/install/schema`, `/install/admin` 등 나머지 모든 route가 이
+// 코드에서 502/500으로 죽어 설치 마법사 자체를 끝까지 진행할 수 없었다.
 $aclRuleRepository = $pdo !== null ? new AclPdoRepository($pdo) : null;
 $namespaceAclDefaults = new NamespaceAclDefaults();
 $namespaceAclDefaults->register(NamespaceAclDefaults::DEFAULT_NAMESPACE, DefaultPolicy::defaultRules());
 if ($aclRuleRepository !== null) {
-    $dbNamespaceRules = $aclRuleRepository->namespaceRules(NamespaceAclDefaults::DEFAULT_NAMESPACE);
-    if ($dbNamespaceRules !== []) {
-        $namespaceAclDefaults->register(NamespaceAclDefaults::DEFAULT_NAMESPACE, $dbNamespaceRules);
+    try {
+        $dbNamespaceRules = $aclRuleRepository->namespaceRules(NamespaceAclDefaults::DEFAULT_NAMESPACE);
+        if ($dbNamespaceRules !== []) {
+            $namespaceAclDefaults->register(NamespaceAclDefaults::DEFAULT_NAMESPACE, $dbNamespaceRules);
+        }
+    } catch (\Throwable $exception) {
+        // schema 미적용 상태 — DefaultPolicy로 계속 진행한다.
     }
 }
 $aclService = new AclService($namespaceAclDefaults);

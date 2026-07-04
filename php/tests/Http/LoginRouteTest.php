@@ -30,6 +30,16 @@ declare(strict_types=1);
  *     200(CSRF 토큰 포함)을 반환하고, 잘못된 CSRF 토큰의 `POST /login`은
  *     403을, `GET`/`POST /logout`은 302를 반환하며, 이어지는 `GET /health`도
  *     여전히 200을 반환하는지(프로세스가 죽지 않았다는 증거).
+ * (10) 0688 라이브 smoke test에서 발견한 회귀 방지: `GET /login`으로 받은
+ *      쿠키(PHPSESSID)와 그 응답에 담긴 실제 csrf_token을 별도의 `POST
+ *      /login` 요청(서로 다른 PHP 프로세스/요청)에 그대로 재사용하면 403
+ *      (CSRF 토큰이 유효하지 않습니다)이 아니어야 한다 — DB가 미설정이므로
+ *      503을 받는 것이 정상이다. (2)/(3)/(4)는 같은 PHP 프로세스 안에서
+ *      `session_start()`를 미리 호출해 두고 검증하므로 이 회귀를 잡지
+ *      못했다. `CsrfTokenService`가 `$_SESSION`이 이미 있다고 가정하고
+ *      `session_start()`를 직접 호출하지 않으면, 별도 프로세스로 처리되는
+ *      실제 HTTP 요청에서는 GET에서 만든 토큰이 POST에서 항상 무효로
+ *      판정된다.
  */
 
 $autoloadFile = __DIR__ . '/../../vendor/autoload.php';
@@ -332,6 +342,55 @@ function mintwiki_login_route_http_post(int $port, string $path, array $fields):
     return [isset($matches[1]) ? (int) $matches[1] : 0, $responseBody === false ? '' : $responseBody];
 }
 
+/**
+ * GET 요청을 보내고 상태 코드/본문과 함께 `Set-Cookie` 헤더에서 뽑은
+ * `PHPSESSID` 쿠키 값을 반환한다(회귀 테스트 (10)이 별도 요청 간에 세션
+ * 쿠키를 재사용하기 위해 사용한다).
+ *
+ * @return array{0: int, 1: string, 2: ?string}
+ */
+function mintwiki_login_route_http_get_capturing_cookie(int $port, string $path): array
+{
+    $context = stream_context_create(['http' => ['ignore_errors' => true, 'timeout' => 5]]);
+    $responseBody = file_get_contents("http://127.0.0.1:{$port}{$path}", false, $context);
+    $headers = $http_response_header ?? [];
+    $statusLine = $headers[0] ?? '';
+    preg_match('#HTTP/\S+\s+(\d+)#', $statusLine, $matches);
+
+    $cookie = null;
+    foreach ($headers as $header) {
+        if (preg_match('/^Set-Cookie:\s*(PHPSESSID=[^;]+)/i', $header, $cookieMatches) === 1) {
+            $cookie = $cookieMatches[1];
+        }
+    }
+
+    return [isset($matches[1]) ? (int) $matches[1] : 0, $responseBody === false ? '' : $responseBody, $cookie];
+}
+
+/**
+ * 주어진 `Cookie` 헤더(`PHPSESSID=...`)를 실어 POST 요청을 보낸다.
+ *
+ * @return array{0: int, 1: string}
+ */
+function mintwiki_login_route_http_post_with_cookie(int $port, string $path, array $fields, string $cookie): array
+{
+    $body = http_build_query($fields);
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => "Content-Type: application/x-www-form-urlencoded\r\nCookie: {$cookie}\r\n",
+            'content' => $body,
+            'ignore_errors' => true,
+            'timeout' => 5,
+        ],
+    ]);
+    $responseBody = file_get_contents("http://127.0.0.1:{$port}{$path}", false, $context);
+    $statusLine = $http_response_header[0] ?? '';
+    preg_match('#HTTP/\S+\s+(\d+)#', $statusLine, $matches);
+
+    return [isset($matches[1]) ? (int) $matches[1] : 0, $responseBody === false ? '' : $responseBody];
+}
+
 try {
     foreach (LOGIN_ROUTE_DB_ENV_KEYS as $key) {
         putenv($key);
@@ -384,6 +443,29 @@ try {
         [$healthStatus] = mintwiki_login_route_http_get($port, '/health');
         if ($healthStatus !== 200) {
             $failures[] = '/login, /logout 요청 이후에도 GET /health는 200을 반환해야 하는데 ' . $healthStatus . '이었다(프로세스가 죽지 않았어야 한다).';
+        }
+
+        // (10) GET에서 받은 세션 쿠키 + csrf_token을 별도 POST 요청에 그대로
+        // 재사용하면, DB가 미설정이라도 CSRF 검증 자체는 통과해야 한다(503을
+        // 받아야지 403을 받으면 안 된다).
+        [$freshLoginStatus, $freshLoginBody, $sessionCookie] = mintwiki_login_route_http_get_capturing_cookie($port, '/login');
+        if ($freshLoginStatus !== 200 || $sessionCookie === null) {
+            $failures[] = 'GET /login은 200과 함께 PHPSESSID 쿠키를 내려줘야 하는데 status=' . $freshLoginStatus . ', cookie=' . ($sessionCookie ?? 'none') . '이었다.';
+        } else {
+            preg_match('/name="csrf_token" value="([^"]+)"/', $freshLoginBody, $tokenMatches);
+            $realToken = $tokenMatches[1] ?? '';
+
+            [$validCsrfPostStatus] = mintwiki_login_route_http_post_with_cookie($port, '/login', [
+                'csrf_token' => $realToken,
+                'username' => 'admin',
+                'password' => 'irrelevant',
+            ], $sessionCookie);
+
+            if ($validCsrfPostStatus === 403) {
+                $failures[] = 'GET에서 받은 세션 쿠키로 실제 csrf_token을 재사용한 POST /login이 403(CSRF 토큰이 유효하지 않습니다)을 반환했다 — 별도 요청 간 세션이 유지되지 않는다는 뜻이다.';
+            } elseif ($validCsrfPostStatus !== 503) {
+                $failures[] = 'DB 미설정 상태에서 유효한 CSRF 토큰의 POST /login은 503을 반환해야 하는데 ' . $validCsrfPostStatus . '이었다.';
+            }
         }
     } finally {
         proc_terminate($process);
