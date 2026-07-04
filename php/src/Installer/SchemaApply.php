@@ -16,10 +16,14 @@ use Throwable;
  * `SCHEMA_ORDER`와 동일하다 — 두 목록이 어긋나면 smoke test와 installer가 서로
  * 다른 순서로 테이블을 만들게 된다.
  *
- * 스키마 파일은 배포 시 docroot(`php/public`) 밖 `db/` 형제 디렉터리에 위치하므로,
- * 기본 경로는 이 파일 기준(`php/src/Installer`) 상위로 3단계 거슬러 올라간
- * 저장소 루트에 `db/schema`를 붙여 계산한다. 테스트에서는 실제 DB 없이 검증할 수
- * 있도록 fixture 디렉터리를 생성자 인자로 주입할 수 있게 했다.
+ * 스키마 파일은 배포 시 docroot(`php/public`) 밖에 위치하는데, 그 정확한 층은
+ * 배포 레이아웃마다 다르다:
+ *   - 저장소/SSH 릴리스: `<root>/php/src`와 `<root>/db/schema` (src 기준 3단계 위)
+ *   - iowiki 평탄 FTP: docroot 형제로 `src/`와 `db/`가 같은 층 (src 기준 2단계 위)
+ * 고정 깊이(`dirname(__DIR__, 3)`)로는 두 레이아웃을 동시에 맞출 수 없으므로,
+ * 기본 경로는 이 파일 기준 상위 디렉터리를 거슬러 올라가며 스키마 SQL이 실제
+ * 존재하는 위치(`.../db/schema` 또는 `.../db`)를 탐색해 계산한다. 테스트에서는
+ * 실제 DB 없이 검증할 수 있도록 fixture 디렉터리를 생성자 인자로 주입할 수 있게 했다.
  */
 final class SchemaApply
 {
@@ -47,7 +51,31 @@ final class SchemaApply
      */
     public function schemaDir(): string
     {
-        return $this->schemaDir ?? dirname(__DIR__, 3) . '/db/schema';
+        if ($this->schemaDir !== null) {
+            return $this->schemaDir;
+        }
+
+        // 이 파일 기준 상위 디렉터리를 거슬러 올라가며 스키마 SQL이 실제 존재하는
+        // 위치를 찾는다. `db/schema`(저장소/릴리스 레이아웃)를 `db`(평탄 FTP
+        // 레이아웃, docroot 형제)보다 먼저 확인해 저장소 기준 경로를 우선한다.
+        $marker = self::SCHEMA_ORDER[0];
+        $dir = __DIR__;
+        $previous = '';
+        while ($dir !== $previous) {
+            foreach (['/db/schema', '/db'] as $suffix) {
+                $candidate = $dir . $suffix;
+                if (is_file($candidate . '/' . $marker)) {
+                    return $candidate;
+                }
+            }
+
+            $previous = $dir;
+            $dir = dirname($dir);
+        }
+
+        // 어느 레이아웃에서도 찾지 못하면 저장소 기준 기본값을 반환해, 호출부가
+        // `apply()`에서 명확한 "스키마 파일을 찾을 수 없습니다" 오류를 내게 한다.
+        return dirname(__DIR__, 3) . '/db/schema';
     }
 
     /**
