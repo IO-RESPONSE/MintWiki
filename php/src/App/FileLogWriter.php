@@ -51,7 +51,7 @@ final class FileLogWriter implements LogWriter
             'timestamp' => gmdate(DATE_ATOM),
             'level' => strtoupper(trim($level)),
             'message' => $message,
-            'context' => $context,
+            'context' => $this->redactContext($context),
         ];
 
         try {
@@ -66,5 +66,44 @@ final class FileLogWriter implements LogWriter
 
             return $fallbackLine;
         }
+    }
+
+    /**
+     * @param array<string, mixed> $context 로그에 함께 남길 부가 정보
+     * @return array<string, mixed>
+     */
+    private function redactContext(array $context): array
+    {
+        $redacted = [];
+
+        foreach ($context as $key => $value) {
+            $normalizedKey = strtolower((string) $key);
+
+            if (str_contains($normalizedKey, 'password')) {
+                $redacted[$key] = '[REDACTED]';
+                continue;
+            }
+
+            if (str_contains($normalizedKey, 'token')) {
+                $redacted[$key] = is_string($value) ? $this->maskToken($value) : '[REDACTED]';
+                continue;
+            }
+
+            if (is_array($value)) {
+                $redacted[$key] = $this->redactContext($value);
+                continue;
+            }
+
+            $redacted[$key] = $value;
+        }
+
+        return $redacted;
+    }
+
+    private function maskToken(string $token): string
+    {
+        $prefixLength = min(6, strlen($token));
+
+        return substr($token, 0, $prefixLength) . str_repeat('*', max(0, strlen($token) - $prefixLength));
     }
 }
