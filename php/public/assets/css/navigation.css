@@ -1,0 +1,86 @@
+/*
+ * 나무위키풍 상단 네비게이션 바 스타일 (태스크 0690)
+ *
+ * design-tokens.css의 브랜드/레이아웃 토큰(--color-brand, --header-height 등)을
+ * 그대로 사용해 0689에서 정의한 팔레트와 일관성을 유지한다.
+ */
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  height: var(--header-height);
+  padding: 0 var(--spacing-lg);
+  background-color: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.site-nav__brand {
+  font-weight: bold;
+  font-size: 1.25rem;
+  color: var(--color-brand);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.site-nav__search {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.site-nav__search input[type="search"] {
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.site-nav__search button {
+  background-color: var(--color-brand);
+  color: var(--color-on-brand);
+  border: none;
+  border-radius: 4px;
+  padding: var(--spacing-xs) var(--spacing-md);
+  cursor: pointer;
+}
+
+.site-nav__search button:hover {
+  background-color: var(--color-brand-hover);
+}
+
+.site-nav__search button:active {
+  background-color: var(--color-brand-active);
+}
+
+.site-nav__menu {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+}
+
+.site-nav__link {
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.site-nav__link--active {
+  color: var(--color-brand);
+  font-weight: bold;
+}
+
+.site-nav__auth {
+  margin-left: auto;
+}
+
+.site-nav__auth-link {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+.site-nav__auth-link:visited {
+  color: var(--color-link-visited);
+}
