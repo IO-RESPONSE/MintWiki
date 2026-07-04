@@ -44,6 +44,34 @@ button:disabled:hover {
 }
 
 /*
+ * 주요(primary) 버튼 스타일 (태스크 0689)
+ *
+ * type="submit" 버튼을 주요 액션으로 간주해 브랜드 토큰으로 강조한다.
+ */
+
+button[type='submit'] {
+  background-color: var(--color-brand);
+  color: var(--color-on-brand);
+  border-color: var(--color-brand);
+}
+
+button[type='submit']:hover:not(:disabled) {
+  background-color: var(--color-brand-hover);
+  border-color: var(--color-brand-hover);
+}
+
+button[type='submit']:active:not(:disabled) {
+  background-color: var(--color-brand-active);
+  border-color: var(--color-brand-active);
+}
+
+button[type='submit']:disabled {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-tertiary);
+  border-color: var(--color-border);
+}
+
+/*
  * 로딩 상태 스타일
  *
  * [data-loading="true"] 속성을 사용하여 로딩 중인 버튼을 표시한다.

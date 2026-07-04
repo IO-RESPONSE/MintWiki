@@ -40,6 +40,30 @@
   --color-border-secondary: #e8e8e8;
 
   /*
+   * Brand Tokens - MintWiki 브랜드 색 (#008485, 민트/틸)
+   *
+   * hover/active는 브랜드색을 어둡게 하여 상태를 구분하고,
+   * on-brand 텍스트색은 흰색으로 WCAG AA(4.5:1 이상) 대비를 만족한다.
+   */
+
+  --color-brand: #008485;
+  --color-brand-hover: #00696a;
+  --color-brand-active: #005152;
+  --color-on-brand: #ffffff;
+
+  /*
+   * NamuWiki-style Layout Tokens - 밝은 배경/좁은 콘텐츠 폭 스킨용 토큰
+   *
+   * 링크색은 브랜드색을 그대로 사용해 흰 배경에서 4.5:1 이상의 대비를 만족한다.
+   * 방문 링크는 구분을 위해 보라 계열의 별도 색을 사용한다.
+   */
+
+  --color-link: var(--color-brand);
+  --color-link-visited: #7b4f9e;
+  --content-max-width: 1100px;
+  --header-height: 56px;
+
+  /*
    * Spacing Tokens - 일관된 간격 체계
    *
    * 8px 기본 단위를 사용한 modular scale로 모든 간격을 정의한다.
@@ -101,6 +125,10 @@
 
     --color-border: #404040;
     --color-border-secondary: #333333;
+
+    /* 어두운 배경에서도 4.5:1 이상의 대비를 유지하기 위한 밝은 링크색 */
+    --color-link: #4dd0d1;
+    --color-link-visited: #c39bde;
   }
 }
 
