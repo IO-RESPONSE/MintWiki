@@ -31,6 +31,25 @@ Skeleton, 0391-0440 의 0430 산출물이다
   DB 연결/schema 준비 상태, 문서 생성, 생성 문서 조회 순서의 검증 계획을
   출력한다. 실제 HTTP 요청, DB 진단, 문서 쓰기 자동화는 후속 태스크에서
   추가한다.
+- `ftp-deploy.sh` — SSH/Composer를 쓸 수 없는 plain FTP 계정(0671
+  iowiki.iwinv.net 등)에 배포 패키지를 올리는 스크립트.
+  `--local-public-dir`을 원격 docroot(`--docroot-name`, 기본
+  `public_html`)로 미러링하기 전에 기존 `index.php`를 `--backup-dir`로
+  먼저 백업하고, `--private-map LOCAL:NAME`으로 docroot 밖 형제
+  디렉터리(config/src/vendor/storage/db 등)를 함께 올릴 수 있다. FTP
+  비밀번호는 `FTP_PASSWORD` 환경변수 또는 `--password-file`로만 받고
+  커맨드라인 인자로 노출하지 않는다. `--dry-run`으로 연결 없이 실행될
+  `lftp` 명령을 미리 확인할 수 있다.
+- `phpinfo-probe.sh` — 임시 `phpinfo()` 진단 파일을 FTP로 올리고(선택적
+  으로 `--fetch --base-url`로 즉시 curl 확인) 성공/실패와 무관하게 원격
+  파일과 로컬 임시 파일을 모두 삭제하는 스크립트(trap 기반 cleanup).
+  PHP 버전, 확장, loaded config, document root, rewrite 환경 확인 후
+  진단 파일이 남는 사고를 막는다.
+- `live-http-smoke-test.sh` — 배포된 공개 URL에 대해 실제 `curl` 요청으로
+  루트 응답(2xx)과 `config/`, `vendor/`, `storage/`, `db/`,
+  `composer.json`, `composer.lock`, `.env` 같은 민감 경로 차단(403/404)을
+  확인하는 스모크 테스트. `post-cutover-validate.sh`와 달리 골격이 아니라
+  실제 HTTP 요청을 보낸다.
 
 공유 호스팅에서 CLI 실행 권한이 없으면, 호스팅 파일 관리자나 SFTP로
 설정된 캐시 디렉터리의 **내용만** 비우는 운영 절차를 사용한다. 캐시
