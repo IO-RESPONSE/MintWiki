@@ -148,6 +148,8 @@ clear 방식을 운영 기록에 남긴다.
   웹호스팅 마이그레이션 적용 경로.
 - [Writable Directories Policy](writable-directories-policy.md) — `storage/cache`,
   `storage/uploads`, `storage/logs` 분리 정책.
+- [Shared Hosting Rollback Procedure](shared-hosting-rollback-procedure.md) — 코드,
+  의존성, DB 호환성 확인을 포함한 롤백 절차.
 - [PHP UI Deployment Checklist](php-ui-deployment-checklist.md) — 배포 전후 UI 검증
   항목.
 - [PHP UI Rollback Checklist](php-ui-rollback-checklist.md) — UI 배포 롤백 기준.
