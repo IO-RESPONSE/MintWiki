@@ -95,6 +95,8 @@ final class SchemaApply
         $schemaDir = $this->schemaDir();
         $applied = [];
 
+        $this->prepareConnection($pdo);
+
         foreach (self::SCHEMA_ORDER as $filename) {
             $path = $schemaDir . '/' . $filename;
 
@@ -119,6 +121,22 @@ final class SchemaApply
         $this->recordSchemaVersion($pdo, $version);
 
         return $applied;
+    }
+
+    /**
+     * 스키마 적용 전에 연결을 준비한다. MariaDB(mysql 드라이버)는 기본 스토리지
+     * 엔진이 MyISAM(인덱스 키 최대 1000바이트)인 공유 호스팅이 있는데,
+     * discussion_thread의 복합 인덱스(document_id, created_at, id)처럼 VARCHAR
+     * 여러 개를 묶은 인덱스가 이 한도를 넘어 1071 오류로 실패한다. 스키마 파일은
+     * PostgreSQL 이식성 때문에 `ENGINE=`을 명시하지 않으므로, 여기서 세션 기본
+     * 엔진을 InnoDB(DYNAMIC 행 포맷, 키 최대 3072바이트)로 지정해 해결한다.
+     * SQLite 등 다른 드라이버에서는 이 구문이 없으므로 건너뛴다.
+     */
+    private function prepareConnection(PDO $pdo): void
+    {
+        if ($pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+            $pdo->exec('SET SESSION default_storage_engine=InnoDB');
+        }
     }
 
     /**
