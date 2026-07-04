@@ -52,6 +52,7 @@ WIKI_MARIADB_DSN=mysql:host=localhost;dbname=test
 INVALID_LINE_WITHOUT_EQUALS
 WIKI_EMPTY_VALUE=
 WIKI_STORAGE_PATH=/home/account/wiki-storage
+WIKI_MAINTENANCE_MODE=on
 
 # 빈 라인도 스킵
 
@@ -82,6 +83,10 @@ ENV
         $failures[] = '.env에서 WIKI_STORAGE_PATH를 파싱해야 한다.';
     }
 
+    if (($result['maintenance_mode'] ?? null) !== 'on') {
+        $failures[] = '.env에서 WIKI_MAINTENANCE_MODE를 파싱해야 한다.';
+    }
+
     if (($result['empty_value'] ?? 'NOT_FOUND') === 'NOT_FOUND') {
         $failures[] = '.env에서 빈 값도 파싱해야 한다 (empty string로 설정).';
     }
@@ -100,6 +105,7 @@ return [
     'password' => 'secret123',
     'app_name' => 'wiki-engine',
     'storage_path' => '/home/account/private/storage',
+    'maintenance_mode' => true,
 ];
 PHP
     );
@@ -129,6 +135,10 @@ PHP
 
     if (($result['storage_path'] ?? null) !== '/home/account/private/storage') {
         $failures[] = 'local-config.php에서 storage_path를 직접 매핑해야 한다.';
+    }
+
+    if (($result['maintenance_mode'] ?? null) !== true) {
+        $failures[] = 'local-config.php에서 maintenance_mode를 직접 매핑해야 한다.';
     }
 
     // Test 4: .env가 local-config.php보다 우선

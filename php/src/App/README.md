@@ -19,6 +19,10 @@
   런타임 저장소 루트와 `cache`, `uploads`, `logs` 하위 경로를 계산한다.
   공유 호스팅의 쓰기 가능 경로 차이는 `WIKI_STORAGE_PATH` 또는
   `local-config.php`의 `storage_path` 값으로 흡수한다.
+- `MaintenanceModeConfig.php` (태스크 0646) — `maintenance_mode`
+  설정(`WIKI_MAINTENANCE_MODE` 또는 `local-config.php`)을 읽어
+  유지보수 모드 on/off 여부를 판단한다. HTTP 차단과 page 연결은 어댑터
+  계층의 후속 작업 범위로 남긴다.
 - `ErrorCodeRegistry.php` (태스크 0416) — `docs/portable-exception-code-
   policy.md`가 정한 `<module>.<reason>` error code 형식 검증과 등록된
   code 조회를 한 곳에서 제공한다. code 값의 정본은 여전히 각 모듈 예외
