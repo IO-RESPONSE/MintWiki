@@ -23,18 +23,20 @@ def test_php_deployment_package_manifest_is_valid_json():
 
 
 def test_php_deployment_package_manifest_declares_package_identity():
-    """패키지 이름과 schema version을 명시한다."""
+    """패키지 이름과 package manifest schema version을 명시한다."""
     manifest = _manifest()
 
     assert manifest["schema_version"] == 1
     assert manifest["package_name"] == "wiki-engine-blueprint-php"
     assert manifest["base_path"] == ".."
+    assert "app_version" not in manifest
 
 
 def test_php_deployment_package_manifest_includes_runtime_inputs():
     """배포에 필요한 PHP 런타임, 설정 샘플, DB schema 입력을 포함한다."""
     manifest = _manifest()
 
+    assert "php/VERSION" in manifest["include"]
     assert "php/composer.json" in manifest["include"]
     assert "php/config/*.sample" in manifest["include"]
     assert "php/public/**" in manifest["include"]

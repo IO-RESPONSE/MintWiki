@@ -3,6 +3,7 @@
   "package_name": "wiki-engine-blueprint-php",
   "base_path": "..",
   "include": [
+    "php/VERSION",
     "php/composer.json",
     "php/config/*.sample",
     "php/public/**",
