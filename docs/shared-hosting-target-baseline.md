@@ -251,7 +251,8 @@ server {
 ### 4.2 권장 항목
 
 - [ ] **SSH 또는 명령줄 접근** — 배포 스크립트 실행, 권한 설정을 위해 권장
-- [ ] **cron job 또는 Scheduler** — 백그라운드 작업 예약 (별도 문서, Phase F)
+- [ ] **cron job 또는 Scheduler** — 백그라운드 작업 예약
+      ([shared-hosting-cron-policy.md](shared-hosting-cron-policy.md) 기준)
 - [ ] **SSL/TLS 인증서** (Let's Encrypt 무료) — 프로덕션 필수
 
 ## 5. 배포 환경 차이

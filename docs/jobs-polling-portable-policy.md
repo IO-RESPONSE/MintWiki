@@ -130,4 +130,5 @@ WHERE id = ?
 - [ANSI SQL Persistence Policy](ansi-sql-persistence-policy.md)
 - [DB Web Hosting Constraints](db-web-hosting-constraints.md)
 - [Shared Hosting Migration Policy](shared-hosting-migration-policy.md)
+- [Shared Hosting Cron Policy](shared-hosting-cron-policy.md)
 - [DB Phase QA Checklist](db-phase-qa-checklist.md)
