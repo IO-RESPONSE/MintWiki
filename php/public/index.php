@@ -48,16 +48,27 @@ declare(strict_types=1);
  * 얻어 `Document\Service`(위 `$documentRepository`)로 문서를 조회하고
  * `DocumentViewPage`(`Layout` 재사용)로 렌더링한다. 문서가 없거나
  * `$documentRepository === null`(DB 미설정/오류)이면 "문서 없음 + 만들기
- * 링크"를 담은 404 HTML을 반환한다 — 실제 리비전 저장소는 아직 PDO 구현이
- * 없어(Modules/Revision, 이후 태스크) 본문은 placeholder로 표시된다. 나머지
- * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
- * 이어진다.
+ * 링크"를 담은 404 HTML을 반환한다. 0685에서 `GET/POST /wiki/{title}/edit`을
+ * 등록했다 — `Revision\PdoRepository`(신규)를 `$revisionRepository`로 만들어
+ * 문서 생성/편집 시 새 리비전을 실제로 기록한다. `GET`은 문서가 있으면 현재
+ * 리비전의 source로, 없으면 빈 새 문서 폼으로 `DocumentEditorPage`를 보여준다.
+ * `POST`는 CSRF 토큰(`CsrfTokenService`)을 검증하고, 제목/본문이 비어있으면
+ * 폼으로 되돌려 오류를 보여준다. 통과하면 `Document\Service`로 문서를
+ * 생성/갱신하고 `Revision\Repository`로 새 리비전을 만든 뒤 문서의
+ * `currentRevisionId`를 그 리비전으로 갱신한다(0029 create-first-revision과
+ * 동일한 순서: 문서 생성/조회 -> 리비전 생성 -> 문서에 리비전 연결). 저장에
+ * 성공하면 `GET /wiki/{title}`로 302 리다이렉트한다. `$documentRepository`나
+ * `$revisionRepository`가 없으면(DB 미설정/오류) 폼으로 되돌아가 503을
+ * 반환한다. 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는
+ * 이후 태스크에서 이어진다.
  */
 
 require __DIR__ . '/../vendor/autoload.php';
 
 use MintWiki\App\AppBootstrap;
 use MintWiki\App\ConfigLoader;
+use MintWiki\Document\Document;
+use MintWiki\Document\DuplicateNormalizedTitleError;
 use MintWiki\Document\EmptyTitleError;
 use MintWiki\Document\PdoRepository;
 use MintWiki\Document\Service as DocumentService;
@@ -72,6 +83,10 @@ use MintWiki\Installer\InstallerLock;
 use MintWiki\Installer\InstallerRouteGate;
 use MintWiki\Installer\RequirementCheck;
 use MintWiki\Installer\SchemaApplyHandler;
+use MintWiki\Revision\PdoRepository as RevisionPdoRepository;
+use MintWiki\Revision\Revision;
+use MintWiki\Security\CsrfTokenService;
+use MintWiki\Ui\DocumentEditorPage;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\ErrorPage;
 use MintWiki\Ui\InstallAdminAccountFormPage;
@@ -94,6 +109,26 @@ function mintwiki_send_response(Response $response): void
     }
 
     echo $response->body();
+}
+
+/**
+ * UUID v4 문자열을 생성한다 (리비전 id 발급용, 태스크 0685).
+ */
+function mintwiki_generate_uuid_v4(): string
+{
+    $bytes = random_bytes(16);
+    $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+    $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+    $hex = bin2hex($bytes);
+
+    return sprintf(
+        '%s-%s-%s-%s-%s',
+        substr($hex, 0, 8),
+        substr($hex, 8, 4),
+        substr($hex, 12, 4),
+        substr($hex, 16, 4),
+        substr($hex, 20, 12)
+    );
 }
 
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI';
@@ -251,16 +286,17 @@ $router->register('GET', '/install/complete', static function (): Response {
 // 미설정/오류 상태에서는 저장소 없이 등록해 by-title 핸들러가 503을
 // 반환하게 한다.
 $documentRepository = $pdo !== null ? new PdoRepository($pdo) : null;
+$revisionRepository = $pdo !== null ? new RevisionPdoRepository($pdo) : null;
 DocumentApiRoutes::register($router, $documentRepository);
 
-// GET /wiki/{title} — 문서 보기 (태스크 0684). 동적 라우터(0675)로 등록해
-// title 세그먼트를 얻고, Document\Service(+ 위 documentRepository)로 문서를
-// 조회해 DocumentViewPage(Layout 재사용)로 HTML을 렌더링한다. 문서가
-// 없거나 DB가 미설정/오류 상태(documentRepository === null)이면
-// "문서 없음 + 만들기 링크"를 담은 404 HTML을 반환해 죽지 않는다. 실제
-// 리비전 저장소는 아직 PDO 구현이 없어(Modules/Revision, 0685+에서 추가)
-// 본문은 source 없이(placeholder) 렌더링된다.
-$router->register('GET', '/wiki/{title}', static function (array $params) use ($documentRepository): Response {
+// GET /wiki/{title} — 문서 보기 (태스크 0684, 리비전 source 연결은 0685).
+// 동적 라우터(0675)로 등록해 title 세그먼트를 얻고, Document\Service(+ 위
+// documentRepository)로 문서를 조회해 DocumentViewPage(Layout 재사용)로
+// HTML을 렌더링한다. 문서가 없거나 DB가 미설정/오류 상태
+// (documentRepository === null)이면 "문서 없음 + 만들기 링크"를 담은 404
+// HTML을 반환해 죽지 않는다. 0685에서 revisionRepository가 생겼으므로
+// currentRevisionId가 있으면 그 리비전의 source를 함께 렌더링한다.
+$router->register('GET', '/wiki/{title}', static function (array $params) use ($documentRepository, $revisionRepository): Response {
     $documentViewPage = new DocumentViewPage();
     $requestedTitle = rawurldecode($params['title'] ?? '');
 
@@ -280,7 +316,142 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use ($
         return Response::html($documentViewPage->render(null, null, $requestedTitle), 404);
     }
 
-    return Response::html($documentViewPage->render($document));
+    $source = null;
+    if ($revisionRepository !== null && $document->currentRevisionId() !== null) {
+        $source = $revisionRepository->get($document->currentRevisionId())?->source();
+    }
+
+    return Response::html($documentViewPage->render($document, $source));
+});
+
+// GET/POST /wiki/{title}/edit — 문서 생성/편집 (태스크 0685). DocumentEditorPage로
+// 제목·본문·CSRF 토큰이 있는 폼을 렌더링한다. GET은 문서가 있으면 현재
+// 리비전의 source로 미리 채우고, 없으면 빈 새 문서 폼으로 동작한다. POST는
+// CSRF 토큰을 검증하고(실패 시 403), 제목/본문이 비어있으면 폼으로 되돌려
+// 오류를 보여준다(422). 통과하면 Document\Service로 문서를 생성/갱신하고
+// Revision\Repository로 새 리비전을 만든 뒤 문서의 currentRevisionId를 그
+// 리비전으로 연결한다(0029 create-first-revision과 동일한 순서). 저장에
+// 성공하면 GET /wiki/{title}로 302 리다이렉트한다. documentRepository나
+// revisionRepository가 없으면(DB 미설정/오류) 폼으로 되돌아가 503을
+// 반환해 죽지 않는다.
+$router->register('GET', '/wiki/{title}/edit', static function (array $params) use ($documentRepository, $revisionRepository): Response {
+    $documentEditorPage = new DocumentEditorPage();
+    $requestedTitle = rawurldecode($params['title'] ?? '');
+
+    if ($documentRepository === null) {
+        return Response::html($documentEditorPage->render($requestedTitle, $requestedTitle, '', true));
+    }
+
+    $documentService = new DocumentService($documentRepository);
+
+    try {
+        $document = $documentService->getByTitle($requestedTitle);
+    } catch (EmptyTitleError) {
+        $document = null;
+    }
+
+    if ($document === null) {
+        return Response::html($documentEditorPage->render($requestedTitle, $requestedTitle, '', true));
+    }
+
+    $source = '';
+    if ($revisionRepository !== null && $document->currentRevisionId() !== null) {
+        $source = $revisionRepository->get($document->currentRevisionId())?->source() ?? '';
+    }
+
+    return Response::html($documentEditorPage->render($requestedTitle, $document->title(), $source, false));
+});
+
+$router->register('POST', '/wiki/{title}/edit', static function (array $params) use ($documentRepository, $revisionRepository): Response {
+    $documentEditorPage = new DocumentEditorPage();
+    $csrfTokenService = new CsrfTokenService();
+    $requestedTitle = rawurldecode($params['title'] ?? '');
+
+    $titleInput = is_string($_POST['title'] ?? null) ? $_POST['title'] : '';
+    $sourceInput = is_string($_POST['source'] ?? null) ? $_POST['source'] : '';
+    $csrfToken = is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '';
+
+    if ($documentRepository === null || $revisionRepository === null) {
+        return Response::html(
+            $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, true, [
+                '_form' => '데이터베이스가 설정되지 않아 저장할 수 없습니다.',
+            ]),
+            503
+        );
+    }
+
+    $documentService = new DocumentService($documentRepository);
+
+    try {
+        $existingDocument = $documentService->getByTitle($requestedTitle);
+    } catch (EmptyTitleError) {
+        $existingDocument = null;
+    }
+    $isNew = $existingDocument === null;
+
+    if (!$csrfTokenService->validate($csrfToken)) {
+        return Response::html(
+            $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, [
+                '_form' => '유효하지 않은 요청입니다. 다시 시도하세요.',
+            ]),
+            403
+        );
+    }
+
+    $validationErrors = [];
+    if (trim($titleInput) === '') {
+        $validationErrors['title'] = '제목을 입력하세요.';
+    }
+    if (trim($sourceInput) === '') {
+        $validationErrors['source'] = '내용을 입력하세요.';
+    }
+
+    if ($validationErrors !== []) {
+        return Response::html(
+            $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, $validationErrors),
+            422
+        );
+    }
+
+    try {
+        if ($existingDocument === null) {
+            $document = $documentService->create($titleInput);
+            $parentRevisionId = null;
+        } else {
+            $document = $existingDocument;
+            if ($document->title() !== $titleInput) {
+                $document = $documentService->update(new Document($document->id(), $titleInput, $document->currentRevisionId()));
+            }
+            $parentRevisionId = $document->currentRevisionId();
+        }
+
+        $revision = $revisionRepository->create(new Revision(
+            mintwiki_generate_uuid_v4(),
+            $document->id(),
+            $sourceInput,
+            '',
+            '',
+            $parentRevisionId
+        ));
+
+        $document = $documentService->update(new Document($document->id(), $document->title(), $revision->id()));
+    } catch (EmptyTitleError) {
+        return Response::html(
+            $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, [
+                'title' => '제목을 입력하세요.',
+            ]),
+            422
+        );
+    } catch (DuplicateNormalizedTitleError) {
+        return Response::html(
+            $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, [
+                'title' => '이미 존재하는 제목입니다.',
+            ]),
+            409
+        );
+    }
+
+    return new Response(302, ['Location' => '/wiki/' . rawurlencode($document->title())]);
 });
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)
