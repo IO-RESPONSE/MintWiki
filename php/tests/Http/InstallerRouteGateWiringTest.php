@@ -15,7 +15,10 @@ declare(strict_types=1);
  * 동일한 방식).
  * (3)은 DB 설정이 전혀 없는 상태로 실제 `index.php`를 `php -S`로 띄워, 게이트가
  * 개입하지 않고 0674 계약(GET /, GET /health 계속 동작)이 유지되는지 확인한다
- * (FrontControllerDbWiringTest.php와 동일한 방식).
+ * (FrontControllerDbWiringTest.php와 동일한 방식). 0677에서 `GET /install`
+ * route가 실제로 등록되었으므로, 게이트가 비활성화된 상태에서 이 route는
+ * 이제 (평범한 404가 아니라) 200을 반환한다 — 등록되지 않은 `/install/` 하위
+ * 경로는 여전히 404다.
  */
 
 $autoloadFile = __DIR__ . '/../../vendor/autoload.php';
@@ -173,9 +176,18 @@ try {
             $failures[] = 'DB 미설정 상태에서 GET /health는 설치 게이트와 무관하게 200을 반환해야 한다.';
         }
 
+        // 0677부터 GET /install이 실제로 등록되어 있으므로, 게이트가
+        // 비활성화된 상태에서도 route 자체는 정상 동작해 200을 반환한다
+        // (라우팅되지 않은 경로에 대한 404 계약은 이 route 밖의 경로에서
+        // 계속 유지된다).
         [$installStatus] = mintwiki_gate_http_get($port, '/install');
-        if ($installStatus !== 404) {
-            $failures[] = 'DB 미설정 상태에서 설치 게이트는 비활성화되어야 하므로 GET /install은 평범한 404여야 한다.';
+        if ($installStatus !== 200) {
+            $failures[] = 'DB 미설정 상태에서 설치 게이트가 비활성화되어도 GET /install route는 200을 반환해야 한다.';
+        }
+
+        [$installUnknownStatus] = mintwiki_gate_http_get($port, '/install/unknown-sub-path');
+        if ($installUnknownStatus !== 404) {
+            $failures[] = 'DB 미설정 상태에서 등록되지 않은 /install/ 하위 경로는 평범한 404여야 한다.';
         }
     } finally {
         proc_terminate($process);

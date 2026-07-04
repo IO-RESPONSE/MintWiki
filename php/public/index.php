@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -15,9 +15,12 @@ declare(strict_types=1);
  * 설치(schema_version)가 끝나지 않은 상태에서는 요청을 `/install`로
  * 유도하고, 설치가 이미 끝난 상태에서는 installer 라우트 접근을 차단한다.
  * DB가 미설정/오류 상태이면(`$pdo === null`) 게이트를 아예 적용하지 않아
- * 0674 계약(`GET /`, `GET /health` 계속 동작)을 유지한다. 나머지 route
- * (`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
- * 이어진다.
+ * 0674 계약(`GET /`, `GET /health` 계속 동작)을 유지한다. 0677에서
+ * `GET /install`(`InstallWelcomePage`)과 `GET /install/requirements`
+ * (`RequirementCheck` + `InstallRequiredPage`)를 등록했다 — 설치가 이미
+ * 끝난 경우 두 route 모두 위 `InstallerRouteGate`가 먼저 403으로 막는다.
+ * 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후
+ * 태스크에서 이어진다.
  */
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -28,8 +31,11 @@ use MintWiki\Http\Request;
 use MintWiki\Http\Response;
 use MintWiki\Http\Router;
 use MintWiki\Installer\InstallerRouteGate;
-use MintWiki\Ui\Layout;
+use MintWiki\Installer\RequirementCheck;
 use MintWiki\Ui\ErrorPage;
+use MintWiki\Ui\InstallRequiredPage;
+use MintWiki\Ui\InstallWelcomePage;
+use MintWiki\Ui\Layout;
 
 /**
  * Response를 실제 HTTP 응답(상태 코드/헤더/본문)으로 내보낸다.
@@ -94,6 +100,39 @@ $router->register('GET', '/', static function (): Response {
         . '</main>';
 
     return Response::html($layout->render('MintWiki', $body));
+});
+
+// GET /install — 설치 마법사 시작 화면 (태스크 0677). 설치가 이미 끝난
+// 경우 위 InstallerRouteGate가 이 route에 도달하기 전에 403으로 막는다.
+$router->register('GET', '/install', static function (): Response {
+    $installWelcomePage = new InstallWelcomePage();
+
+    return Response::html($installWelcomePage->render());
+});
+
+// GET /install/requirements — 시스템 요구사항 점검 화면 (태스크 0677).
+// RequirementCheck의 검사 결과(누락된 확장/쓰기 불가 디렉터리)를 모아
+// InstallRequiredPage에 전달한다. 검사 자체가 요청을 막지는 않는다 —
+// 누락 사항이 있어도 안내 목록과 함께 200으로 화면을 보여준다.
+$router->register('GET', '/install/requirements', static function (): Response {
+    $requirementCheck = new RequirementCheck();
+    $missingRequirements = [];
+
+    try {
+        $requirementCheck->areRequiredExtensionsLoaded();
+    } catch (\RuntimeException $exception) {
+        $missingRequirements[] = $exception->getMessage();
+    }
+
+    try {
+        $requirementCheck->areRequiredDirectoriesWritable();
+    } catch (\RuntimeException $exception) {
+        $missingRequirements[] = $exception->getMessage();
+    }
+
+    $installRequiredPage = new InstallRequiredPage();
+
+    return Response::html($installRequiredPage->render($missingRequirements));
 });
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)

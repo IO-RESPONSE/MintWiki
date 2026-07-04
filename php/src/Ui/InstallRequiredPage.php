@@ -24,14 +24,26 @@ final class InstallRequiredPage
 
     /**
      * 설치 필요 page를 렌더링한다.
+     *
+     * @param array<string> $missingRequirements 충족되지 않은 시스템 요구사항 설명 목록 (태스크 0677).
+     *                                            비어 있으면 기존 DB 미설치 안내만 표시한다.
      */
-    public function render(): string
+    public function render(array $missingRequirements = []): string
     {
         $body = '<main>'
             . '<h1>설치 필요</h1>'
             . '<p>데이터베이스가 설치되지 않았습니다.</p>'
-            . '<p>관리자는 데이터베이스를 설치하고 마이그레이션을 실행해야 합니다.</p>'
-            . '</main>';
+            . '<p>관리자는 데이터베이스를 설치하고 마이그레이션을 실행해야 합니다.</p>';
+
+        if ($missingRequirements !== []) {
+            $body .= '<h2>충족되지 않은 시스템 요구사항</h2><ul>';
+            foreach ($missingRequirements as $missingRequirement) {
+                $body .= '<li>' . $this->escaper->html($missingRequirement) . '</li>';
+            }
+            $body .= '</ul>';
+        }
+
+        $body .= '</main>';
 
         return $this->layout->render('설치 필요', $body);
     }
