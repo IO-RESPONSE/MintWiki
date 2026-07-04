@@ -23,6 +23,9 @@
   설정(`WIKI_MAINTENANCE_MODE` 또는 `local-config.php`)을 읽어
   유지보수 모드 on/off 여부를 판단한다. HTTP 차단과 page 연결은 어댑터
   계층의 후속 작업 범위로 남긴다.
+- `ProductionErrorHandler.php` (태스크 0650) — debug off 기준의 production
+  오류 응답 골격. 처리되지 않은 예외를 안전한 500 HTML 또는 JSON 응답으로
+  바꾸며, 원본 예외 메시지 대신 공통 사용자 메시지와 request id를 노출한다.
 - `ErrorCodeRegistry.php` (태스크 0416) — `docs/portable-exception-code-
   policy.md`가 정한 `<module>.<reason>` error code 형식 검증과 등록된
   code 조회를 한 곳에서 제공한다. code 값의 정본은 여전히 각 모듈 예외
