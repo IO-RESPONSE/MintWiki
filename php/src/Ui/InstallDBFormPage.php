@@ -7,12 +7,14 @@ namespace MintWiki\Ui;
 use MintWiki\Security\CsrfTokenService;
 
 /**
- * 설치 DB form page의 서버 렌더링 (태스크 0621).
+ * 설치 DB form page의 서버 렌더링 (태스크 0621, 0678에서 필드 분리).
  *
  * 설치 프로세스에서 MariaDB 데이터베이스 설정을 받는 form을 표시한다.
- * 사용자는 DSN(호스트명:포트), 사용자명, 비밀번호를 입력한다.
+ * 사용자는 host, port, dbname, 사용자명, 비밀번호를 각각 입력한다
+ * (`PdoConnectionFactory`/`ConnectionConfig`가 요구하는 필드와 동일한 구성).
  * 모든 사용자 입력은 escaping되어 XSS를 방지한다.
- * CSRF 토큰은 form에 포함되며, 폼 제출 시 검증된다.
+ * CSRF 토큰은 form에 포함되며, 폼 제출(`POST /install/database`, 태스크 0679)
+ * 시 검증된다.
  */
 final class InstallDBFormPage
 {
@@ -48,10 +50,14 @@ final class InstallDBFormPage
             . '<h1>데이터베이스 설정</h1>'
             . '<p>MariaDB 데이터베이스 연결 정보를 입력하세요.</p>'
             . $errorSummary
-            . '<form method="post" action="/install/db">'
+            . '<form method="post" action="/install/database">'
             . '<input type="hidden" name="csrf_token" value="' . $csrfTokenEscaped . '">'
-            . '<label for="dsn">호스트명:포트</label>'
-            . '<input type="text" id="dsn" name="dsn" placeholder="localhost:3306" required>'
+            . '<label for="host">호스트</label>'
+            . '<input type="text" id="host" name="host" placeholder="localhost" required>'
+            . '<label for="port">포트</label>'
+            . '<input type="text" id="port" name="port" placeholder="3306" required>'
+            . '<label for="dbname">데이터베이스명</label>'
+            . '<input type="text" id="dbname" name="dbname" placeholder="wiki_engine" required>'
             . '<label for="username">사용자명</label>'
             . '<input type="text" id="username" name="username" placeholder="root" required>'
             . '<label for="password">비밀번호</label>'

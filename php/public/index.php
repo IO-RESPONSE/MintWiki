@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -19,6 +19,9 @@ declare(strict_types=1);
  * `GET /install`(`InstallWelcomePage`)과 `GET /install/requirements`
  * (`RequirementCheck` + `InstallRequiredPage`)를 등록했다 — 설치가 이미
  * 끝난 경우 두 route 모두 위 `InstallerRouteGate`가 먼저 403으로 막는다.
+ * 0678에서 `GET /install/database`(`InstallDBFormPage`)를 등록했다 — DB
+ * 접속 정보(host/port/dbname/user/password) 입력 화면이며, 폼 제출 처리
+ * (`POST /install/database`)는 0679에서 이어진다.
  * 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후
  * 태스크에서 이어진다.
  */
@@ -33,6 +36,7 @@ use MintWiki\Http\Router;
 use MintWiki\Installer\InstallerRouteGate;
 use MintWiki\Installer\RequirementCheck;
 use MintWiki\Ui\ErrorPage;
+use MintWiki\Ui\InstallDBFormPage;
 use MintWiki\Ui\InstallRequiredPage;
 use MintWiki\Ui\InstallWelcomePage;
 use MintWiki\Ui\Layout;
@@ -133,6 +137,15 @@ $router->register('GET', '/install/requirements', static function (): Response {
     $installRequiredPage = new InstallRequiredPage();
 
     return Response::html($installRequiredPage->render($missingRequirements));
+});
+
+// GET /install/database — DB 접속 정보 입력 화면 (태스크 0678). 설치가 이미
+// 끝난 경우 위 InstallerRouteGate가 이 route에 도달하기 전에 403으로 막는다.
+// 폼 제출 처리(POST /install/database)는 0679에서 이어진다.
+$router->register('GET', '/install/database', static function (): Response {
+    $installDBFormPage = new InstallDBFormPage();
+
+    return Response::html($installDBFormPage->render());
 });
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)
