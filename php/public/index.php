@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684, 0687).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -66,13 +66,27 @@ declare(strict_types=1);
  * 파기한다. 이미 로그인된 상태에서 `GET /login`에 접근하면 폼을 다시 보여주지
  * 않고 홈으로 리다이렉트해 세션 복원이 실제로 동작함을 드러낸다. DB
  * 미설정(`$accountRepository === null`)이면 로그인 여부를 판단할 수 없으므로
- * `GET /login`은 항상 폼을 보여주고, `POST /login`은 503을 반환한다. 나머지
+ * `GET /login`은 항상 폼을 보여주고, `POST /login`은 503을 반환한다. 0687에서
+ * `GET /wiki/{title}`과 `GET`/`POST /wiki/{title}/edit`에 ACL 검사를
+ * 추가했다 — `Acl\PdoRepository`로 `acl_rule`/`acl_namespace_rule`을 읽어
+ * `Acl\AclService`를 구성하고(네임스페이스 기본 규칙이 DB에 없으면
+ * `Acl\DefaultPolicy`로 대체), `SessionUserResolver`로 복원한 현재 사용자를
+ * ACL subject(로그인 사용자면 USER, 아니면 ANONYMOUS)로 매핑해 read/edit
+ * 권한을 확인한다. 문서 보기는 거부되면 `PermissionDeniedPage`로 403을
+ * 반환하고, 편집 GET/POST는 익명 사용자면 `/login`으로 302 리다이렉트하고
+ * 로그인한 사용자면 403을 반환한다. 나머지
  * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
  * 이어진다.
  */
 
 require __DIR__ . '/../vendor/autoload.php';
 
+use MintWiki\Acl\AclService;
+use MintWiki\Acl\DefaultPolicy;
+use MintWiki\Acl\NamespaceAclDefaults;
+use MintWiki\Acl\PdoRepository as AclPdoRepository;
+use MintWiki\Acl\Permission as AclPermission;
+use MintWiki\Acl\SubjectType as AclSubjectType;
 use MintWiki\App\AppBootstrap;
 use MintWiki\App\ConfigLoader;
 use MintWiki\Document\Document;
@@ -108,6 +122,7 @@ use MintWiki\Ui\InstallSchemaApplyPage;
 use MintWiki\Ui\InstallWelcomePage;
 use MintWiki\Ui\Layout;
 use MintWiki\Ui\LoginPage;
+use MintWiki\Ui\PermissionDeniedPage;
 use MintWiki\User\AccountRepository;
 
 /**
@@ -123,6 +138,27 @@ function mintwiki_send_response(Response $response): void
     }
 
     echo $response->body();
+}
+
+/**
+ * 현재 요청의 ACL 검사 대상(subject)을 결정한다 (태스크 0687).
+ *
+ * 세션(0686 `SessionUserResolver`)에 로그인한 사용자가 있으면
+ * AclSubjectType::User와 계정 id를, 없으면(비로그인, DB 미설정/오류) 항상
+ * AclSubjectType::Anonymous를 반환한다.
+ *
+ * @return array{0: AclSubjectType, 1: ?string}
+ */
+function mintwiki_resolve_acl_subject(?AccountRepository $accountRepository, PhpSessionAdapter $sessionAdapter): array
+{
+    if ($accountRepository !== null) {
+        $currentUser = (new SessionUserResolver($sessionAdapter, $accountRepository))->resolve();
+        if ($currentUser !== null) {
+            return [AclSubjectType::User, $currentUser->id()];
+        }
+    }
+
+    return [AclSubjectType::Anonymous, null];
 }
 
 /**
@@ -308,6 +344,22 @@ DocumentApiRoutes::register($router, $documentRepository);
 $accountRepository = $pdo !== null ? new AccountRepository($pdo) : null;
 $sessionAdapter = new PhpSessionAdapter();
 
+// ACL (태스크 0687). 문서별 규칙(acl_rule)이 있으면 AclService가 그것만
+// 쓰고, 없으면 네임스페이스 기본 규칙(acl_namespace_rule)으로 대체한다.
+// DEFAULT_NAMESPACE("*")에 DB 규칙이 아직 없으면(신규 설치, seed 데이터
+// 없음) `DefaultPolicy`(공개 읽기 허용/익명 편집 거부/로그인 사용자 편집
+// 허용)로 대체해 문서가 계속 정상 동작하게 한다.
+$aclRuleRepository = $pdo !== null ? new AclPdoRepository($pdo) : null;
+$namespaceAclDefaults = new NamespaceAclDefaults();
+$namespaceAclDefaults->register(NamespaceAclDefaults::DEFAULT_NAMESPACE, DefaultPolicy::defaultRules());
+if ($aclRuleRepository !== null) {
+    $dbNamespaceRules = $aclRuleRepository->namespaceRules(NamespaceAclDefaults::DEFAULT_NAMESPACE);
+    if ($dbNamespaceRules !== []) {
+        $namespaceAclDefaults->register(NamespaceAclDefaults::DEFAULT_NAMESPACE, $dbNamespaceRules);
+    }
+}
+$aclService = new AclService($namespaceAclDefaults);
+
 $router->register('GET', '/login', static function () use ($accountRepository, $sessionAdapter): Response {
     if ($accountRepository !== null) {
         $currentUser = (new SessionUserResolver($sessionAdapter, $accountRepository))->resolve();
@@ -335,14 +387,24 @@ $logoutRouteHandler = static function (): Response {
 $router->register('GET', '/logout', $logoutRouteHandler);
 $router->register('POST', '/logout', $logoutRouteHandler);
 
-// GET /wiki/{title} — 문서 보기 (태스크 0684, 리비전 source 연결은 0685).
-// 동적 라우터(0675)로 등록해 title 세그먼트를 얻고, Document\Service(+ 위
-// documentRepository)로 문서를 조회해 DocumentViewPage(Layout 재사용)로
-// HTML을 렌더링한다. 문서가 없거나 DB가 미설정/오류 상태
-// (documentRepository === null)이면 "문서 없음 + 만들기 링크"를 담은 404
-// HTML을 반환해 죽지 않는다. 0685에서 revisionRepository가 생겼으므로
-// currentRevisionId가 있으면 그 리비전의 source를 함께 렌더링한다.
-$router->register('GET', '/wiki/{title}', static function (array $params) use ($documentRepository, $revisionRepository): Response {
+// GET /wiki/{title} — 문서 보기 (태스크 0684, 리비전 source 연결은 0685,
+// ACL 적용은 0687). 동적 라우터(0675)로 등록해 title 세그먼트를 얻고,
+// Document\Service(+ 위 documentRepository)로 문서를 조회해
+// DocumentViewPage(Layout 재사용)로 HTML을 렌더링한다. 문서가 없거나 DB가
+// 미설정/오류 상태(documentRepository === null)이면 "문서 없음 + 만들기
+// 링크"를 담은 404 HTML을 반환해 죽지 않는다. 0685에서 revisionRepository가
+// 생겼으므로 currentRevisionId가 있으면 그 리비전의 source를 함께
+// 렌더링한다. 0687에서 문서가 존재하는 경우 AclService로 현재 사용자(0686
+// 세션)의 read 권한을 확인해, 거부되면 PermissionDeniedPage로 403을
+// 반환한다 — 존재하지 않는 문서는 보호할 대상이 없으므로 검사하지 않는다.
+$router->register('GET', '/wiki/{title}', static function (array $params) use (
+    $documentRepository,
+    $revisionRepository,
+    $aclRuleRepository,
+    $aclService,
+    $accountRepository,
+    $sessionAdapter
+): Response {
     $documentViewPage = new DocumentViewPage();
     $requestedTitle = rawurldecode($params['title'] ?? '');
 
@@ -362,6 +424,16 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use ($
         return Response::html($documentViewPage->render(null, null, $requestedTitle), 404);
     }
 
+    $documentAcl = $aclRuleRepository?->documentAcl($document->id());
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    $decision = $aclService->check(AclPermission::Read, $subjectType, $subjectId, $documentAcl);
+
+    if ($decision->isDenied()) {
+        $permissionDeniedPage = new PermissionDeniedPage();
+
+        return Response::html($permissionDeniedPage->render($decision), 403);
+    }
+
     $source = null;
     if ($revisionRepository !== null && $document->currentRevisionId() !== null) {
         $source = $revisionRepository->get($document->currentRevisionId())?->source();
@@ -370,17 +442,29 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use ($
     return Response::html($documentViewPage->render($document, $source));
 });
 
-// GET/POST /wiki/{title}/edit — 문서 생성/편집 (태스크 0685). DocumentEditorPage로
-// 제목·본문·CSRF 토큰이 있는 폼을 렌더링한다. GET은 문서가 있으면 현재
-// 리비전의 source로 미리 채우고, 없으면 빈 새 문서 폼으로 동작한다. POST는
-// CSRF 토큰을 검증하고(실패 시 403), 제목/본문이 비어있으면 폼으로 되돌려
-// 오류를 보여준다(422). 통과하면 Document\Service로 문서를 생성/갱신하고
-// Revision\Repository로 새 리비전을 만든 뒤 문서의 currentRevisionId를 그
-// 리비전으로 연결한다(0029 create-first-revision과 동일한 순서). 저장에
-// 성공하면 GET /wiki/{title}로 302 리다이렉트한다. documentRepository나
-// revisionRepository가 없으면(DB 미설정/오류) 폼으로 되돌아가 503을
-// 반환해 죽지 않는다.
-$router->register('GET', '/wiki/{title}/edit', static function (array $params) use ($documentRepository, $revisionRepository): Response {
+// GET/POST /wiki/{title}/edit — 문서 생성/편집 (태스크 0685, ACL 적용은
+// 0687). DocumentEditorPage로 제목·본문·CSRF 토큰이 있는 폼을 렌더링한다.
+// GET은 문서가 있으면 현재 리비전의 source로 미리 채우고, 없으면 빈 새
+// 문서 폼으로 동작한다. POST는 CSRF 토큰을 검증하고(실패 시 403), 제목/
+// 본문이 비어있으면 폼으로 되돌려 오류를 보여준다(422). 통과하면
+// Document\Service로 문서를 생성/갱신하고 Revision\Repository로 새 리비전을
+// 만든 뒤 문서의 currentRevisionId를 그 리비전으로 연결한다(0029
+// create-first-revision과 동일한 순서). 저장에 성공하면 GET /wiki/{title}로
+// 302 리다이렉트한다. documentRepository나 revisionRepository가 없으면(DB
+// 미설정/오류) 폼으로 되돌아가 503을 반환해 죽지 않는다. 0687에서 GET/POST
+// 모두 AclService로 현재 사용자(0686 세션)의 edit 권한을 확인한다 — 문서가
+// 이미 있으면 그 문서의 규칙(없으면 네임스페이스 기본값)을, 새 문서면
+// 네임스페이스 기본값을 사용한다. 거부되면 익명 사용자는 로그인 화면으로
+// 유도(302 /login)하고, 로그인한 사용자는 PermissionDeniedPage로 403을
+// 반환한다.
+$router->register('GET', '/wiki/{title}/edit', static function (array $params) use (
+    $documentRepository,
+    $revisionRepository,
+    $aclRuleRepository,
+    $aclService,
+    $accountRepository,
+    $sessionAdapter
+): Response {
     $documentEditorPage = new DocumentEditorPage();
     $requestedTitle = rawurldecode($params['title'] ?? '');
 
@@ -396,6 +480,20 @@ $router->register('GET', '/wiki/{title}/edit', static function (array $params) u
         $document = null;
     }
 
+    $documentAcl = $document !== null ? $aclRuleRepository?->documentAcl($document->id()) : null;
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    $decision = $aclService->check(AclPermission::Edit, $subjectType, $subjectId, $documentAcl);
+
+    if ($decision->isDenied()) {
+        if ($subjectType === AclSubjectType::Anonymous) {
+            return new Response(302, ['Location' => '/login']);
+        }
+
+        $permissionDeniedPage = new PermissionDeniedPage();
+
+        return Response::html($permissionDeniedPage->render($decision), 403);
+    }
+
     if ($document === null) {
         return Response::html($documentEditorPage->render($requestedTitle, $requestedTitle, '', true));
     }
@@ -408,7 +506,14 @@ $router->register('GET', '/wiki/{title}/edit', static function (array $params) u
     return Response::html($documentEditorPage->render($requestedTitle, $document->title(), $source, false));
 });
 
-$router->register('POST', '/wiki/{title}/edit', static function (array $params) use ($documentRepository, $revisionRepository): Response {
+$router->register('POST', '/wiki/{title}/edit', static function (array $params) use (
+    $documentRepository,
+    $revisionRepository,
+    $aclRuleRepository,
+    $aclService,
+    $accountRepository,
+    $sessionAdapter
+): Response {
     $documentEditorPage = new DocumentEditorPage();
     $csrfTokenService = new CsrfTokenService();
     $requestedTitle = rawurldecode($params['title'] ?? '');
@@ -434,6 +539,20 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
         $existingDocument = null;
     }
     $isNew = $existingDocument === null;
+
+    $documentAcl = $existingDocument !== null ? $aclRuleRepository?->documentAcl($existingDocument->id()) : null;
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    $decision = $aclService->check(AclPermission::Edit, $subjectType, $subjectId, $documentAcl);
+
+    if ($decision->isDenied()) {
+        if ($subjectType === AclSubjectType::Anonymous) {
+            return new Response(302, ['Location' => '/login']);
+        }
+
+        $permissionDeniedPage = new PermissionDeniedPage();
+
+        return Response::html($permissionDeniedPage->render($decision), 403);
+    }
 
     if (!$csrfTokenService->validate($csrfToken)) {
         return Response::html(
