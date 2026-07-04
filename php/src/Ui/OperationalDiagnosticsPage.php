@@ -14,11 +14,13 @@ final class OperationalDiagnosticsPage
 {
     private Escaper $escaper;
     private Layout $layout;
+    private string $appVersion;
 
-    public function __construct(?Escaper $escaper = null, ?Layout $layout = null)
+    public function __construct(?Escaper $escaper = null, ?Layout $layout = null, ?string $appVersion = null)
     {
         $this->escaper = $escaper ?? new Escaper();
         $this->layout = $layout ?? new Layout();
+        $this->appVersion = $appVersion ?? $this->readAppVersion();
     }
 
     /**
@@ -28,6 +30,7 @@ final class OperationalDiagnosticsPage
      */
     public function render(?array $environmentDiagnostics = null): string
     {
+        $appVersionSection = $this->renderAppVersionSection();
         $dbStatusSection = $this->renderDatabaseStatusSection();
         $schemaStatusSection = $this->renderSchemaStatusSection();
         $cacheStatusSection = $this->renderCacheStatusSection();
@@ -38,6 +41,7 @@ final class OperationalDiagnosticsPage
 
         $body = '<main>'
             . '<h1>운영 진단</h1>'
+            . $appVersionSection
             . $dbStatusSection
             . $schemaStatusSection
             . $cacheStatusSection
@@ -46,6 +50,19 @@ final class OperationalDiagnosticsPage
             . '</main>';
 
         return $this->layout->render('운영 진단', $body);
+    }
+
+    /**
+     * 애플리케이션 버전 섹션을 렌더링한다.
+     */
+    private function renderAppVersionSection(): string
+    {
+        return '<section aria-label="애플리케이션 버전">'
+            . '<h2>애플리케이션</h2>'
+            . '<dl>'
+            . '<dt>버전</dt><dd>' . $this->escaper->html($this->appVersion) . '</dd>'
+            . '</dl>'
+            . '</section>';
     }
 
     /**
@@ -139,10 +156,28 @@ final class OperationalDiagnosticsPage
     private function defaultEnvironmentDiagnostics(): array
     {
         return [
+            'APP_VERSION' => $this->appVersion,
             'PHP_VERSION' => PHP_VERSION,
             'PHP_SAPI' => PHP_SAPI,
             'APP_ENV' => 'placeholder',
         ];
+    }
+
+    /**
+     * 패키지 VERSION 파일에서 애플리케이션 버전을 읽는다.
+     */
+    private function readAppVersion(): string
+    {
+        $versionFile = dirname(__DIR__, 2) . '/VERSION';
+        $version = is_file($versionFile) ? file_get_contents($versionFile) : false;
+
+        if ($version === false) {
+            return 'unknown';
+        }
+
+        $normalizedVersion = trim($version);
+
+        return $normalizedVersion === '' ? 'unknown' : $normalizedVersion;
     }
 
     /**
