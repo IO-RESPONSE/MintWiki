@@ -3,3 +3,6 @@ composer.lock
 
 # 설치 마법사(태스크 0679)가 기록하는 비공개 DB 접속 설정. 비밀번호가 담기므로 커밋하지 않는다.
 config/local-config.php
+
+# 설치 마법사(태스크 0682)가 설치 완료 시 기록하는 lock 파일. 환경마다 달라 커밋하지 않는다.
+config/install.lock

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -35,6 +35,11 @@ declare(strict_types=1);
  * PDO에 `AccountRepository`로 최초 관리자 계정을 생성한다. 비밀번호는
  * `password_hash()`로 해시해 `account` 테이블에 저장하며, CSRF 검증 실패/DB
  * 미접속/입력 검증 실패 시에는 폼으로 되돌아가고 계정을 생성하지 않는다.
+ * 0682에서 `GET /install/complete`(`InstallCompletionHandler`)를 등록했다 —
+ * `InstallerLock`(docroot 밖 `config/` 비공개 경로)으로 설치 완료를 기록하고
+ * `InstallCompletionPage`를 보여준다. 위 `InstallerRouteGate` 생성 시에도
+ * `InstallerLock::atDefaultPath()`를 전달해, lock 파일과 `schema_version` 중
+ * 하나라도 설치 완료를 나타내면 이후 모든 `/install*` 접근을 차단하게 했다.
  * 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후
  * 태스크에서 이어진다.
  */
@@ -48,6 +53,8 @@ use MintWiki\Http\Response;
 use MintWiki\Http\Router;
 use MintWiki\Installer\AdminAccountSetupHandler;
 use MintWiki\Installer\DatabaseSetupHandler;
+use MintWiki\Installer\InstallCompletionHandler;
+use MintWiki\Installer\InstallerLock;
 use MintWiki\Installer\InstallerRouteGate;
 use MintWiki\Installer\RequirementCheck;
 use MintWiki\Installer\SchemaApplyHandler;
@@ -98,7 +105,7 @@ if ($bootstrap->connectionConfig() !== null) {
 // 설치 게이트 (태스크 0676). DB가 연결된 경우에만 적용한다 — 미설정/오류
 // 상태에서는 게이트를 건너뛰어 위 0674 계약을 지킨다.
 if ($pdo !== null) {
-    $installerRouteGate = new InstallerRouteGate($pdo);
+    $installerRouteGate = new InstallerRouteGate($pdo, null, InstallerLock::atDefaultPath());
     $gateResponse = $installerRouteGate->resolveFrontControllerResponse($requestPath, $isApiRequest);
 
     if ($gateResponse !== null) {
@@ -210,6 +217,18 @@ $router->register('POST', '/install/admin', static function (): Response {
     $adminAccountSetupHandler = new AdminAccountSetupHandler();
 
     return $adminAccountSetupHandler->handle($_POST);
+});
+
+// GET /install/complete — 설치 완료 처리 및 안내 화면 (태스크 0682). 관리자 계정
+// 생성(0681) 이후 이 route에 도달하면 `InstallerLock`(docroot 밖 `config/`
+// 비공개 경로)으로 설치 완료를 기록해 재설치를 막고, `InstallCompletionPage`를
+// 보여준다. 이후 요청부터는 위 `InstallerRouteGate`가 이 lock(또는
+// schema_version)을 이유로 이 route를 포함한 모든 `/install*` 접근을 403으로
+// 차단한다.
+$router->register('GET', '/install/complete', static function (): Response {
+    $installCompletionHandler = new InstallCompletionHandler();
+
+    return $installCompletionHandler->handle();
 });
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)

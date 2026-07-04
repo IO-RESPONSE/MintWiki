@@ -21,6 +21,17 @@ final class InstallerLock
         $this->lockFile = $lockFile;
     }
 
+    /**
+     * docroot(`php/public`) 밖 비공개 위치(`php/config`)의 기본 lock 경로로
+     * 인스턴스를 만든다 (태스크 0682). `config/local-config.php`와 마찬가지로
+     * 웹에서 직접 접근할 수 없는 디렉터리이며, 이미 저장소에 존재해 별도
+     * 디렉터리 생성 없이 바로 lock 파일을 기록할 수 있다.
+     */
+    public static function atDefaultPath(): self
+    {
+        return new self(dirname(__DIR__, 2) . '/config/' . self::DEFAULT_FILENAME);
+    }
+
     public function path(): string
     {
         return $this->lockFile;
