@@ -82,6 +82,32 @@ try {
     // 기대된 동작.
 }
 
+// (5) findByUsername()은 존재하는 계정 행을 그대로 반환해야 한다(태스크 0686, 로그인 대조용).
+$foundByUsername = $repository->findByUsername('admin');
+if ($foundByUsername === null) {
+    $failures[] = 'findByUsername("admin")은 생성된 계정을 반환해야 한다.';
+} elseif ($foundByUsername['id'] !== $id || $foundByUsername['password_hash'] !== $passwordHash) {
+    $failures[] = 'findByUsername("admin")이 반환한 행은 create()가 저장한 id/password_hash와 일치해야 한다.';
+}
+
+// (6) findByUsername()은 존재하지 않는 username에 대해 null을 반환해야 한다.
+if ($repository->findByUsername('no-such-user') !== null) {
+    $failures[] = '존재하지 않는 username의 findByUsername()은 null을 반환해야 한다.';
+}
+
+// (7) findById()는 존재하는 계정 행을 그대로 반환해야 한다(태스크 0686, 세션 복원용).
+$foundById = $repository->findById($id);
+if ($foundById === null) {
+    $failures[] = 'findById()는 생성된 계정을 반환해야 한다.';
+} elseif ($foundById['username'] !== 'admin') {
+    $failures[] = 'findById()가 반환한 행의 username은 "admin"이어야 한다.';
+}
+
+// (8) findById()는 존재하지 않는 id에 대해 null을 반환해야 한다.
+if ($repository->findById('no-such-id') !== null) {
+    $failures[] = '존재하지 않는 id의 findById()는 null을 반환해야 한다.';
+}
+
 if ($failures !== []) {
     fwrite(STDERR, "AccountRepository 테스트 실패:\n");
     foreach ($failures as $failure) {

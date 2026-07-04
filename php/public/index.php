@@ -59,8 +59,16 @@ declare(strict_types=1);
  * 동일한 순서: 문서 생성/조회 -> 리비전 생성 -> 문서에 리비전 연결). 저장에
  * 성공하면 `GET /wiki/{title}`로 302 리다이렉트한다. `$documentRepository`나
  * `$revisionRepository`가 없으면(DB 미설정/오류) 폼으로 되돌아가 503을
- * 반환한다. 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는
- * 이후 태스크에서 이어진다.
+ * 반환한다. 0686에서 `GET`/`POST /login`, `GET`/`POST /logout`을 등록했다 —
+ * `LoginHandler`가 CSRF 토큰과 `account` 테이블의 password_hash를 대조해
+ * 성공 시 `PhpSessionAdapter`에 계정 id를 저장하고(`SessionUserResolver`가
+ * 이후 요청에서 이 id로 로그인 사용자를 복원한다), `LogoutHandler`가 세션을
+ * 파기한다. 이미 로그인된 상태에서 `GET /login`에 접근하면 폼을 다시 보여주지
+ * 않고 홈으로 리다이렉트해 세션 복원이 실제로 동작함을 드러낸다. DB
+ * 미설정(`$accountRepository === null`)이면 로그인 여부를 판단할 수 없으므로
+ * `GET /login`은 항상 폼을 보여주고, `POST /login`은 503을 반환한다. 나머지
+ * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
+ * 이어진다.
  */
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -86,6 +94,10 @@ use MintWiki\Installer\SchemaApplyHandler;
 use MintWiki\Revision\PdoRepository as RevisionPdoRepository;
 use MintWiki\Revision\Revision;
 use MintWiki\Security\CsrfTokenService;
+use MintWiki\Security\LoginHandler;
+use MintWiki\Security\LogoutHandler;
+use MintWiki\Security\PhpSessionAdapter;
+use MintWiki\Security\SessionUserResolver;
 use MintWiki\Ui\DocumentEditorPage;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\ErrorPage;
@@ -95,6 +107,8 @@ use MintWiki\Ui\InstallRequiredPage;
 use MintWiki\Ui\InstallSchemaApplyPage;
 use MintWiki\Ui\InstallWelcomePage;
 use MintWiki\Ui\Layout;
+use MintWiki\Ui\LoginPage;
+use MintWiki\User\AccountRepository;
 
 /**
  * Response를 실제 HTTP 응답(상태 코드/헤더/본문)으로 내보낸다.
@@ -288,6 +302,38 @@ $router->register('GET', '/install/complete', static function (): Response {
 $documentRepository = $pdo !== null ? new PdoRepository($pdo) : null;
 $revisionRepository = $pdo !== null ? new RevisionPdoRepository($pdo) : null;
 DocumentApiRoutes::register($router, $documentRepository);
+
+// GET/POST /login, GET/POST /logout (태스크 0686). $accountRepository는
+// $pdo가 연결된 경우에만 만들어, 로그인 상태 확인/자격 증명 대조에 쓴다.
+$accountRepository = $pdo !== null ? new AccountRepository($pdo) : null;
+$sessionAdapter = new PhpSessionAdapter();
+
+$router->register('GET', '/login', static function () use ($accountRepository, $sessionAdapter): Response {
+    if ($accountRepository !== null) {
+        $currentUser = (new SessionUserResolver($sessionAdapter, $accountRepository))->resolve();
+        if ($currentUser !== null) {
+            return new Response(302, ['Location' => '/']);
+        }
+    }
+
+    $loginPage = new LoginPage();
+
+    return Response::html($loginPage->render());
+});
+
+$router->register('POST', '/login', static function (): Response {
+    $loginHandler = new LoginHandler();
+
+    return $loginHandler->handle($_POST);
+});
+
+$logoutRouteHandler = static function (): Response {
+    $logoutHandler = new LogoutHandler();
+
+    return $logoutHandler->handle();
+};
+$router->register('GET', '/logout', $logoutRouteHandler);
+$router->register('POST', '/logout', $logoutRouteHandler);
 
 // GET /wiki/{title} — 문서 보기 (태스크 0684, 리비전 source 연결은 0685).
 // 동적 라우터(0675)로 등록해 title 세그먼트를 얻고, Document\Service(+ 위

@@ -12,8 +12,9 @@ use PDO;
  * User 모듈은 지금까지 `User`/`AnonymousIdentity`/`IpIdentity` 같은 식별자
  * value object만 가지고 있었고 DB 영속화가 없었다. 설치 마법사가 최초
  * 관리자 계정을 생성하려면 최소한의 쓰기/조회가 필요해 이 클래스를 추가한다.
- * 전체 `UserRepository` 포트 구현(`docs/repository-port-contracts.md`)은
- * 범위 밖이며, 여기서는 설치 단계에 필요한 두 동작만 제공한다.
+ * 태스크 0686에서 로그인/세션 복원에 필요한 `findByUsername()`/`findById()`를
+ * 추가했다. 전체 `UserRepository` 포트 구현(`docs/repository-port-contracts.md`)은
+ * 여전히 범위 밖이며, 여기서는 설치/로그인 단계에 필요한 동작만 제공한다.
  */
 final class AccountRepository
 {
@@ -54,6 +55,38 @@ final class AccountRepository
         ]);
 
         return $id;
+    }
+
+    /**
+     * username으로 계정을 조회한다 (태스크 0686, 로그인 시 자격 증명 대조용).
+     *
+     * @return array{id: string, username: string, display_name: ?string, password_hash: ?string}|null
+     */
+    public function findByUsername(string $username): ?array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT id, username, display_name, password_hash FROM account WHERE username = :username'
+        );
+        $statement->execute(['username' => $username]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+        return $row === false ? null : $row;
+    }
+
+    /**
+     * id로 계정을 조회한다 (태스크 0686, 세션에 저장된 계정 id로 로그인 상태를 복원할 때 사용한다).
+     *
+     * @return array{id: string, username: string, display_name: ?string, password_hash: ?string}|null
+     */
+    public function findById(string $id): ?array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT id, username, display_name, password_hash FROM account WHERE id = :id'
+        );
+        $statement->execute(['id' => $id]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+        return $row === false ? null : $row;
     }
 
     /**

@@ -1,0 +1,88 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * `MintWiki\Security\LogoutHandler`(`GET`/`POST /logout` 처리, 태스크 0686)의
+ * 동작을 확인하는 smoke test. phpunit 없이 `php` CLI만으로 실행된다.
+ *
+ * 검증 대상:
+ * (1) 로그인 상태(세션에 계정 id/기타 값 존재)에서 handle()을 호출하면
+ *     세션이 완전히 비워지고 302로 홈("/")으로 리다이렉트된다.
+ * (2) 세션 ID가 재발급된다(로그아웃 후 이전 세션 ID를 재사용할 수 없다).
+ * (3) 이미 로그아웃 상태(빈 세션)에서 호출해도 예외 없이 동일하게 동작한다.
+ */
+
+$autoloadFile = __DIR__ . '/../../vendor/autoload.php';
+
+if (!is_file($autoloadFile)) {
+    fwrite(STDERR, "vendor/autoload.php를 찾을 수 없습니다. php/ 디렉터리에서 `composer install`을 먼저 실행하세요.\n");
+    exit(1);
+}
+
+require $autoloadFile;
+
+use MintWiki\Security\LogoutHandler;
+use MintWiki\Security\SessionUserResolver;
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$failures = [];
+
+// (1)+(2) 로그인 상태에서 로그아웃하면 세션이 비워지고 302로 리다이렉트, 세션 ID가 재발급되어야 한다.
+try {
+    $_SESSION = [
+        SessionUserResolver::SESSION_KEY => 'account-123',
+        'csrf_tokens' => ['some-token' => true],
+    ];
+
+    $sessionIdBefore = session_id();
+    $handler = new LogoutHandler();
+    $response = $handler->handle();
+    $sessionIdAfter = session_id();
+
+    if ($response->status() !== 302) {
+        $failures[] = '로그아웃 처리는 302를 반환해야 하는데 ' . $response->status() . '이었다.';
+    }
+    if (($response->headers()['Location'] ?? null) !== '/') {
+        $failures[] = '로그아웃 처리 성공 시 Location은 "/"이어야 한다.';
+    }
+    if ($_SESSION !== []) {
+        $failures[] = '로그아웃 처리 이후 세션이 완전히 비워져야 한다.';
+    }
+    if ($sessionIdBefore === $sessionIdAfter) {
+        $failures[] = '로그아웃 처리 이후 세션 ID가 재발급되어야 한다.';
+    }
+} catch (Exception $e) {
+    $failures[] = '(1)+(2) 로그인 상태 로그아웃 테스트 중 예외: ' . $e->getMessage();
+}
+
+// (3) 이미 로그아웃 상태(빈 세션)에서 호출해도 동일하게 동작해야 한다.
+try {
+    $_SESSION = [];
+
+    $handler2 = new LogoutHandler();
+    $response2 = $handler2->handle();
+
+    if ($response2->status() !== 302) {
+        $failures[] = '이미 로그아웃 상태에서도 302를 반환해야 하는데 ' . $response2->status() . '이었다.';
+    }
+    if ($_SESSION !== []) {
+        $failures[] = '이미 로그아웃 상태에서 호출해도 세션은 빈 상태를 유지해야 한다.';
+    }
+} catch (Exception $e) {
+    $failures[] = '(3) 이미 로그아웃 상태 테스트 중 예외: ' . $e->getMessage();
+}
+
+if ($failures !== []) {
+    fwrite(STDERR, "LogoutHandler 테스트 실패:\n");
+    foreach ($failures as $failure) {
+        fwrite(STDERR, " - {$failure}\n");
+    }
+    exit(1);
+}
+
+fwrite(STDOUT, "LogoutHandler 테스트 통과.\n");
+exit(0);
