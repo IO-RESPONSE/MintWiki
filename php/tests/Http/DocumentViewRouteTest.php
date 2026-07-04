@@ -10,8 +10,8 @@ declare(strict_types=1);
  *
  * 검증 대상:
  * (1) 저장소에 존재하는 제목으로 조회하면 200과 함께 문서 view HTML을 반환하는지.
- * (2) 저장소에 없는 제목으로 조회하면 404와 함께 "문서 없음 + 만들기 링크" HTML을
- *     반환하는지.
+ * (2) 저장소에 없는 제목으로 조회하면 404와 함께 나무위키식 빈 문서 UX(제목 +
+ *     "이 문서는 아직 없습니다" 안내 + 편집 링크, 태스크 0692) HTML을 반환하는지.
  * (3) `{title}` 세그먼트가 URL 인코딩된 제목(공백 포함)을 올바르게 디코딩해
  *     전달하는지.
  * (4) 저장소가 주입되지 않으면(DB 미설정/오류 상태) 404 HTML을 반환하고
@@ -97,14 +97,14 @@ $notFoundResponse = $router->match(new Request('GET', '/wiki/Nonexistent Documen
 if ($notFoundResponse->status() !== 404) {
     $failures[] = '존재하지 않는 제목 조회는 404를 반환해야 하는데 ' . $notFoundResponse->status() . '이었다.';
 }
-if (!str_contains($notFoundResponse->body(), '문서를 찾을 수 없습니다')) {
-    $failures[] = '존재하지 않는 제목 조회 응답은 "문서를 찾을 수 없습니다" 메시지를 포함해야 한다.';
+if (!str_contains($notFoundResponse->body(), '<h1>Nonexistent Document</h1>')) {
+    $failures[] = '존재하지 않는 제목 조회 응답은 요청한 제목을 h1으로 포함해야 한다(태스크 0692 나무위키 빈 문서 UX).';
 }
-if (!str_contains($notFoundResponse->body(), '문서 만들기')) {
-    $failures[] = '존재하지 않는 제목 조회 응답은 문서 만들기 링크를 포함해야 한다.';
+if (!str_contains($notFoundResponse->body(), '이 문서는 아직 없습니다')) {
+    $failures[] = '존재하지 않는 제목 조회 응답은 "이 문서는 아직 없습니다" 안내를 포함해야 한다.';
 }
-if (!str_contains($notFoundResponse->body(), 'href="/documents/new?title=Nonexistent%20Document"')) {
-    $failures[] = '문서 만들기 링크는 요청한 제목을 URL 인코딩해 포함해야 한다.';
+if (!str_contains($notFoundResponse->body(), 'href="/wiki/Nonexistent%20Document/edit" class="empty-state__action">편집')) {
+    $failures[] = '편집 링크는 요청한 제목을 URL 인코딩해 /wiki/{title}/edit로 이어져야 한다.';
 }
 
 // (3) title 세그먼트에 URL 인코딩된 공백이 포함된 경우도 올바르게 디코딩되어야 한다.
@@ -129,8 +129,8 @@ $unconfiguredResponse = $unconfiguredRouter->match(new Request('GET', '/wiki/Exi
 if ($unconfiguredResponse->status() !== 404) {
     $failures[] = 'DB 미설정 상태의 조회는 404를 반환해야 하는데 ' . $unconfiguredResponse->status() . '이었다.';
 }
-if (!str_contains($unconfiguredResponse->body(), '문서를 찾을 수 없습니다')) {
-    $failures[] = 'DB 미설정 상태의 조회 응답도 "문서를 찾을 수 없습니다" 메시지를 포함해야 한다.';
+if (!str_contains($unconfiguredResponse->body(), '이 문서는 아직 없습니다')) {
+    $failures[] = 'DB 미설정 상태의 조회 응답도 "이 문서는 아직 없습니다" 안내를 포함해야 한다.';
 }
 
 // (5) DB 미설정 상태로 실제 index.php를 띄워도 /wiki/{title}이 404이고, 이후
@@ -209,8 +209,8 @@ try {
         if ($viewStatus !== 404) {
             $failures[] = 'DB 미설정 상태에서 GET /wiki/{title}은 404를 반환해야 하는데 ' . $viewStatus . '이었다.';
         }
-        if (!str_contains($viewBody, '문서를 찾을 수 없습니다')) {
-            $failures[] = 'DB 미설정 상태에서 GET /wiki/{title} 응답은 "문서를 찾을 수 없습니다" 메시지를 포함해야 한다.';
+        if (!str_contains($viewBody, '이 문서는 아직 없습니다')) {
+            $failures[] = 'DB 미설정 상태에서 GET /wiki/{title} 응답은 "이 문서는 아직 없습니다" 안내를 포함해야 한다.';
         }
 
         [$healthStatus] = mintwiki_document_view_route_http_get($port, '/health');

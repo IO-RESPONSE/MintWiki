@@ -280,6 +280,81 @@ if (!str_contains($notFoundSeoHtml, '<!doctype html>')) {
     $failures[] = 'SEO: 문서 없음 page도 유효한 HTML이어야 한다.';
 }
 
+// (17) 나무위키식 액션 탭(태스크 0692): 문서가 있으면 읽기/편집/역사/토론 탭이
+// 모두 렌더링되고, currentPath와 일치하는 탭이 active로 표시된다.
+$tabDocument = new Document('tab-id', '탭 문서', 'revision-1');
+$encodedTabTitle = rawurlencode('탭 문서');
+$tabHtml = $page->render($tabDocument);
+
+foreach ([
+    '읽기' => '/wiki/' . $encodedTabTitle,
+    '편집' => '/wiki/' . $encodedTabTitle . '/edit',
+    '역사' => '/wiki/' . $encodedTabTitle . '/history',
+    '토론' => '/wiki/' . $encodedTabTitle . '/discussion',
+] as $label => $expectedHref) {
+    if (!str_contains($tabHtml, 'href="' . $expectedHref . '">' . $label . '</a>')) {
+        $failures[] = "액션 탭: \"{$label}\" 탭이 {$expectedHref}로 링크되어야 한다.";
+    }
+}
+
+$activeTabHtml = $page->render($tabDocument, null, null, '/wiki/' . $encodedTabTitle);
+if (!str_contains(
+    $activeTabHtml,
+    'class="document-tabs__link document-tabs__link--active" href="/wiki/' . $encodedTabTitle . '" aria-current="page">읽기'
+)) {
+    $failures[] = '액션 탭: 현재 경로가 읽기 화면과 일치하면 읽기 탭이 active로 표시되어야 한다.';
+}
+
+// (18) 나무위키식 액션 탭: "마지막 편집" 메타 정보는 lastEditedBy가 있을 때만 표시된다.
+$metaHtml = $page->render($tabDocument, null, null, '', 'alice');
+if (!str_contains($metaHtml, '<p class="document-header__meta">마지막 편집: alice</p>')) {
+    $failures[] = '메타 정보: lastEditedBy가 주어지면 "마지막 편집"을 표시해야 한다.';
+}
+
+// (19) 나무위키식 빈 문서 UX(태스크 0692): 문서가 없고 requestedTitle이 있으면
+// 제목 + "이 문서는 아직 없습니다" 안내 + 편집 링크 + 액션 탭을 보여준다.
+$emptyDocTitle = '없는 문서';
+$emptyDocHtml = $page->render(null, null, $emptyDocTitle);
+
+if (!str_contains($emptyDocHtml, '<h1>없는 문서</h1>')) {
+    $failures[] = '빈 문서 UX: 요청한 제목이 h1으로 표시되어야 한다.';
+}
+
+if (!str_contains($emptyDocHtml, '이 문서는 아직 없습니다')) {
+    $failures[] = '빈 문서 UX: "이 문서는 아직 없습니다" 안내 문구가 있어야 한다.';
+}
+
+$encodedEmptyDocTitle = rawurlencode($emptyDocTitle);
+if (!str_contains($emptyDocHtml, 'href="/wiki/' . $encodedEmptyDocTitle . '/edit" class="empty-state__action">편집')) {
+    $failures[] = '빈 문서 UX: "편집" 링크가 /wiki/{title}/edit로 이어져야 한다.';
+}
+
+if (!str_contains($emptyDocHtml, 'href="/wiki/' . $encodedEmptyDocTitle . '/history"')) {
+    $failures[] = '빈 문서 UX: 문서가 없어도 "역사" 탭 링크가 노출되어야 한다.';
+}
+
+if (!str_contains($emptyDocHtml, 'href="/wiki/' . $encodedEmptyDocTitle . '/discussion"')) {
+    $failures[] = '빈 문서 UX: 문서가 없어도 "토론" 탭 링크가 노출되어야 한다.';
+}
+
+// (20) 빈 문서 UX: requestedTitle이 없으면(공백/null) 기존 "문서를 찾을 수 없습니다"로 대체된다.
+$genericNotFoundHtml = $page->render(null, null, '   ');
+if (!str_contains($genericNotFoundHtml, '<h1>문서를 찾을 수 없습니다</h1>')) {
+    $failures[] = '빈 문서 UX: requestedTitle이 공백만 있으면 일반 404 메시지로 대체되어야 한다.';
+}
+
+// (21) XSS 방지: 빈 문서 UX의 requestedTitle도 escape되어야 한다.
+$xssRequestedTitle = '<script>alert(1)</script>';
+$xssEmptyDocHtml = $page->render(null, null, $xssRequestedTitle);
+
+if (str_contains($xssEmptyDocHtml, '<script>alert(1)</script>')) {
+    $failures[] = '빈 문서 UX: requestedTitle이 escape되지 않고 그대로 출력되었다.';
+}
+
+if (!str_contains($xssEmptyDocHtml, '&lt;script&gt;alert(1)&lt;/script&gt;')) {
+    $failures[] = '빈 문서 UX: requestedTitle이 올바르게 escape되어야 한다.';
+}
+
 if ($failures !== []) {
     fwrite(STDERR, "DocumentViewPage 테스트 실패:\n");
     foreach ($failures as $failure) {

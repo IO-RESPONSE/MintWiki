@@ -1,0 +1,38 @@
+/*
+ * 나무위키풍 문서 헤더/액션 탭 스타일 (태스크 0692)
+ *
+ * design-tokens.css의 브랜드/간격 토큰(--color-brand, --spacing-* 등)을
+ * 그대로 사용해 0689~0691에서 정의한 팔레트/레이아웃과 일관성을 유지한다.
+ */
+
+.document-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.document-tabs {
+  display: flex;
+  gap: var(--spacing-md);
+  list-style: none;
+  margin: var(--spacing-sm) 0 0 0;
+  padding: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.document-tabs__link {
+  display: inline-block;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.document-tabs__link--active {
+  color: var(--color-brand);
+  font-weight: bold;
+  border-bottom: 2px solid var(--color-brand);
+}
+
+.document-header__meta {
+  margin: var(--spacing-xs) 0 0 0;
+  color: var(--color-text-tertiary);
+  font-size: 0.875rem;
+}

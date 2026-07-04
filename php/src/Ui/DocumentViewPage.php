@@ -10,30 +10,43 @@ use MintWiki\Render\PlainTextDocumentRenderer;
 use MintWiki\Ui\SeoMetadata;
 
 /**
- * 단일 문서 view page의 서버 렌더링 (태스크 0529, 0582, 0684).
+ * 단일 문서 view page의 서버 렌더링 (태스크 0529, 0582, 0684, 0692).
  *
- * 존재하는 문서를 표시하거나, 없는 경우 "문서를 찾을 수 없음" 메시지를 보여준다.
+ * 존재하는 문서를 표시하거나, 없는 경우 나무위키풍 빈 문서 안내를 보여준다.
  * 모든 사용자 입력(문서 title 등)은 escaping되어 XSS를 방지한다.
  * 문서 source는 DocumentRenderer를 통해 HTML로 렌더링되며, 렌더러가 생성한
  * HTML은 이미 안전하게 처리되어 있다 (태스크 0582).
  * 0684에서 `render()`에 `$requestedTitle`을 추가했다 — `GET /wiki/{title}`가
- * 존재하지 않는 제목으로 조회될 때 그 제목으로 새 문서를 만들 수 있는 링크를
- * 404 화면에 함께 보여주기 위함이다.
+ * 존재하지 않는 제목으로 조회될 때 그 제목을 안내/편집 링크에 사용하기
+ * 위함이다.
+ * 0692에서 `DocumentHeader`(제목 + 나무위키식 액션 탭)를 두 화면 모두에
+ * 도입했다. 문서가 없는 경우에는 `/documents/new`(라우트가 실제로 연결된 적
+ * 없는 경로)로 가던 예전 "만들기" 링크 대신, 이미 연결되어 있는
+ * `/wiki/{title}/edit`로 이어지는 `EmptyState`를 재사용해 나무위키 빈 문서
+ * UX(제목 + 안내 문구 + 편집 링크)를 보여준다. `$currentPath`는 액션 탭의
+ * 활성 상태 판단에, `$lastEditedBy`는 헤더의 "마지막 편집" 메타 정보 표시
+ * 여부에 쓰인다 — 둘 다 알 수 없으면(빈 문자열/null) 생략된다.
  */
 final class DocumentViewPage
 {
     private Escaper $escaper;
     private Layout $layout;
     private DocumentRenderer $renderer;
+    private DocumentHeader $documentHeader;
+    private EmptyState $emptyState;
 
     public function __construct(
         ?Escaper $escaper = null,
         ?Layout $layout = null,
-        ?DocumentRenderer $renderer = null
+        ?DocumentRenderer $renderer = null,
+        ?DocumentHeader $documentHeader = null,
+        ?EmptyState $emptyState = null
     ) {
         $this->escaper = $escaper ?? new Escaper();
         $this->layout = $layout ?? new Layout();
         $this->renderer = $renderer ?? new PlainTextDocumentRenderer();
+        $this->documentHeader = $documentHeader ?? new DocumentHeader($this->escaper);
+        $this->emptyState = $emptyState ?? new EmptyState($this->escaper);
     }
 
     /**
@@ -42,23 +55,34 @@ final class DocumentViewPage
      * @param Document|null $document 조회한 문서, 없으면 null
      * @param string|null $source 문서의 source 내용, 없으면 placeholder 표시
      * @param string|null $requestedTitle 문서가 없을 때 사용자가 조회하려 했던 제목.
-     *                                    제공되면 404 화면에 "만들기" 링크를 표시한다.
+     *                                    제공되면 404 화면에 제목/편집 링크를 표시한다.
+     * @param string $currentPath 현재 페이지의 경로 (액션 탭 활성 표시 판단용)
+     * @param string|null $lastEditedBy 마지막 편집자 정보, 알 수 없으면 생략한다
      */
-    public function render(?Document $document, ?string $source = null, ?string $requestedTitle = null): string
-    {
+    public function render(
+        ?Document $document,
+        ?string $source = null,
+        ?string $requestedTitle = null,
+        string $currentPath = '',
+        ?string $lastEditedBy = null
+    ): string {
         if ($document === null) {
-            return $this->renderNotFound($requestedTitle);
+            return $this->renderNotFound($requestedTitle, $currentPath);
         }
 
-        return $this->renderDocument($document, $source);
+        return $this->renderDocument($document, $source, $currentPath, $lastEditedBy);
     }
 
     /**
      * 존재하는 문서를 렌더링한다.
      */
-    private function renderDocument(Document $document, ?string $source = null): string
-    {
-        $title = $this->escaper->html($document->title());
+    private function renderDocument(
+        Document $document,
+        ?string $source = null,
+        string $currentPath = '',
+        ?string $lastEditedBy = null
+    ): string {
+        $header = $this->documentHeader->render($document->title(), $currentPath, $lastEditedBy);
 
         // source가 제공되면 렌더러로 렌더링, 아니면 placeholder
         if ($source !== null) {
@@ -74,7 +98,7 @@ final class DocumentViewPage
         }
 
         $body = '<main>'
-            . '<h1>' . $title . '</h1>'
+            . $header
             . $contentHtml
             . '</main>';
 
@@ -105,25 +129,33 @@ final class DocumentViewPage
     /**
      * 문서를 찾을 수 없을 때의 page를 렌더링한다.
      *
-     * $requestedTitle이 주어지면(공백만 있는 경우는 제외) 그 제목으로 새
-     * 문서를 만들 수 있는 링크를 함께 보여준다 (태스크 0684).
+     * $requestedTitle이 주어지면(공백만 있는 경우는 제외) 나무위키식 빈 문서
+     * 안내(제목 + "이 문서는 아직 없습니다" + 편집 탭/링크)를 보여준다. 알 수
+     * 없으면(라우트가 title을 추출하지 못한 경우 등) 일반적인 "문서를 찾을 수
+     * 없습니다" 메시지로 대체한다.
      */
-    private function renderNotFound(?string $requestedTitle = null): string
+    private function renderNotFound(?string $requestedTitle = null, string $currentPath = ''): string
     {
-        $body = '<main>'
-            . '<h1>문서를 찾을 수 없습니다</h1>'
-            . '<p>요청하신 문서가 존재하지 않습니다.</p>';
+        if ($requestedTitle === null || trim($requestedTitle) === '') {
+            $body = '<main>'
+                . '<h1>문서를 찾을 수 없습니다</h1>'
+                . '<p>요청하신 문서가 존재하지 않습니다.</p>'
+                . '</main>';
 
-        if ($requestedTitle !== null && trim($requestedTitle) !== '') {
-            $escapedTitle = $this->escaper->html($requestedTitle);
-            $createHref = '/documents/new?title=' . rawurlencode($requestedTitle);
-            $escapedHref = $this->escaper->attribute($createHref);
-            $body .= '<p><a href="' . $escapedHref . '">&quot;' . $escapedTitle . '&quot; 문서 만들기</a></p>';
+            return $this->layout->render('문서를 찾을 수 없습니다', $body);
         }
 
-        $body .= '</main>';
+        $header = $this->documentHeader->render($requestedTitle, $currentPath);
+        $editHref = '/wiki/' . rawurlencode($requestedTitle) . '/edit';
+        $emptyStateHtml = $this->emptyState->render(
+            '이 문서는 아직 없습니다. 편집하여 만들 수 있습니다.',
+            null,
+            ['href' => $editHref, 'label' => '편집']
+        );
 
-        return $this->layout->render('문서를 찾을 수 없습니다', $body);
+        $body = '<main>' . $header . $emptyStateHtml . '</main>';
+
+        return $this->layout->render($requestedTitle, $body);
     }
 
     /**

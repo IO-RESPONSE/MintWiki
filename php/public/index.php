@@ -429,15 +429,18 @@ $router->register('GET', '/logout', $logoutRouteHandler);
 $router->register('POST', '/logout', $logoutRouteHandler);
 
 // GET /wiki/{title} — 문서 보기 (태스크 0684, 리비전 source 연결은 0685,
-// ACL 적용은 0687). 동적 라우터(0675)로 등록해 title 세그먼트를 얻고,
-// Document\Service(+ 위 documentRepository)로 문서를 조회해
-// DocumentViewPage(Layout 재사용)로 HTML을 렌더링한다. 문서가 없거나 DB가
-// 미설정/오류 상태(documentRepository === null)이면 "문서 없음 + 만들기
-// 링크"를 담은 404 HTML을 반환해 죽지 않는다. 0685에서 revisionRepository가
-// 생겼으므로 currentRevisionId가 있으면 그 리비전의 source를 함께
-// 렌더링한다. 0687에서 문서가 존재하는 경우 AclService로 현재 사용자(0686
-// 세션)의 read 권한을 확인해, 거부되면 PermissionDeniedPage로 403을
-// 반환한다 — 존재하지 않는 문서는 보호할 대상이 없으므로 검사하지 않는다.
+// ACL 적용은 0687, 나무위키식 헤더/액션 탭은 0692). 동적 라우터(0675)로
+// 등록해 title 세그먼트를 얻고, Document\Service(+ 위 documentRepository)로
+// 문서를 조회해 DocumentViewPage(Layout 재사용)로 HTML을 렌더링한다. 문서가
+// 없거나 DB가 미설정/오류 상태(documentRepository === null)이면 나무위키식
+// 빈 문서 안내(제목 + 편집 링크)를 담은 404 HTML을 반환해 죽지 않는다.
+// 0685에서 revisionRepository가 생겼으므로 currentRevisionId가 있으면 그
+// 리비전의 source를 함께 렌더링한다. 0687에서 문서가 존재하는 경우
+// AclService로 현재 사용자(0686 세션)의 read 권한을 확인해, 거부되면
+// PermissionDeniedPage로 403을 반환한다 — 존재하지 않는 문서는 보호할
+// 대상이 없으므로 검사하지 않는다. 0692에서 $requestPath를 그대로 전달해
+// DocumentViewPage가 액션 탭의 활성 상태를 판단하게 하고, 현재 리비전의
+// authorId를 "마지막 편집" 메타 정보로 함께 넘긴다(비어있으면 생략된다).
 $router->register('GET', '/wiki/{title}', static function (array $params) use (
     $documentRepository,
     $revisionRepository,
@@ -452,7 +455,7 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use (
     $requestedTitle = rawurldecode($params['title'] ?? '');
 
     if ($documentRepository === null) {
-        return Response::html($documentViewPage->render(null, null, $requestedTitle), 404);
+        return Response::html($documentViewPage->render(null, null, $requestedTitle, $requestPath), 404);
     }
 
     $documentService = new DocumentService($documentRepository);
@@ -464,7 +467,7 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use (
     }
 
     if ($document === null) {
-        return Response::html($documentViewPage->render(null, null, $requestedTitle), 404);
+        return Response::html($documentViewPage->render(null, null, $requestedTitle, $requestPath), 404);
     }
 
     $documentAcl = $aclRuleRepository?->documentAcl($document->id());
@@ -478,11 +481,14 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use (
     }
 
     $source = null;
+    $lastEditedBy = null;
     if ($revisionRepository !== null && $document->currentRevisionId() !== null) {
-        $source = $revisionRepository->get($document->currentRevisionId())?->source();
+        $currentRevision = $revisionRepository->get($document->currentRevisionId());
+        $source = $currentRevision?->source();
+        $lastEditedBy = $currentRevision?->authorId();
     }
 
-    return Response::html($documentViewPage->render($document, $source));
+    return Response::html($documentViewPage->render($document, $source, null, $requestPath, $lastEditedBy));
 });
 
 // GET/POST /wiki/{title}/edit — 문서 생성/편집 (태스크 0685, ACL 적용은

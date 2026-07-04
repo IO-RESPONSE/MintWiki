@@ -81,6 +81,7 @@ final class Layout
             . '<link rel="stylesheet" href="/assets/css/design-tokens.css">'
             . '<link rel="stylesheet" href="/assets/css/navigation.css">'
             . '<link rel="stylesheet" href="/assets/css/layout.css">'
+            . '<link rel="stylesheet" href="/assets/css/document-header.css">'
             . '<link rel="stylesheet" href="/assets/css/buttons.css">'
             . '<link rel="stylesheet" href="/assets/css/print.css" media="print">'
             . '</head>'
