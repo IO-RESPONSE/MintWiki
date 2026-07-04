@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684, 0687).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684, 0687, 0691).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -74,7 +74,13 @@ declare(strict_types=1);
  * ACL subject(로그인 사용자면 USER, 아니면 ANONYMOUS)로 매핑해 read/edit
  * 권한을 확인한다. 문서 보기는 거부되면 `PermissionDeniedPage`로 403을
  * 반환하고, 편집 GET/POST는 익명 사용자면 `/login`으로 302 리다이렉트하고
- * 로그인한 사용자면 403을 반환한다. 나머지
+ * 로그인한 사용자면 403을 반환한다. 0691에서 `mintwiki_build_layout()`을
+ * 추가했다 — 요청 경로와 세션의 로그인 사용자로 `NavigationBar`(0690)를
+ * 렌더링해 `Layout`의 header에 주입한다. `GET /`, `GET`/`POST /login`,
+ * `GET /wiki/{title}`, `GET`/`POST /wiki/{title}/edit`와 404 fallback이 이
+ * `Layout` 인스턴스를 재사용해 상단 네비게이션 바를 일관되게 보여준다.
+ * navigation 메뉴 항목은 아직 비어있고(브랜드/검색/로그인 상태만 표시),
+ * 실제 메뉴 구성은 이후 태스크에서 채운다. 나머지
  * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
  * 이어진다.
  */
@@ -122,6 +128,8 @@ use MintWiki\Ui\InstallSchemaApplyPage;
 use MintWiki\Ui\InstallWelcomePage;
 use MintWiki\Ui\Layout;
 use MintWiki\Ui\LoginPage;
+use MintWiki\Ui\Navigation;
+use MintWiki\Ui\NavigationBar;
 use MintWiki\Ui\PermissionDeniedPage;
 use MintWiki\User\AccountRepository;
 
@@ -159,6 +167,24 @@ function mintwiki_resolve_acl_subject(?AccountRepository $accountRepository, Php
     }
 
     return [AclSubjectType::Anonymous, null];
+}
+
+/**
+ * 현재 요청 경로/로그인 상태를 반영한 상단 네비게이션 바를 헤더에 포함한
+ * Layout을 만든다 (태스크 0691). 메뉴 항목(Navigation)은 아직 비어있다 —
+ * 실제 메뉴 구성은 이후 태스크(0692+)에서 채운다. NavigationBar는
+ * $accountRepository가 없거나(DB 미설정/오류) 세션에 로그인 사용자가 없으면
+ * 자동으로 로그아웃 상태로 렌더링한다.
+ */
+function mintwiki_build_layout(string $requestPath, ?AccountRepository $accountRepository, PhpSessionAdapter $sessionAdapter): Layout
+{
+    $currentUser = $accountRepository !== null
+        ? (new SessionUserResolver($sessionAdapter, $accountRepository))->resolve()
+        : null;
+
+    $headerContent = (new NavigationBar())->render(new Navigation(), $requestPath, [], $currentUser);
+
+    return new Layout(null, $headerContent);
 }
 
 /**
@@ -202,6 +228,12 @@ if ($bootstrap->connectionConfig() !== null) {
     }
 }
 
+// 로그인 세션 (태스크 0686). $accountRepository는 $pdo가 연결된 경우에만
+// 만든다. 0691에서 위치를 앞당겼다 — 상단 네비게이션 바(로그인/로그아웃
+// 상태 표시)가 GET / 등 모든 route에서 필요하기 때문이다.
+$accountRepository = $pdo !== null ? new AccountRepository($pdo) : null;
+$sessionAdapter = new PhpSessionAdapter();
+
 // 설치 게이트 (태스크 0676). DB가 연결된 경우에만 적용한다 — 미설정/오류
 // 상태에서는 게이트를 건너뛰어 위 0674 계약을 지킨다.
 if ($pdo !== null) {
@@ -217,9 +249,9 @@ if ($pdo !== null) {
 
 $router = new Router();
 
-// GET / — 문서 검색 진입점 (태스크 0526)
-$router->register('GET', '/', static function (): Response {
-    $layout = new Layout();
+// GET / — 문서 검색 진입점 (태스크 0526, 상단 네비게이션 바 연결은 0691)
+$router->register('GET', '/', static function () use ($accountRepository, $sessionAdapter): Response {
+    $layout = mintwiki_build_layout('/', $accountRepository, $sessionAdapter);
     $body = '<main>'
         . '<h1>문서 검색</h1>'
         . '<form method="get" action="/api/documents/by-title">'
@@ -339,10 +371,9 @@ $documentRepository = $pdo !== null ? new PdoRepository($pdo) : null;
 $revisionRepository = $pdo !== null ? new RevisionPdoRepository($pdo) : null;
 DocumentApiRoutes::register($router, $documentRepository);
 
-// GET/POST /login, GET/POST /logout (태스크 0686). $accountRepository는
-// $pdo가 연결된 경우에만 만들어, 로그인 상태 확인/자격 증명 대조에 쓴다.
-$accountRepository = $pdo !== null ? new AccountRepository($pdo) : null;
-$sessionAdapter = new PhpSessionAdapter();
+// GET/POST /login, GET/POST /logout (태스크 0686). $accountRepository/
+// $sessionAdapter는 위에서(태스크 0691) 앞당겨 정의했다 — 로그인 상태
+// 확인/자격 증명 대조에 그대로 쓴다.
 
 // ACL (태스크 0687). 문서별 규칙(acl_rule)이 있으면 AclService가 그것만
 // 쓰고, 없으면 네임스페이스 기본 규칙(acl_namespace_rule)으로 대체한다.
@@ -377,7 +408,8 @@ $router->register('GET', '/login', static function () use ($accountRepository, $
         }
     }
 
-    $loginPage = new LoginPage();
+    $layout = mintwiki_build_layout('/login', $accountRepository, $sessionAdapter);
+    $loginPage = new LoginPage(null, $layout);
 
     return Response::html($loginPage->render());
 });
@@ -412,9 +444,11 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use (
     $aclRuleRepository,
     $aclService,
     $accountRepository,
-    $sessionAdapter
+    $sessionAdapter,
+    $requestPath
 ): Response {
-    $documentViewPage = new DocumentViewPage();
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+    $documentViewPage = new DocumentViewPage(null, $layout);
     $requestedTitle = rawurldecode($params['title'] ?? '');
 
     if ($documentRepository === null) {
@@ -438,7 +472,7 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use (
     $decision = $aclService->check(AclPermission::Read, $subjectType, $subjectId, $documentAcl);
 
     if ($decision->isDenied()) {
-        $permissionDeniedPage = new PermissionDeniedPage();
+        $permissionDeniedPage = new PermissionDeniedPage(null, $layout);
 
         return Response::html($permissionDeniedPage->render($decision), 403);
     }
@@ -472,9 +506,11 @@ $router->register('GET', '/wiki/{title}/edit', static function (array $params) u
     $aclRuleRepository,
     $aclService,
     $accountRepository,
-    $sessionAdapter
+    $sessionAdapter,
+    $requestPath
 ): Response {
-    $documentEditorPage = new DocumentEditorPage();
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+    $documentEditorPage = new DocumentEditorPage(null, $layout);
     $requestedTitle = rawurldecode($params['title'] ?? '');
 
     if ($documentRepository === null) {
@@ -498,7 +534,7 @@ $router->register('GET', '/wiki/{title}/edit', static function (array $params) u
             return new Response(302, ['Location' => '/login']);
         }
 
-        $permissionDeniedPage = new PermissionDeniedPage();
+        $permissionDeniedPage = new PermissionDeniedPage(null, $layout);
 
         return Response::html($permissionDeniedPage->render($decision), 403);
     }
@@ -521,9 +557,11 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
     $aclRuleRepository,
     $aclService,
     $accountRepository,
-    $sessionAdapter
+    $sessionAdapter,
+    $requestPath
 ): Response {
-    $documentEditorPage = new DocumentEditorPage();
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+    $documentEditorPage = new DocumentEditorPage(null, $layout);
     $csrfTokenService = new CsrfTokenService();
     $requestedTitle = rawurldecode($params['title'] ?? '');
 
@@ -558,7 +596,7 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
             return new Response(302, ['Location' => '/login']);
         }
 
-        $permissionDeniedPage = new PermissionDeniedPage();
+        $permissionDeniedPage = new PermissionDeniedPage(null, $layout);
 
         return Response::html($permissionDeniedPage->render($decision), 403);
     }
@@ -658,7 +696,7 @@ if ($isApiRequest) {
         'path' => $requestPath,
     ], 404);
 } else {
-    $errorPage = new ErrorPage();
+    $errorPage = new ErrorPage(null, mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter));
     $html = $errorPage->renderNotFound($requestPath);
     $response = Response::html($html, 404);
 }

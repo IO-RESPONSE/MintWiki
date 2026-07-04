@@ -119,7 +119,7 @@ if (!str_contains($html, '<main>')) {
 }
 
 // (4-3) footer 랜드마크가 있어야 한다.
-if (!str_contains($html, '<footer></footer>')) {
+if (!str_contains($html, '<footer>')) {
     $failures[] = '[landmarks] HTML이 footer 랜드마크를 포함해야 한다.';
 }
 

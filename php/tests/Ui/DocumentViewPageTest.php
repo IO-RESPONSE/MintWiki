@@ -59,7 +59,7 @@ if (!str_contains($html, '<header></header>')) {
     $failures[] = '문서 view가 header landmark를 포함해야 한다.';
 }
 
-if (!str_contains($html, '<footer></footer>')) {
+if (!str_contains($html, '<footer>')) {
     $failures[] = '문서 view가 footer landmark를 포함해야 한다.';
 }
 
@@ -98,7 +98,7 @@ if (!str_contains($notFoundHtml, '<header></header>')) {
     $failures[] = '문서 없음 page가 header landmark를 포함해야 한다.';
 }
 
-if (!str_contains($notFoundHtml, '<footer></footer>')) {
+if (!str_contains($notFoundHtml, '<footer>')) {
     $failures[] = '문서 없음 page가 footer landmark를 포함해야 한다.';
 }
 

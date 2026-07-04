@@ -16,7 +16,11 @@ if (!is_file($autoloadFile)) {
 require $autoloadFile;
 
 use MintWiki\Ui\Layout;
+use MintWiki\Ui\Navigation;
+use MintWiki\Ui\NavigationBar;
+use MintWiki\Ui\NavigationItem;
 use MintWiki\Ui\SeoMetadata;
+use MintWiki\User\User;
 
 $failures = [];
 $layout = new Layout();
@@ -30,15 +34,44 @@ foreach ([
     '<meta name="viewport" content="width=device-width, initial-scale=1">' => 'viewport meta를 포함해야 한다.',
     '<title>MintWiki &lt;Home&gt;</title>' => 'title은 escape해야 한다.',
     '<link rel="stylesheet" href="/assets/css/design-tokens.css">' => 'design-tokens CSS를 포함해야 한다.',
+    '<link rel="stylesheet" href="/assets/css/navigation.css">' => 'navigation CSS를 포함해야 한다.',
+    '<link rel="stylesheet" href="/assets/css/layout.css">' => 'layout CSS를 포함해야 한다.',
     '<link rel="stylesheet" href="/assets/css/buttons.css">' => 'buttons CSS를 포함해야 한다.',
     '<link rel="stylesheet" href="/assets/css/print.css" media="print">' => 'print CSS를 포함해야 한다.',
-    '<header></header>' => 'header landmark를 포함해야 한다.',
-    '<main><h1>홈</h1></main>' => 'body HTML은 layout 안에 포함해야 한다.',
-    '<footer></footer>' => 'footer landmark를 포함해야 한다.',
+    '<header></header>' => 'header에 navigation을 전달하지 않으면 기존과 같이 비어있어야 한다(하위 호환).',
+    '<div class="site-content"><main><h1>홈</h1></main></div>' => 'body는 --content-max-width 폭 wrapper 안에 포함되어야 한다.',
+    '<footer>' => 'footer landmark를 포함해야 한다.',
+    '<div class="site-footer-info">' => 'footer가 나무위키풍 사이트 정보 블록을 포함해야 한다.',
+    '<p class="site-footer-info__name">MintWiki</p>' => 'footer가 사이트 이름을 표시해야 한다.',
 ] as $needle => $message) {
     if (!str_contains($html, $needle)) {
         $failures[] = $message;
     }
+}
+
+if (!preg_match('/site-footer-info__license">[^<]+라이선스[^<]*</', $html)) {
+    $failures[] = 'footer가 라이선스/이용 안내 문구를 포함해야 한다.';
+}
+
+// header에 navigation을 전달하면 상단 네비게이션 바가 header 안에 렌더링된다 (태스크 0691).
+$navigation = new Navigation([new NavigationItem('/wiki/Home', '홈', '/wiki/Home')]);
+$user = new User('user-1', 'alice', '앨리스');
+$headerContent = (new NavigationBar())->render($navigation, '/wiki/Home', [], $user);
+$layoutWithNav = new Layout(null, $headerContent);
+$htmlWithNav = $layoutWithNav->render('MintWiki', '<main>본문</main>');
+
+if (!str_contains($htmlWithNav, '<header><nav class="site-nav"')) {
+    $failures[] = 'header에 navigation을 전달하면 <nav class="site-nav">가 header 안에 렌더링되어야 한다.';
+}
+
+if (!str_contains($htmlWithNav, '로그아웃(alice)')) {
+    $failures[] = 'header에 전달한 NavigationBar의 로그인 상태가 그대로 렌더링되어야 한다.';
+}
+
+// 다른 Layout 인스턴스(navigation 미전달)는 여전히 header가 비어있어야 한다(인스턴스 간 격리 확인).
+$plainHtmlAfterNavUsage = $layout->render('MintWiki', '<main>본문</main>');
+if (!str_contains($plainHtmlAfterNavUsage, '<header></header>')) {
+    $failures[] = 'navigation을 생성자에 전달하지 않은 Layout 인스턴스는 header가 비어있어야 한다.';
 }
 
 $langHtml = $layout->render('Title', '<p>body</p>', 'ko" data-x="1');
@@ -76,7 +109,7 @@ if (str_contains($noRequestIdHtml, '요청ID:')) {
     $failures[] = 'requestId가 null일 때 "요청ID:" 텍스트를 포함하면 안 된다.';
 }
 
-if (!str_contains($noRequestIdHtml, '<footer></footer>')) {
+if (!str_contains($noRequestIdHtml, '<footer>')) {
     $failures[] = 'requestId가 null일 때에도 footer landmark를 포함해야 한다.';
 }
 

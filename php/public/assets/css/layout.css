@@ -1,0 +1,30 @@
+/*
+ * 나무위키풍 콘텐츠 폭/footer 스타일 (태스크 0691)
+ *
+ * design-tokens.css의 --content-max-width로 본문을 중앙 정렬하고, footer의
+ * 사이트 정보(이름/라이선스 안내)에 여백/구분선을 준다.
+ */
+
+.site-content {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+}
+
+.site-footer-info {
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.site-footer-info__name {
+  font-weight: bold;
+  margin: 0 0 var(--spacing-xs) 0;
+}
+
+.site-footer-info__license {
+  margin: 0;
+  font-size: 0.875rem;
+}

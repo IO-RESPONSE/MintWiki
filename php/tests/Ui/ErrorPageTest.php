@@ -125,7 +125,7 @@ if (!str_contains($html, '<header></header>')) {
     $failures[] = '404 page가 header landmark를 포함해야 한다.';
 }
 
-if (!str_contains($html, '<footer></footer>')) {
+if (!str_contains($html, '<footer>')) {
     $failures[] = '404 page가 footer landmark를 포함해야 한다.';
 }
 
@@ -133,7 +133,7 @@ if (!str_contains($html500, '<header></header>')) {
     $failures[] = '500 page가 header landmark를 포함해야 한다.';
 }
 
-if (!str_contains($html500, '<footer></footer>')) {
+if (!str_contains($html500, '<footer>')) {
     $failures[] = '500 page가 footer landmark를 포함해야 한다.';
 }
 

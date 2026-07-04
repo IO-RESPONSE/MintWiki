@@ -84,7 +84,7 @@ if (!str_contains($html, '<header></header>')) {
     $failures[] = '사용자 차단 form이 header landmark를 포함해야 한다.';
 }
 
-if (!str_contains($html, '<footer></footer>')) {
+if (!str_contains($html, '<footer>')) {
     $failures[] = '사용자 차단 form이 footer landmark를 포함해야 한다.';
 }
 

@@ -24,11 +24,17 @@ use MintWiki\Http\Request;
 use MintWiki\Http\Response;
 use MintWiki\Http\Router;
 use MintWiki\Ui\Layout;
+use MintWiki\Ui\Navigation;
+use MintWiki\Ui\NavigationBar;
 
 $failures = [];
 
 $router = new Router();
-$layout = new Layout();
+
+// public/index.php의 GET / 핸들러와 동일하게(태스크 0691), 상단 네비게이션
+// 바를 header에 주입한 Layout을 사용한다.
+$headerContent = (new NavigationBar())->render(new Navigation(), '/', []);
+$layout = new Layout(null, $headerContent);
 
 $expectedHtmlHeaders = [
     'Content-Type' => 'text/html; charset=utf-8',
@@ -78,11 +84,17 @@ if ($handler !== null) {
     if (!str_contains($body, '<title>MintWiki</title>')) {
         $failures[] = 'HTML 응답의 title이 MintWiki여야 한다.';
     }
-    if (!str_contains($body, '<header></header>')) {
-        $failures[] = 'HTML 응답이 header landmark를 포함해야 한다.';
+    if (!str_contains($body, '<header><nav class="site-nav"')) {
+        $failures[] = 'HTML 응답의 header가 상단 네비게이션 바(0690)를 포함해야 한다.';
     }
-    if (!str_contains($body, '<footer></footer>')) {
+    if (!str_contains($body, '<a class="site-nav__brand" href="/">MintWiki</a>')) {
+        $failures[] = 'HTML 응답의 상단 네비게이션 바가 브랜드 로고를 포함해야 한다.';
+    }
+    if (!str_contains($body, '<footer>')) {
         $failures[] = 'HTML 응답이 footer landmark를 포함해야 한다.';
+    }
+    if (!str_contains($body, '<div class="site-footer-info">')) {
+        $failures[] = 'HTML 응답의 footer가 나무위키풍 사이트 정보를 포함해야 한다.';
     }
 }
 

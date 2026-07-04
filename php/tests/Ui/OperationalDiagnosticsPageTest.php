@@ -127,7 +127,7 @@ if (!str_contains($html, '<header></header>')) {
     $failures[] = '운영 진단 page가 header landmark를 포함해야 한다.';
 }
 
-if (!str_contains($html, '<footer></footer>')) {
+if (!str_contains($html, '<footer>')) {
     $failures[] = '운영 진단 page가 footer landmark를 포함해야 한다.';
 }
 
