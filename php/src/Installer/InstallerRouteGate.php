@@ -18,17 +18,20 @@ final class InstallerRouteGate
 {
     private PDO $connection;
     private DBCheck $dbCheck;
+    private ?InstallerLock $installerLock;
 
     /**
      * 초기화.
      *
      * @param PDO $connection 데이터베이스 연결.
      * @param DBCheck|null $dbCheck DB 검사 인스턴스. 기본값은 새 인스턴스.
+     * @param InstallerLock|null $installerLock 설치 완료 lock file. null이면 DB 상태만 확인.
      */
-    public function __construct(PDO $connection, ?DBCheck $dbCheck = null)
+    public function __construct(PDO $connection, ?DBCheck $dbCheck = null, ?InstallerLock $installerLock = null)
     {
         $this->connection = $connection;
         $this->dbCheck = $dbCheck ?? new DBCheck();
+        $this->installerLock = $installerLock;
     }
 
     /**
@@ -40,6 +43,10 @@ final class InstallerRouteGate
      */
     public function isInstallationComplete(): bool
     {
+        if ($this->installerLock !== null && $this->installerLock->isLocked()) {
+            return true;
+        }
+
         try {
             return $this->dbCheck->isSchemaVersionValid($this->connection);
         } catch (\Exception $e) {
