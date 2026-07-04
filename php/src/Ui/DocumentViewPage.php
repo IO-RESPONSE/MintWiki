@@ -10,12 +10,15 @@ use MintWiki\Render\PlainTextDocumentRenderer;
 use MintWiki\Ui\SeoMetadata;
 
 /**
- * 단일 문서 view page의 서버 렌더링 (태스크 0529, 0582).
+ * 단일 문서 view page의 서버 렌더링 (태스크 0529, 0582, 0684).
  *
  * 존재하는 문서를 표시하거나, 없는 경우 "문서를 찾을 수 없음" 메시지를 보여준다.
  * 모든 사용자 입력(문서 title 등)은 escaping되어 XSS를 방지한다.
  * 문서 source는 DocumentRenderer를 통해 HTML로 렌더링되며, 렌더러가 생성한
  * HTML은 이미 안전하게 처리되어 있다 (태스크 0582).
+ * 0684에서 `render()`에 `$requestedTitle`을 추가했다 — `GET /wiki/{title}`가
+ * 존재하지 않는 제목으로 조회될 때 그 제목으로 새 문서를 만들 수 있는 링크를
+ * 404 화면에 함께 보여주기 위함이다.
  */
 final class DocumentViewPage
 {
@@ -38,11 +41,13 @@ final class DocumentViewPage
      *
      * @param Document|null $document 조회한 문서, 없으면 null
      * @param string|null $source 문서의 source 내용, 없으면 placeholder 표시
+     * @param string|null $requestedTitle 문서가 없을 때 사용자가 조회하려 했던 제목.
+     *                                    제공되면 404 화면에 "만들기" 링크를 표시한다.
      */
-    public function render(?Document $document, ?string $source = null): string
+    public function render(?Document $document, ?string $source = null, ?string $requestedTitle = null): string
     {
         if ($document === null) {
-            return $this->renderNotFound();
+            return $this->renderNotFound($requestedTitle);
         }
 
         return $this->renderDocument($document, $source);
@@ -99,13 +104,24 @@ final class DocumentViewPage
 
     /**
      * 문서를 찾을 수 없을 때의 page를 렌더링한다.
+     *
+     * $requestedTitle이 주어지면(공백만 있는 경우는 제외) 그 제목으로 새
+     * 문서를 만들 수 있는 링크를 함께 보여준다 (태스크 0684).
      */
-    private function renderNotFound(): string
+    private function renderNotFound(?string $requestedTitle = null): string
     {
         $body = '<main>'
             . '<h1>문서를 찾을 수 없습니다</h1>'
-            . '<p>요청하신 문서가 존재하지 않습니다.</p>'
-            . '</main>';
+            . '<p>요청하신 문서가 존재하지 않습니다.</p>';
+
+        if ($requestedTitle !== null && trim($requestedTitle) !== '') {
+            $escapedTitle = $this->escaper->html($requestedTitle);
+            $createHref = '/documents/new?title=' . rawurlencode($requestedTitle);
+            $escapedHref = $this->escaper->attribute($createHref);
+            $body .= '<p><a href="' . $escapedHref . '">&quot;' . $escapedTitle . '&quot; 문서 만들기</a></p>';
+        }
+
+        $body .= '</main>';
 
         return $this->layout->render('문서를 찾을 수 없습니다', $body);
     }

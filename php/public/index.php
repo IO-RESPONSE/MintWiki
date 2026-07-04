@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -43,7 +43,13 @@ declare(strict_types=1);
  * 0683에서 `GET /api/documents/by-title`(`DocumentApiRoutes`)을 등록했다 —
  * DB가 연결된 경우에만 `MintWiki\Document\PdoRepository`를 만들어 넘기고,
  * 미설정/오류 상태(`$pdo === null`)에서는 저장소 없이 등록해 핸들러가 503을
- * 반환하게 한다(0674 계약과 동일하게 죽지 않는다). 나머지
+ * 반환하게 한다(0674 계약과 동일하게 죽지 않는다). 0684에서
+ * `GET /wiki/{title}`을 등록했다 — 동적 라우터(0675)로 title 세그먼트를
+ * 얻어 `Document\Service`(위 `$documentRepository`)로 문서를 조회하고
+ * `DocumentViewPage`(`Layout` 재사용)로 렌더링한다. 문서가 없거나
+ * `$documentRepository === null`(DB 미설정/오류)이면 "문서 없음 + 만들기
+ * 링크"를 담은 404 HTML을 반환한다 — 실제 리비전 저장소는 아직 PDO 구현이
+ * 없어(Modules/Revision, 이후 태스크) 본문은 placeholder로 표시된다. 나머지
  * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
  * 이어진다.
  */
@@ -52,7 +58,9 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use MintWiki\App\AppBootstrap;
 use MintWiki\App\ConfigLoader;
+use MintWiki\Document\EmptyTitleError;
 use MintWiki\Document\PdoRepository;
+use MintWiki\Document\Service as DocumentService;
 use MintWiki\Http\DocumentApiRoutes;
 use MintWiki\Http\Request;
 use MintWiki\Http\Response;
@@ -64,6 +72,7 @@ use MintWiki\Installer\InstallerLock;
 use MintWiki\Installer\InstallerRouteGate;
 use MintWiki\Installer\RequirementCheck;
 use MintWiki\Installer\SchemaApplyHandler;
+use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\ErrorPage;
 use MintWiki\Ui\InstallAdminAccountFormPage;
 use MintWiki\Ui\InstallDBFormPage;
@@ -243,6 +252,36 @@ $router->register('GET', '/install/complete', static function (): Response {
 // 반환하게 한다.
 $documentRepository = $pdo !== null ? new PdoRepository($pdo) : null;
 DocumentApiRoutes::register($router, $documentRepository);
+
+// GET /wiki/{title} — 문서 보기 (태스크 0684). 동적 라우터(0675)로 등록해
+// title 세그먼트를 얻고, Document\Service(+ 위 documentRepository)로 문서를
+// 조회해 DocumentViewPage(Layout 재사용)로 HTML을 렌더링한다. 문서가
+// 없거나 DB가 미설정/오류 상태(documentRepository === null)이면
+// "문서 없음 + 만들기 링크"를 담은 404 HTML을 반환해 죽지 않는다. 실제
+// 리비전 저장소는 아직 PDO 구현이 없어(Modules/Revision, 0685+에서 추가)
+// 본문은 source 없이(placeholder) 렌더링된다.
+$router->register('GET', '/wiki/{title}', static function (array $params) use ($documentRepository): Response {
+    $documentViewPage = new DocumentViewPage();
+    $requestedTitle = rawurldecode($params['title'] ?? '');
+
+    if ($documentRepository === null) {
+        return Response::html($documentViewPage->render(null, null, $requestedTitle), 404);
+    }
+
+    $documentService = new DocumentService($documentRepository);
+
+    try {
+        $document = $documentService->getByTitle($requestedTitle);
+    } catch (EmptyTitleError) {
+        $document = null;
+    }
+
+    if ($document === null) {
+        return Response::html($documentViewPage->render(null, null, $requestedTitle), 404);
+    }
+
+    return Response::html($documentViewPage->render($document));
+});
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)
 $router->register('GET', '/health', static function () use ($dbStatus): Response {
