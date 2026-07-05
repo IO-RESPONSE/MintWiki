@@ -92,7 +92,7 @@ if (!str_contains($html, '<section aria-label="환경 진단 export">')) {
     $failures[] = '운영 진단 page가 환경 진단 export 섹션을 포함해야 한다.';
 }
 
-if (!str_contains($html, '<a href="/admin/status/file-permissions">파일 권한 진단 보기</a>')) {
+if (!str_contains($html, '<a href="/admin/diagnostics/files">파일 권한 진단 보기</a>')) {
     $failures[] = '운영 진단 page가 파일 권한 진단 page 링크를 포함해야 한다.';
 }
 

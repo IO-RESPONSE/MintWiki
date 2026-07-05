@@ -115,7 +115,7 @@ final class OperationalDiagnosticsPage
         return '<section aria-label="파일 권한 진단">'
             . '<h2>파일 권한</h2>'
             . '<p>공유 호스팅 배포에 필요한 파일과 디렉터리 권한을 확인합니다.</p>'
-            . '<p><a href="/admin/status/file-permissions">파일 권한 진단 보기</a></p>'
+            . '<p><a href="/admin/diagnostics/files">파일 권한 진단 보기</a></p>'
             . '</section>';
     }
 

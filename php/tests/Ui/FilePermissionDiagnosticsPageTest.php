@@ -62,7 +62,7 @@ foreach (['설정 파일', '캐시 디렉터리', '업로드 디렉터리', '로
     }
 }
 
-if (!str_contains($html, '<a href="/admin/status">운영 진단으로 돌아가기</a>')) {
+if (!str_contains($html, '<a href="/admin/diagnostics">운영 진단으로 돌아가기</a>')) {
     $failures[] = '파일 권한 진단 page가 운영 진단 page로 돌아가는 링크를 포함해야 한다.';
 }
 

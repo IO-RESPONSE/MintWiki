@@ -57,7 +57,10 @@ Skeleton, 0391-0440 의 0430 산출물이다
   확인하는 스모크 테스트. `post-cutover-validate.sh`와 달리 골격이 아니라
   실제 HTTP 요청을 보낸다.
 - `live-e2e-smoke-test.sh` — 배포된 공개 URL에 대해 설치 마법사 접속
-  상태(`/install`) 확인 → 관리자 로그인(`/login`) → 문서 생성/편집/조회
+  상태(`/install`) 확인 → 관리자 콘솔 보호 확인(`/admin` 익명 차단,
+  관리자 세션의 `/admin`, `/admin/maintenance`, `/admin/backup`,
+  `/admin/restore`, `/admin/diagnostics`, `/admin/diagnostics/files` 도달성)
+  → 관리자 로그인(`/login`) → 문서 생성/편집/조회
   (`/wiki/{title}`, `/wiki/{title}/edit`) → 권한 확인(익명 사용자의 읽기
   허용/쓰기 거부)까지 실사용 흐름을 curl로 수행하는 API/폼 E2E smoke
   test(태스크 0672, 0673-0687에서 실제로 연결된 route에 맞춰 0688에서

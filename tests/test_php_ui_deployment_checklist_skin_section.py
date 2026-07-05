@@ -56,6 +56,7 @@ def test_deployment_checklist_numbering_still_ends_with_out_of_scope_and_related
     번호가 밀렸는지 확인한다."""
     content = _content()
 
-    assert "## 10. 이 체크리스트가 다루지 않는 것" in content
+    assert "## 10. 관리자 콘솔 확인" in content
+    assert "## 11. 이 체크리스트가 다루지 않는 것" in content
     assert "## 관련 문서" in content
     assert "## 9. 이 체크리스트가 다루지 않는 것" not in content

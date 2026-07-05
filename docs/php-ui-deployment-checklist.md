@@ -620,7 +620,29 @@ deploy:
 `live-e2e-smoke-test.sh`의 `skin_responsive_asset_check` 시나리오가
 라이브 배포본의 `sidebar.css` asset을 GET해 같은 규칙을 확인한다.
 
-## 10. 이 체크리스트가 다루지 않는 것
+## 10. 관리자 콘솔 확인 (Phase I: Admin console wiring, 0696-0702)
+
+- [ ] 익명 사용자는 `/admin` 접근 시 `/login`으로 302되거나 403으로
+      차단된다.
+- [ ] 관리자 계정으로 로그인한 뒤 `/admin`, `/admin/maintenance`,
+      `/admin/backup`, `/admin/restore`, `/admin/diagnostics`,
+      `/admin/diagnostics/files`가 모두 200으로 열린다.
+- [ ] 비관리자 계정은 관리자 하위 화면에서 403을 받는다.
+- [ ] 상단바의 "관리" 링크는 관리자에게만 보이고 익명/비관리자에게는
+      보이지 않는다.
+- [ ] 배포 패키지에는 `php/src/**`와 `php/public/**`가 포함되어 관리자
+      화면 컴포넌트와 CSS 자산이 누락되지 않는다
+      (`php/deployment-package-manifest.json` 확인).
+
+**자동화**: `php/tests/Http/AdminPhaseIRoutesTest.php`가 로컬에서
+유지보수/백업/복원/진단 라우트의 관리자 게이트, CSRF, 위험 작업 확인,
+유지보수 예외를 검증한다. 라이브 배포본에서는
+`php/scripts/live-e2e-smoke-test.sh`의 `anonymous_admin_denied_check`와
+`admin_console_routes_check` 시나리오가 관리자 콘솔 보호와 도달성을
+확인한다. 관리자 자격 증명이 없으면 인증이 필요한 시나리오는 안전하게
+skip한다.
+
+## 11. 이 체크리스트가 다루지 않는 것
 
 - Database 마이그레이션이나 초기화 — DB phase checklist 참고 (0411 이후)
 - PHP 런타임 버전/확장 설정 — runtime phase checklist 참고 (0396)

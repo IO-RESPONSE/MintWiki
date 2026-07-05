@@ -33,7 +33,7 @@ final class FilePermissionDiagnosticsPage
         $body = '<main>'
             . '<h1>파일 권한 진단</h1>'
             . '<p>공유 호스팅 배포에 필요한 파일과 디렉터리 권한 상태를 확인합니다.</p>'
-            . '<p><a href="/admin/status">운영 진단으로 돌아가기</a></p>'
+            . '<p><a href="/admin/diagnostics">운영 진단으로 돌아가기</a></p>'
             . $this->renderDiagnosticsTable($rows)
             . '</main>';
 

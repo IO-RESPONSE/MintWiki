@@ -30,14 +30,16 @@ Usage: php/scripts/live-e2e-smoke-test.sh --base-url URL [options]
   2.5. 스킨(Phase H, 0689-0694) 통합 확인: 홈 HTML의 상단바 마크업,
      design-tokens.css의 브랜드색(#008485), sidebar.css의 반응형
      @media 규칙이 실제로 배포되어 있는지 확인한다(자격 증명 불필요).
-  3. GET /install 로 설치 마법사 접속 상태(설치 필요/이미 완료)를 확인한다.
-  4. 기존 관리자 계정(SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD)으로 로그인한다.
-  5. 관리자 세션으로 테스트 문서를 생성한다(GET/POST /wiki/{title}/edit).
-  6. 생성한 문서를 조회한다(GET /wiki/{title}). 조회에 성공하면 문서
+  3. 익명 사용자로 `/admin`이 차단되는지 확인한다.
+  4. GET /install 로 설치 마법사 접속 상태(설치 필요/이미 완료)를 확인한다.
+  5. 기존 관리자 계정(SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD)으로 로그인한다.
+  6. 관리자 세션으로 관리자 콘솔 하위 화면 도달성을 확인한다.
+  7. 관리자 세션으로 테스트 문서를 생성한다(GET/POST /wiki/{title}/edit).
+  8. 생성한 문서를 조회한다(GET /wiki/{title}). 조회에 성공하면 문서
      액션 탭(document-tabs, 태스크 0692) 마크업도 함께 확인한다.
-  7. 관리자 세션으로 테스트 문서를 편집한다(GET/POST /wiki/{title}/edit).
-  8. 익명 사용자로 같은 문서를 읽을 수 있는지 확인한다(권한 확인: 읽기 허용).
-  9. 익명 사용자가 같은 문서 편집을 시도하면 거부되는지 확인한다(권한 확인:
+  9. 관리자 세션으로 테스트 문서를 편집한다(GET/POST /wiki/{title}/edit).
+  10. 익명 사용자로 같은 문서를 읽을 수 있는지 확인한다(권한 확인: 읽기 허용).
+  11. 익명 사용자가 같은 문서 편집을 시도하면 거부되는지 확인한다(권한 확인:
      쓰기 거부, `/login`으로 리다이렉트).
 
 각 단계는 실패해도 스크립트를 중단하지 않는다 — route가 아직 연결되지
@@ -255,7 +257,26 @@ else
   esac
 fi
 
-# 2. 설치 마법사(/install) 접속 상태 확인. 200이면 아직 설치 전, 403이면
+# 2. 관리자 콘솔 익명 접근 차단 확인. 자격 증명 없이도 최소 보호 상태를
+#    확인할 수 있다. 설치 전 DB 미설정 상태에서는 /login 302 또는 403이 아닌
+#    404/5xx가 나올 수 있으므로 /health가 살아 있을 때만 평가한다.
+if [ "${APP_REACHABLE}" -ne 1 ]; then
+  record blocked anonymous_admin_denied_check GET "${BASE_URL}/admin" "n/a" "" "skipped: /health precondition failed"
+else
+  http_get "${BASE_URL}/admin" "${ANON_JAR}"
+  case "${LAST_STATUS}" in
+    302)
+      case "${LAST_REDIRECT}" in
+        */login|/login) record pass anonymous_admin_denied_check GET "${BASE_URL}/admin" "${LAST_STATUS}" "${LAST_REDIRECT}" "anonymous user redirected to login" ;;
+        *) record fail anonymous_admin_denied_check GET "${BASE_URL}/admin" "${LAST_STATUS}" "${LAST_REDIRECT}" "anonymous user redirected somewhere other than /login" ;;
+      esac
+      ;;
+    403) record pass anonymous_admin_denied_check GET "${BASE_URL}/admin" "${LAST_STATUS}" "${LAST_REDIRECT}" "anonymous user denied" ;;
+    *) record fail anonymous_admin_denied_check GET "${BASE_URL}/admin" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 302 to /login or 403" ;;
+  esac
+fi
+
+# 3. 설치 마법사(/install) 접속 상태 확인. 200이면 아직 설치 전, 403이면
 #    이미 설치가 끝나 InstallerRouteGate가 차단한 것 — 둘 다 정상 상태이며,
 #    이 스크립트는 실제 DB 자격 증명이 필요한 설치 절차 자체는 대신
 #    수행하지 않는다(브라우저로 운영자가 수행, Notes 참고).
@@ -270,7 +291,7 @@ else
   esac
 fi
 
-# 3. 기존 관리자 계정으로 로그인. 자격 증명이 없으면 이후 관리자 세션이
+# 4. 기존 관리자 계정으로 로그인. 자격 증명이 없으면 이후 관리자 세션이
 #    필요한 모든 단계를 안전하게 skip한다.
 ADMIN_AUTHENTICATED=0
 if [ "${APP_REACHABLE}" -ne 1 ]; then
@@ -296,7 +317,20 @@ else
   fi
 fi
 
-# 4. 관리자 세션에서 테스트 문서 생성 (GET/POST /wiki/{title}/edit).
+# 4.5 관리자 콘솔 하위 화면 도달성 확인. 자격 증명이 없으면 안전하게 skip한다.
+if [ "${ADMIN_AUTHENTICATED}" -ne 1 ]; then
+  record skip admin_console_routes_check GET "${BASE_URL}/admin" "n/a" "" "skipped: no authenticated admin session"
+else
+  for admin_path in /admin /admin/maintenance /admin/backup /admin/restore /admin/diagnostics /admin/diagnostics/files; do
+    http_get "${BASE_URL}${admin_path}" "${ADMIN_JAR}"
+    case "${LAST_STATUS}" in
+      200) record pass admin_console_routes_check GET "${BASE_URL}${admin_path}" "${LAST_STATUS}" "${LAST_REDIRECT}" "admin route reachable" ;;
+      *) record fail admin_console_routes_check GET "${BASE_URL}${admin_path}" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 200 for admin route" ;;
+    esac
+  done
+fi
+
+# 5. 관리자 세션에서 테스트 문서 생성 (GET/POST /wiki/{title}/edit).
 DOC_CREATED=0
 if [ "${ADMIN_AUTHENTICATED}" -ne 1 ]; then
   record skip admin_create_document GET/POST "${BASE_URL}/wiki/${DOC_TITLE}/edit" "n/a" "" "skipped: no authenticated admin session"

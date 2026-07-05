@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace MintWiki\Ui;
 
+use MintWiki\Security\CsrfTokenService;
+
 /**
  * 유지보수 모드 page의 서버 렌더링 (태스크 0589).
  *
@@ -15,11 +17,20 @@ final class MaintenanceModePage
 {
     private Escaper $escaper;
     private Layout $layout;
+    private CsrfTokenService $csrfTokenService;
+    private FormErrorSummary $formErrorSummary;
 
-    public function __construct(?Escaper $escaper = null, ?Layout $layout = null)
+    public function __construct(
+        ?Escaper $escaper = null,
+        ?Layout $layout = null,
+        ?CsrfTokenService $csrfTokenService = null,
+        ?FormErrorSummary $formErrorSummary = null
+    )
     {
         $this->escaper = $escaper ?? new Escaper();
         $this->layout = $layout ?? new Layout();
+        $this->csrfTokenService = $csrfTokenService ?? new CsrfTokenService();
+        $this->formErrorSummary = $formErrorSummary ?? new FormErrorSummary($this->escaper);
     }
 
     /**
@@ -34,5 +45,31 @@ final class MaintenanceModePage
             . '</main>';
 
         return $this->layout->render('유지보수 중', $body);
+    }
+
+    /**
+     * 관리자 유지보수 모드 토글 page를 렌더링한다 (태스크 0700).
+     *
+     * @param array<string, string|array<string>> $errors
+     */
+    public function renderAdmin(bool $enabled, array $errors = []): string
+    {
+        $csrfToken = $this->csrfTokenService->generate();
+        $escapedCsrfToken = $this->escaper->html($csrfToken);
+        $checked = $enabled ? ' checked' : '';
+        $status = $enabled ? '켜짐' : '꺼짐';
+
+        $body = '<main>'
+            . '<h1>유지보수 모드</h1>'
+            . $this->formErrorSummary->render($errors)
+            . '<p>현재 상태: <strong>' . $this->escaper->html($status) . '</strong></p>'
+            . '<form method="post" action="/admin/maintenance">'
+            . '<input type="hidden" name="csrf_token" value="' . $escapedCsrfToken . '">'
+            . '<label><input type="checkbox" name="enabled" value="1"' . $checked . '> 유지보수 모드 사용</label>'
+            . '<button type="submit">저장</button>'
+            . '</form>'
+            . '</main>';
+
+        return $this->layout->render('유지보수 모드', $body);
     }
 }

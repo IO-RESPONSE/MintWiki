@@ -9,6 +9,12 @@
     RewriteEngine On
     RewriteBase /
 
+    # iowiki plain FTP 배치에서는 호스팅 권한상 src/vendor/config/db/storage가
+    # docroot 내부에 놓일 수 있다. 이 경우에도 민감 파일과 내부 디렉터리는
+    # 웹에서 직접 내려주지 않는다.
+    RewriteRule ^(src|vendor|config|db|storage)(/|$) - [F,L]
+    RewriteRule ^(composer\.(json|lock)|\.env)$ - [F,L]
+
     # 정적 파일과 디렉토리는 그냥 서빙한다.
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d

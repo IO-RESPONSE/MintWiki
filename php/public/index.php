@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684, 0687, 0691).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684, 0687, 0691, 0703).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -104,7 +104,11 @@ declare(strict_types=1);
  * 이후 태스크에서 이어진다.
  */
 
-require __DIR__ . '/../vendor/autoload.php';
+$autoloadPath = __DIR__ . '/../vendor/autoload.php';
+if (!is_file($autoloadPath) && is_file(__DIR__ . '/vendor/autoload.php')) {
+    $autoloadPath = __DIR__ . '/vendor/autoload.php';
+}
+require $autoloadPath;
 
 use MintWiki\Acl\AclService;
 use MintWiki\Acl\DefaultPolicy;
@@ -112,8 +116,12 @@ use MintWiki\Acl\NamespaceAclDefaults;
 use MintWiki\Acl\PdoRepository as AclPdoRepository;
 use MintWiki\Acl\Permission as AclPermission;
 use MintWiki\Acl\SubjectType as AclSubjectType;
+use MintWiki\Admin\FileBackupRunner;
 use MintWiki\App\AppBootstrap;
 use MintWiki\App\ConfigLoader;
+use MintWiki\App\LocalConfigLoader;
+use MintWiki\App\MaintenanceModeStateStore;
+use MintWiki\App\StoragePathConfig;
 use MintWiki\Audit\RecentAuditEventsQuery;
 use MintWiki\Document\Document;
 use MintWiki\Document\DuplicateNormalizedTitleError;
@@ -143,10 +151,12 @@ use MintWiki\Security\SessionUserResolver;
 use MintWiki\Ui\AdminDashboardPage;
 use MintWiki\Ui\AdminReportListPage;
 use MintWiki\Ui\AuditViewerPage;
+use MintWiki\Ui\BackupPage;
 use MintWiki\Ui\BlockUserFormPage;
 use MintWiki\Ui\DocumentEditorPage;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\ErrorPage;
+use MintWiki\Ui\FilePermissionDiagnosticsPage;
 use MintWiki\Ui\FrontPage;
 use MintWiki\Ui\InstallAdminAccountFormPage;
 use MintWiki\Ui\InstallDBFormPage;
@@ -155,9 +165,13 @@ use MintWiki\Ui\InstallSchemaApplyPage;
 use MintWiki\Ui\InstallWelcomePage;
 use MintWiki\Ui\Layout;
 use MintWiki\Ui\LoginPage;
+use MintWiki\Ui\MaintenanceModePage;
 use MintWiki\Ui\Navigation;
 use MintWiki\Ui\NavigationBar;
+use MintWiki\Ui\NavigationItem;
+use MintWiki\Ui\OperationalDiagnosticsPage;
 use MintWiki\Ui\PermissionDeniedPage;
+use MintWiki\Ui\RestorePage;
 use MintWiki\User\AccountRepository;
 use MintWiki\User\BlockUserHandler;
 
@@ -199,20 +213,52 @@ function mintwiki_resolve_acl_subject(?AccountRepository $accountRepository, Php
 
 /**
  * 현재 요청 경로/로그인 상태를 반영한 상단 네비게이션 바를 헤더에 포함한
- * Layout을 만든다 (태스크 0691). 메뉴 항목(Navigation)은 아직 비어있다 —
- * 실제 메뉴 구성은 이후 태스크(0692+)에서 채운다. NavigationBar는
- * $accountRepository가 없거나(DB 미설정/오류) 세션에 로그인 사용자가 없으면
- * 자동으로 로그아웃 상태로 렌더링한다.
+ * Layout을 만든다 (태스크 0691). 0703에서 배포 화면의 새 문서 작성 진입점으로
+ * "글쓰기" 링크를 기본 메뉴에 추가했다. NavigationBar는 $accountRepository가
+ * 없거나(DB 미설정/오류) 세션에 로그인 사용자가 없으면 자동으로 로그아웃 상태로
+ * 렌더링한다.
  */
-function mintwiki_build_layout(string $requestPath, ?AccountRepository $accountRepository, PhpSessionAdapter $sessionAdapter): Layout
+function mintwiki_build_layout(
+    string $requestPath,
+    ?AccountRepository $accountRepository,
+    PhpSessionAdapter $sessionAdapter,
+    ?AclService $aclService = null
+): Layout
 {
     $currentUser = $accountRepository !== null
         ? (new SessionUserResolver($sessionAdapter, $accountRepository))->resolve()
         : null;
 
-    $headerContent = (new NavigationBar())->render(new Navigation(), $requestPath, [], $currentUser);
+    $navigationItems = [
+        new NavigationItem('/write', '글쓰기', '/write'),
+    ];
+    if ($currentUser !== null && $aclService !== null) {
+        $adminDecision = $aclService->check(AclPermission::Admin, AclSubjectType::User, $currentUser->id());
+        if ($adminDecision->isAllowed()) {
+            $navigationItems[] = new NavigationItem('/admin', '관리', '/admin');
+        }
+    }
+
+    $navigation = new Navigation($navigationItems);
+    $headerContent = (new NavigationBar())->render($navigation, $requestPath, [], $currentUser);
 
     return new Layout(null, $headerContent);
+}
+
+function mintwiki_authorize_admin_route(
+    ?AccountRepository $accountRepository,
+    PhpSessionAdapter $sessionAdapter,
+    AclService $aclService,
+    Layout $layout
+): ?Response {
+    if ($accountRepository === null) {
+        return new Response(302, ['Location' => '/login']);
+    }
+
+    $sessionUserResolver = new SessionUserResolver($sessionAdapter, $accountRepository);
+    $adminAccessGate = new AdminAccessGate($aclService, $sessionUserResolver, $layout);
+
+    return $adminAccessGate->authorize();
 }
 
 /**
@@ -262,6 +308,42 @@ if ($bootstrap->connectionConfig() !== null) {
 $accountRepository = $pdo !== null ? new AccountRepository($pdo) : null;
 $sessionAdapter = new PhpSessionAdapter();
 
+// ACL (태스크 0687). 문서별 규칙(acl_rule)이 있으면 AclService가 그것만
+// 쓰고, 없으면 네임스페이스 기본 규칙(acl_namespace_rule)으로 대체한다.
+// 0702에서 상단바의 관리자 전용 "관리" 링크도 이 서비스로 판정하므로
+// route 등록보다 먼저 구성한다.
+$aclRuleRepository = $pdo !== null ? new AclPdoRepository($pdo) : null;
+$namespaceAclDefaults = new NamespaceAclDefaults();
+$namespaceAclDefaults->register(NamespaceAclDefaults::DEFAULT_NAMESPACE, DefaultPolicy::defaultRules());
+if ($aclRuleRepository !== null) {
+    try {
+        $dbNamespaceRules = $aclRuleRepository->namespaceRules(NamespaceAclDefaults::DEFAULT_NAMESPACE);
+        if ($dbNamespaceRules !== []) {
+            $namespaceAclDefaults->register(
+                NamespaceAclDefaults::DEFAULT_NAMESPACE,
+                array_merge($dbNamespaceRules, DefaultPolicy::defaultRules())
+            );
+        }
+    } catch (\Throwable $exception) {
+        // schema 미적용 상태 — DefaultPolicy로 계속 진행한다.
+    }
+}
+$aclService = new AclService($namespaceAclDefaults);
+
+$maintenanceModeStateStore = MaintenanceModeStateStore::atDefaultPath();
+if (
+    $maintenanceModeStateStore->isEnabled()
+    && !$isApiRequest
+    && $requestPath !== '/login'
+    && $requestPath !== '/health'
+    && !str_starts_with($requestPath, '/admin')
+) {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    mintwiki_send_response(Response::html((new MaintenanceModePage(null, $layout))->render(), 503));
+
+    return;
+}
+
 // 설치 게이트 (태스크 0676). DB가 연결된 경우에만 적용한다 — 미설정/오류
 // 상태에서는 게이트를 건너뛰어 위 0674 계약을 지킨다.
 if ($pdo !== null) {
@@ -284,8 +366,8 @@ $router = new Router();
 // 오류 상태(schema 미적용 포함)에서는 빈 목록으로 대체해 FrontPage가
 // 안전하게 빈 상태 안내를 보여주게 한다 — 0674 계약(GET /가 죽지 않음)과
 // 동일한 판단이다.
-$router->register('GET', '/', static function () use ($accountRepository, $sessionAdapter, $pdo): Response {
-    $layout = mintwiki_build_layout('/', $accountRepository, $sessionAdapter);
+$router->register('GET', '/', static function () use ($accountRepository, $sessionAdapter, $pdo, $aclService): Response {
+    $layout = mintwiki_build_layout('/', $accountRepository, $sessionAdapter, $aclService);
     $frontPage = new FrontPage(null, $layout);
 
     $recentDocuments = [];
@@ -408,36 +490,15 @@ $documentRepository = $pdo !== null ? new PdoRepository($pdo) : null;
 $revisionRepository = $pdo !== null ? new RevisionPdoRepository($pdo) : null;
 DocumentApiRoutes::register($router, $documentRepository);
 
+$configLoader = new ConfigLoader((new LocalConfigLoader())->load());
+$storagePathConfig = new StoragePathConfig($configLoader);
+$backupRunner = new FileBackupRunner($storagePathConfig->rootPath() . '/backups');
+
 // GET/POST /login, GET/POST /logout (태스크 0686). $accountRepository/
 // $sessionAdapter는 위에서(태스크 0691) 앞당겨 정의했다 — 로그인 상태
 // 확인/자격 증명 대조에 그대로 쓴다.
 
-// ACL (태스크 0687). 문서별 규칙(acl_rule)이 있으면 AclService가 그것만
-// 쓰고, 없으면 네임스페이스 기본 규칙(acl_namespace_rule)으로 대체한다.
-// DEFAULT_NAMESPACE("*")에 DB 규칙이 아직 없으면(신규 설치, seed 데이터
-// 없음) `DefaultPolicy`(공개 읽기 허용/익명 편집 거부/로그인 사용자 편집
-// 허용)로 대체해 문서가 계속 정상 동작하게 한다.
-// 0688 라이브 smoke test에서 발견: DB는 연결됐지만 아직 schema가 적용되지
-// 않은 상태(설치 마법사가 `/install/database`까지만 끝낸 상태)에서는
-// `acl_namespace_rule` 테이블이 없어 이 조회가 예외를 던진다 — try/catch
-// 없이는 `/install/schema`, `/install/admin` 등 나머지 모든 route가 이
-// 코드에서 502/500으로 죽어 설치 마법사 자체를 끝까지 진행할 수 없었다.
-$aclRuleRepository = $pdo !== null ? new AclPdoRepository($pdo) : null;
-$namespaceAclDefaults = new NamespaceAclDefaults();
-$namespaceAclDefaults->register(NamespaceAclDefaults::DEFAULT_NAMESPACE, DefaultPolicy::defaultRules());
-if ($aclRuleRepository !== null) {
-    try {
-        $dbNamespaceRules = $aclRuleRepository->namespaceRules(NamespaceAclDefaults::DEFAULT_NAMESPACE);
-        if ($dbNamespaceRules !== []) {
-            $namespaceAclDefaults->register(NamespaceAclDefaults::DEFAULT_NAMESPACE, $dbNamespaceRules);
-        }
-    } catch (\Throwable $exception) {
-        // schema 미적용 상태 — DefaultPolicy로 계속 진행한다.
-    }
-}
-$aclService = new AclService($namespaceAclDefaults);
-
-$router->register('GET', '/login', static function () use ($accountRepository, $sessionAdapter): Response {
+$router->register('GET', '/login', static function () use ($accountRepository, $sessionAdapter, $aclService): Response {
     if ($accountRepository !== null) {
         $currentUser = (new SessionUserResolver($sessionAdapter, $accountRepository))->resolve();
         if ($currentUser !== null) {
@@ -445,7 +506,7 @@ $router->register('GET', '/login', static function () use ($accountRepository, $
         }
     }
 
-    $layout = mintwiki_build_layout('/login', $accountRepository, $sessionAdapter);
+    $layout = mintwiki_build_layout('/login', $accountRepository, $sessionAdapter, $aclService);
     $loginPage = new LoginPage(null, $layout);
 
     return Response::html($loginPage->render());
@@ -464,6 +525,23 @@ $logoutRouteHandler = static function (): Response {
 };
 $router->register('GET', '/logout', $logoutRouteHandler);
 $router->register('POST', '/logout', $logoutRouteHandler);
+
+// GET /write — 새 문서 작성 진입점 (태스크 0703). 실제 저장은 0685에서
+// 검증된 `/wiki/{title}/edit` POST 흐름을 재사용한다. 제목을 아직 모르는
+// 상태이므로 sentinel title로 form action만 만들고, POST 핸들러가 사용자가
+// 입력한 title/source를 기준으로 새 문서를 생성한다. 익명 사용자는 기존 edit
+// ACL 경로에서 `/login`으로 유도된다.
+$router->register('GET', '/write', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $documentEditorPage = new DocumentEditorPage(null, $layout);
+
+    return Response::html($documentEditorPage->render('__new__', '', '', true));
+});
 
 // GET /wiki/{title} — 문서 보기 (태스크 0684, 리비전 source 연결은 0685,
 // ACL 적용은 0687, 나무위키식 헤더/액션 탭은 0692). 동적 라우터(0675)로
@@ -487,7 +565,7 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use (
     $sessionAdapter,
     $requestPath
 ): Response {
-    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
     $documentViewPage = new DocumentViewPage(null, $layout);
     $requestedTitle = rawurldecode($params['title'] ?? '');
 
@@ -552,7 +630,7 @@ $router->register('GET', '/wiki/{title}/edit', static function (array $params) u
     $sessionAdapter,
     $requestPath
 ): Response {
-    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
     $documentEditorPage = new DocumentEditorPage(null, $layout);
     $requestedTitle = rawurldecode($params['title'] ?? '');
 
@@ -603,7 +681,7 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
     $sessionAdapter,
     $requestPath
 ): Response {
-    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
     $documentEditorPage = new DocumentEditorPage(null, $layout);
     $csrfTokenService = new CsrfTokenService();
     $requestedTitle = rawurldecode($params['title'] ?? '');
@@ -722,7 +800,7 @@ $router->register('GET', '/admin', static function () use (
     $aclService,
     $requestPath
 ): Response {
-    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
 
     if ($accountRepository === null) {
         return new Response(302, ['Location' => '/login']);
@@ -755,7 +833,7 @@ $router->register('GET', '/admin/audit', static function () use (
     $pdo,
     $requestPath
 ): Response {
-    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
 
     if ($accountRepository === null) {
         return new Response(302, ['Location' => '/login']);
@@ -793,7 +871,7 @@ $router->register('GET', '/admin/reports', static function () use (
     $aclService,
     $requestPath
 ): Response {
-    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
 
     if ($accountRepository === null) {
         return new Response(302, ['Location' => '/login']);
@@ -820,7 +898,7 @@ $router->register('GET', '/admin/users/block', static function () use (
     $aclService,
     $requestPath
 ): Response {
-    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
 
     if ($accountRepository === null) {
         return new Response(302, ['Location' => '/login']);
@@ -849,7 +927,7 @@ $router->register('POST', '/admin/users/block', static function () use (
     $aclService,
     $requestPath
 ): Response {
-    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
 
     if ($accountRepository === null) {
         return new Response(302, ['Location' => '/login']);
@@ -867,6 +945,192 @@ $router->register('POST', '/admin/users/block', static function () use (
     $blockUserHandler = new BlockUserHandler($accountRepository, new CsrfTokenService(), $blockUserFormPage);
 
     return $blockUserHandler->handle($_POST);
+});
+
+// GET/POST /admin/maintenance — 유지보수 모드 관리 (태스크 0700).
+$router->register('GET', '/admin/maintenance', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $maintenanceModeStateStore,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $gateResponse = mintwiki_authorize_admin_route($accountRepository, $sessionAdapter, $aclService, $layout);
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $page = new MaintenanceModePage(null, $layout);
+
+    return Response::html($page->renderAdmin($maintenanceModeStateStore->isEnabled()));
+});
+
+$router->register('POST', '/admin/maintenance', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $maintenanceModeStateStore,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $gateResponse = mintwiki_authorize_admin_route($accountRepository, $sessionAdapter, $aclService, $layout);
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $page = new MaintenanceModePage(null, $layout);
+    $csrfToken = is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '';
+    if (!(new CsrfTokenService())->validate($csrfToken)) {
+        return Response::html($page->renderAdmin($maintenanceModeStateStore->isEnabled(), [
+            '_form' => '유효하지 않은 요청입니다. 다시 시도하세요.',
+        ]), 403);
+    }
+
+    try {
+        $maintenanceModeStateStore->setEnabled(($_POST['enabled'] ?? null) === '1');
+    } catch (\RuntimeException $exception) {
+        return Response::html($page->renderAdmin($maintenanceModeStateStore->isEnabled(), [
+            '_form' => $exception->getMessage(),
+        ]), 500);
+    }
+
+    return new Response(302, ['Location' => '/admin/maintenance']);
+});
+
+// GET/POST /admin/backup — 백업 생성/목록 (태스크 0701).
+$router->register('GET', '/admin/backup', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $backupRunner,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $gateResponse = mintwiki_authorize_admin_route($accountRepository, $sessionAdapter, $aclService, $layout);
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $page = new BackupPage(null, $layout);
+
+    return Response::html($page->render($backupRunner->listBackups()));
+});
+
+$router->register('POST', '/admin/backup', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $backupRunner,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $gateResponse = mintwiki_authorize_admin_route($accountRepository, $sessionAdapter, $aclService, $layout);
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $page = new BackupPage(null, $layout);
+    $csrfToken = is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '';
+    if (!(new CsrfTokenService())->validate($csrfToken)) {
+        return Response::html($page->render($backupRunner->listBackups(), null, [
+            '_form' => '유효하지 않은 요청입니다. 다시 시도하세요.',
+        ]), 403);
+    }
+
+    try {
+        $backupName = $backupRunner->createBackup();
+    } catch (\RuntimeException $exception) {
+        return Response::html($page->render($backupRunner->listBackups(), null, [
+            '_form' => $exception->getMessage(),
+        ]), 500);
+    }
+
+    return Response::html($page->render($backupRunner->listBackups(), '백업을 생성했습니다: ' . $backupName));
+});
+
+// GET/POST /admin/restore — 복원 파일 접수 (태스크 0701).
+$router->register('GET', '/admin/restore', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $gateResponse = mintwiki_authorize_admin_route($accountRepository, $sessionAdapter, $aclService, $layout);
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    return Response::html((new RestorePage(null, $layout))->render());
+});
+
+$router->register('POST', '/admin/restore', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $backupRunner,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $gateResponse = mintwiki_authorize_admin_route($accountRepository, $sessionAdapter, $aclService, $layout);
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $page = new RestorePage(null, $layout);
+    $csrfToken = is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '';
+    if (!(new CsrfTokenService())->validate($csrfToken)) {
+        return Response::html($page->render([
+            '_form' => '유효하지 않은 요청입니다. 다시 시도하세요.',
+        ]), 403);
+    }
+    if (($_POST['confirm_restore'] ?? null) !== '1') {
+        return Response::html($page->render([
+            'confirm_restore' => '복원을 실행하려면 위험 작업 확인에 동의해야 합니다.',
+        ]), 422);
+    }
+
+    try {
+        $backupRunner->restoreBackup(is_array($_FILES['backup_file'] ?? null) ? $_FILES['backup_file'] : []);
+    } catch (\RuntimeException $exception) {
+        return Response::html($page->render([
+            'backup_file' => $exception->getMessage(),
+        ]), 422);
+    }
+
+    return new Response(302, ['Location' => '/admin/backup']);
+});
+
+// GET /admin/diagnostics, /admin/diagnostics/files — 운영 진단 (태스크 0702).
+$router->register('GET', '/admin/diagnostics', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $gateResponse = mintwiki_authorize_admin_route($accountRepository, $sessionAdapter, $aclService, $layout);
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    return Response::html((new OperationalDiagnosticsPage(null, $layout))->render());
+});
+
+$router->register('GET', '/admin/diagnostics/files', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $gateResponse = mintwiki_authorize_admin_route($accountRepository, $sessionAdapter, $aclService, $layout);
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    return Response::html((new FilePermissionDiagnosticsPage(null, $layout))->render());
 });
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)
@@ -899,7 +1163,7 @@ if ($isApiRequest) {
         'path' => $requestPath,
     ], 404);
 } else {
-    $errorPage = new ErrorPage(null, mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter));
+    $errorPage = new ErrorPage(null, mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService));
     $html = $errorPage->renderNotFound($requestPath);
     $response = Response::html($html, 404);
 }
