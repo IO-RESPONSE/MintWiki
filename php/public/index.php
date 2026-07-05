@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684, 0687, 0691, 0703, 0706).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684, 0687, 0691, 0703, 0706, 0708).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -104,7 +104,15 @@ declare(strict_types=1);
  * `PlainTextDocumentRenderer`(기본값)에서 `MintWiki\Render\NamuMarkDocumentRenderer`로
  * 교체했다 — 0704/0705 인라인/블록 파서를 실제로 호출해 저장된 위키 문법
  * ('''굵게'''/[[링크]]/표/제목 등)을 HTML(+ 제목 2개 이상이면 목차)로
- * 렌더링한다. 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는
+ * 렌더링한다. 0708에서 `POST /wiki/{title}/preview`를 등록했다 — 편집 폼과
+ * 같은 title/source/summary/csrf_token을 받아 저장 없이 위 `$documentRenderer`
+ * (0706과 공유하는 같은 `NamuMarkDocumentRenderer` 인스턴스)로 렌더링한
+ * 결과를 `DocumentEditorPage`의 미리보기 영역에 채운 편집 화면으로 돌려준다.
+ * ACL(익명 정책 포함)/CSRF 검증은 `POST /wiki/{title}/edit`과 동일한 로직을
+ * 그대로 따른다. JS 없이도 "미리보기" 버튼의 `formaction`으로 이 route에
+ * 도달해 페이지 전체가 다시 그려지고(원문 유지), `assets/js/edit-preview.js`가
+ * 있으면 fetch로 그 이동을 가로채 미리보기 영역만 갱신한다(CSRF 토큰도 응답의
+ * 새 값으로 교체). 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는
  * 이후 태스크에서 이어진다.
  */
 
@@ -509,6 +517,11 @@ $documentRepository = $pdo !== null ? new PdoRepository($pdo) : null;
 $revisionRepository = $pdo !== null ? new RevisionPdoRepository($pdo) : null;
 DocumentApiRoutes::register($router, $documentRepository);
 
+// 문서 view(GET /wiki/{title})와 편집 미리보기(POST /wiki/{title}/preview,
+// 태스크 0708)가 같은 렌더러 인스턴스를 공유한다 — 두 화면의 렌더링
+// 결과가 갈라지지 않는다는 것을 보장한다.
+$documentRenderer = new NamuMarkDocumentRenderer();
+
 $configLoader = new ConfigLoader((new LocalConfigLoader())->load());
 $storagePathConfig = new StoragePathConfig($configLoader);
 $backupRunner = new FileBackupRunner($storagePathConfig->rootPath() . '/backups');
@@ -582,10 +595,11 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use (
     $aclService,
     $accountRepository,
     $sessionAdapter,
-    $requestPath
+    $requestPath,
+    $documentRenderer
 ): Response {
     $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
-    $documentViewPage = new DocumentViewPage(null, $layout, new NamuMarkDocumentRenderer());
+    $documentViewPage = new DocumentViewPage(null, $layout, $documentRenderer);
     $requestedTitle = rawurldecode($params['title'] ?? '');
 
     if ($documentRepository === null) {
@@ -812,6 +826,85 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
     }
 
     return new Response(302, ['Location' => '/wiki/' . rawurlencode($document->title())]);
+});
+
+// POST /wiki/{title}/preview — 편집 화면 저장 전 미리보기 (태스크 0708).
+// title/source/summary/csrf_token은 편집 폼과 동일하게 받되 아무것도
+// 저장하지 않는다. ACL 검사(익명 정책 포함)와 CSRF 검증은 위 POST
+// /wiki/{title}/edit와 동일한 로직을 그대로 따른다 — DB 미설정
+// (documentRepository === null) 상태에서는 편집 GET과 마찬가지로 ACL 검사
+// 자체를 건너뛴다(저장할 대상이 없으므로). 통과하면 위에서 만든
+// $documentRenderer(0706 NamuMarkDocumentRenderer, GET /wiki/{title} 뷰와
+// 공유)로 source를 렌더링해 DocumentEditorPage의 미리보기 영역에 채운 편집
+// 화면을 그대로 돌려준다 — 입력했던 title/source/summary는 그대로
+// 유지되고(원문 유지), CSRF 토큰은 새로 발급되어(0540 CsrfTokenService는
+// 검증한 토큰을 소모한다) 이어지는 미리보기/저장 제출에 계속 쓸 수 있다.
+$router->register('POST', '/wiki/{title}/preview', static function (array $params) use (
+    $documentRepository,
+    $aclRuleRepository,
+    $aclService,
+    $accountRepository,
+    $sessionAdapter,
+    $requestPath,
+    $documentRenderer
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $documentEditorPage = new DocumentEditorPage(null, $layout);
+    $csrfTokenService = new CsrfTokenService();
+    $requestedTitle = rawurldecode($params['title'] ?? '');
+
+    $titleInput = is_string($_POST['title'] ?? null) ? $_POST['title'] : '';
+    $sourceInput = is_string($_POST['source'] ?? null) ? $_POST['source'] : '';
+    $summaryInput = is_string($_POST['summary'] ?? null) ? $_POST['summary'] : '';
+    $csrfToken = is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '';
+
+    $isNew = true;
+    if ($documentRepository !== null) {
+        $documentService = new DocumentService($documentRepository);
+
+        try {
+            $existingDocument = $documentService->getByTitle($requestedTitle);
+        } catch (EmptyTitleError) {
+            $existingDocument = null;
+        }
+        $isNew = $existingDocument === null;
+
+        $documentAcl = $existingDocument !== null ? $aclRuleRepository?->documentAcl($existingDocument->id()) : null;
+        [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+        $decision = $aclService->check(AclPermission::Edit, $subjectType, $subjectId, $documentAcl);
+
+        if ($decision->isDenied()) {
+            if ($subjectType === AclSubjectType::Anonymous) {
+                return new Response(302, ['Location' => '/login']);
+            }
+
+            $permissionDeniedPage = new PermissionDeniedPage(null, $layout);
+
+            return Response::html($permissionDeniedPage->render($decision), 403);
+        }
+    }
+
+    if (!$csrfTokenService->validate($csrfToken)) {
+        return Response::html(
+            $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, [
+                '_form' => '유효하지 않은 요청입니다. 다시 시도하세요.',
+            ], $summaryInput),
+            403
+        );
+    }
+
+    $previewHtml = '<p>미리볼 내용이 없습니다.</p>';
+    if (trim($sourceInput) !== '') {
+        try {
+            $previewHtml = $documentRenderer->render($sourceInput)->html();
+        } catch (\Throwable) {
+            $previewHtml = '<p>미리보기 렌더링에 실패했습니다.</p>';
+        }
+    }
+
+    return Response::html(
+        $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, [], $summaryInput, $previewHtml)
+    );
 });
 
 // GET /admin — 관리자 콘솔 진입점 (태스크 0697). 0696 AdminAccessGate로
