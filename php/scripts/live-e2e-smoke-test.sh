@@ -27,10 +27,14 @@ Usage: php/scripts/live-e2e-smoke-test.sh --base-url URL [options]
 라이브 배포본에 대해 아래 순서로 실제 HTTP 요청을 보내고 결과를 기록한다:
   1. GET /health 로 배포 상태를 확인한다(전제 조건).
   2. 익명 사용자로 공개 홈페이지 읽기를 확인한다.
+  2.5. 스킨(Phase H, 0689-0694) 통합 확인: 홈 HTML의 상단바 마크업,
+     design-tokens.css의 브랜드색(#008485), sidebar.css의 반응형
+     @media 규칙이 실제로 배포되어 있는지 확인한다(자격 증명 불필요).
   3. GET /install 로 설치 마법사 접속 상태(설치 필요/이미 완료)를 확인한다.
   4. 기존 관리자 계정(SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD)으로 로그인한다.
   5. 관리자 세션으로 테스트 문서를 생성한다(GET/POST /wiki/{title}/edit).
-  6. 생성한 문서를 조회한다(GET /wiki/{title}).
+  6. 생성한 문서를 조회한다(GET /wiki/{title}). 조회에 성공하면 문서
+     액션 탭(document-tabs, 태스크 0692) 마크업도 함께 확인한다.
   7. 관리자 세션으로 테스트 문서를 편집한다(GET/POST /wiki/{title}/edit).
   8. 익명 사용자로 같은 문서를 읽을 수 있는지 확인한다(권한 확인: 읽기 허용).
   9. 익명 사용자가 같은 문서 편집을 시도하면 거부되는지 확인한다(권한 확인:
@@ -209,6 +213,48 @@ case "${LAST_STATUS}" in
   *) record fail anonymous_read_home GET "${BASE_URL}/" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 2xx" ;;
 esac
 
+# 1.5 스킨(Phase H, 0689-0691) 통합 확인: 홈 HTML에 상단바 마크업이 있고,
+#     design-tokens.css asset에 브랜드색(#008485) 토큰이 실제로 배포되어
+#     있는지 확인한다. 자격 증명이 필요 없는 공개 확인이므로 /health
+#     전제 조건에만 의존한다.
+if [ "${APP_REACHABLE}" -ne 1 ]; then
+  record blocked skin_top_bar_and_brand_check GET "${BASE_URL}/" "n/a" "" "skipped: /health precondition failed"
+else
+  if [ "${LAST_STATUS}" = "200" ] && grep -q 'class="site-nav"' "${LAST_BODY_FILE}" 2>/dev/null; then
+    http_get "${BASE_URL}/assets/css/design-tokens.css" "${ANON_JAR}"
+    case "${LAST_STATUS}" in
+      200)
+        if grep -q '#008485' "${LAST_BODY_FILE}" 2>/dev/null; then
+          record pass skin_top_bar_and_brand_check GET "${BASE_URL}/assets/css/design-tokens.css" "${LAST_STATUS}" "${LAST_REDIRECT}" "home page has top bar markup and brand color #008485 is deployed"
+        else
+          record fail skin_top_bar_and_brand_check GET "${BASE_URL}/assets/css/design-tokens.css" "${LAST_STATUS}" "${LAST_REDIRECT}" "design-tokens.css missing #008485 brand color"
+        fi
+        ;;
+      *) record fail skin_top_bar_and_brand_check GET "${BASE_URL}/assets/css/design-tokens.css" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 200 for design-tokens.css asset" ;;
+    esac
+  else
+    record fail skin_top_bar_and_brand_check GET "${BASE_URL}/" "${LAST_STATUS}" "${LAST_REDIRECT}" "home page missing top nav bar (class=\"site-nav\") markup"
+  fi
+fi
+
+# 1.6 스킨(태스크 0694) 통합 확인: sidebar.css asset이 좁은 화면을 위한
+#     @media 반응형 규칙을 포함한 채로 배포되어 있는지 확인한다.
+if [ "${APP_REACHABLE}" -ne 1 ]; then
+  record blocked skin_responsive_asset_check GET "${BASE_URL}/assets/css/sidebar.css" "n/a" "" "skipped: /health precondition failed"
+else
+  http_get "${BASE_URL}/assets/css/sidebar.css" "${ANON_JAR}"
+  case "${LAST_STATUS}" in
+    200)
+      if grep -q '@media (max-width:' "${LAST_BODY_FILE}" 2>/dev/null; then
+        record pass skin_responsive_asset_check GET "${BASE_URL}/assets/css/sidebar.css" "${LAST_STATUS}" "${LAST_REDIRECT}" "sidebar.css has responsive @media rule"
+      else
+        record fail skin_responsive_asset_check GET "${BASE_URL}/assets/css/sidebar.css" "${LAST_STATUS}" "${LAST_REDIRECT}" "sidebar.css missing responsive @media rule"
+      fi
+      ;;
+    *) record fail skin_responsive_asset_check GET "${BASE_URL}/assets/css/sidebar.css" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 200 for sidebar.css asset" ;;
+  esac
+fi
+
 # 2. 설치 마법사(/install) 접속 상태 확인. 200이면 아직 설치 전, 403이면
 #    이미 설치가 끝나 InstallerRouteGate가 차단한 것 — 둘 다 정상 상태이며,
 #    이 스크립트는 실제 DB 자격 증명이 필요한 설치 절차 자체는 대신
@@ -276,12 +322,21 @@ fi
 # 5. 생성한 문서 조회 확인 (GET /wiki/{title}).
 if [ "${DOC_CREATED}" -ne 1 ]; then
   record skip admin_view_document GET "${BASE_URL}/wiki/${DOC_TITLE}" "n/a" "" "skipped: document was not created"
+  record skip skin_document_action_tabs_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "n/a" "" "skipped: no authenticated admin session/document"
 else
   http_get "${BASE_URL}/wiki/${DOC_TITLE}" "${ADMIN_JAR}"
   case "${LAST_STATUS}" in
     200) record pass admin_view_document GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "document viewable after create" ;;
     *) record fail admin_view_document GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 200" ;;
   esac
+
+  # 5.1 스킨(태스크 0692) 통합 확인: 문서 view 응답에 문서 액션 탭
+  #     (document-tabs) 마크업이 실제로 배포되어 있는지 확인한다.
+  if [ "${LAST_STATUS}" = "200" ] && grep -q 'class="document-tabs"' "${LAST_BODY_FILE}" 2>/dev/null; then
+    record pass skin_document_action_tabs_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "document page has action tabs (document-tabs) markup"
+  else
+    record fail skin_document_action_tabs_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "document page missing action tabs (class=\"document-tabs\") markup"
+  fi
 fi
 
 # 6. 관리자 세션에서 테스트 문서 편집 (GET/POST /wiki/{title}/edit).

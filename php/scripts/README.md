@@ -45,6 +45,12 @@ Skeleton, 0391-0440 의 0430 산출물이다
   파일과 로컬 임시 파일을 모두 삭제하는 스크립트(trap 기반 cleanup).
   PHP 버전, 확장, loaded config, document root, rewrite 환경 확인 후
   진단 파일이 남는 사고를 막는다.
+- `smoke-ui-skin.sh` — 스킨(Phase H, 0689-0694) 통합 연기 테스트
+  (`tests/Http/UiSkinSmokeTest.php`). GET `/`, GET `/wiki/{title}` route
+  응답에 상단바(`site-nav`)/문서 액션 탭(`document-tabs`) 마크업이
+  있는지, 배포되는 `design-tokens.css`/`sidebar.css`가 브랜드색
+  (`#008485`)/반응형 `@media` 규칙을 담고 있는지 DB·자격 증명 없이
+  확인한다(태스크 0695).
 - `live-http-smoke-test.sh` — 배포된 공개 URL에 대해 실제 `curl` 요청으로
   루트 응답(2xx)과 `config/`, `vendor/`, `storage/`, `db/`,
   `composer.json`, `composer.lock`, `.env` 같은 민감 경로 차단(403/404)을
@@ -55,7 +61,8 @@ Skeleton, 0391-0440 의 0430 산출물이다
   (`/wiki/{title}`, `/wiki/{title}/edit`) → 권한 확인(익명 사용자의 읽기
   허용/쓰기 거부)까지 실사용 흐름을 curl로 수행하는 API/폼 E2E smoke
   test(태스크 0672, 0673-0687에서 실제로 연결된 route에 맞춰 0688에서
-  갱신). `--base-url`이 필수이며, 기존 관리자 계정은
+  갱신, 0695에서 스킨(상단바/브랜드색/문서 액션 탭/반응형) 확인 시나리오
+  추가). `--base-url`이 필수이며, 기존 관리자 계정은
   `SMOKE_ADMIN_USER`/`SMOKE_ADMIN_PASSWORD` 환경변수로 전달한다 — 이
   환경변수가 없으면 로그인이 필요한 모든 단계를 실패 없이 안전하게
   skip한다(설치 마법사로 최초 관리자 계정을 만드는 것은 자격 증명을 가진

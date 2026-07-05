@@ -98,16 +98,41 @@ def test_live_e2e_smoke_test_script_covers_all_acceptance_scenarios():
     required_scenarios = [
         "health_check",
         "anonymous_read_home",
+        "skin_top_bar_and_brand_check",
+        "skin_responsive_asset_check",
         "install_wizard_reachability",
         "admin_login",
         "admin_create_document",
         "admin_view_document",
+        "skin_document_action_tabs_check",
         "admin_edit_document",
         "anonymous_read_document_check",
         "anonymous_edit_denied_check",
     ]
     for scenario in required_scenarios:
         assert scenario in content, f"missing scenario: {scenario}"
+
+
+def test_live_e2e_smoke_test_script_checks_skin_markup_and_brand_color():
+    """0695 acceptance criteria: 홈 HTML에 상단바 마크업과
+    --color-brand/#008485 참조가 실제로 배포되어 있는지 확인해야 한다."""
+    content = SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert 'class="site-nav"' in content
+    assert "#008485" in content
+    assert "design-tokens.css" in content
+    assert "document-tabs" in content
+    assert "@media (max-width:" in content
+
+
+def test_live_e2e_smoke_test_script_skin_checks_skip_safely_without_precondition():
+    """스킨 확인도 다른 시나리오와 동일하게 /health 전제 조건이나 관리자
+    세션이 없으면 fail이 아니라 blocked/skip으로 안전하게 끝나야 한다."""
+    content = SCRIPT_PATH.read_text(encoding="utf-8")
+
+    assert 'record blocked skin_top_bar_and_brand_check' in content
+    assert 'record blocked skin_responsive_asset_check' in content
+    assert 'record skip skin_document_action_tabs_check' in content
 
 
 def test_live_e2e_smoke_test_script_targets_actually_wired_routes():

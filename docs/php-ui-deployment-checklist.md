@@ -546,7 +546,81 @@ deploy:
 - [ ] CDN/프록시를 거친다면, cache hit ratio 모니터링.
       정상이면 asset의 cache hit rate가 90% 이상.
 
-## 9. 이 체크리스트가 다루지 않는 것
+## 9. 스킨(Skin) 확인 (Phase H: NamuWiki-style Skin, 0689-0694)
+
+나무위키풍 스킨(상단바, 브랜드 색, 문서 액션 탭, 사이드바/반응형)이 배포
+산출물에 빠짐없이 포함되고, 실제로 렌더링되는지 확인한다.
+해당 태스크: 0689(design tokens/브랜드 색), 0690(상단 네비게이션 바),
+0691(header/footer 통합), 0692(문서 헤더/액션 탭), 0693(대문 개편),
+0694(사이드바/반응형), 0695(통합 QA/배포 패키지 갱신).
+
+### 9.1 스킨 자산 배포 확인
+
+- [ ] `php/public/assets/css/`의 스킨 CSS 파일(`design-tokens.css`,
+      `navigation.css`, `layout.css`, `sidebar.css`, `document-header.css`,
+      `front-page.css`, `buttons.css`, `print.css`, `responsive-table.css`)이
+      모두 배포 패키지에 포함되었다. `php/deployment-package-manifest.json`의
+      `php/public/**` include 패턴이 이 파일들을 포함하는지 확인:
+      ```bash
+      find php/public/assets/css -name '*.css'
+      ```
+
+- [ ] 갱신된 `php/src/Ui/**` 컴포넌트(`NavigationBar`, `Navigation`,
+      `NavigationItem`, `Sidebar`, `DocumentHeader`, `DocumentActionTabs`,
+      `FrontPage` 등)도 배포 패키지의 `php/src/**` include 패턴에 포함되었다.
+
+**자동화**: `tests/test_php_deployment_package_manifest.py`의
+`test_php_deployment_package_manifest_covers_skin_assets`가 현재 디스크의
+스킨 CSS/Ui 파일 목록이 manifest include 패턴에 실제로 걸리는지 회귀
+검사한다.
+
+### 9.2 상단바 노출 확인
+
+- [ ] 브라우저에서 홈(`/`)과 문서(`/wiki/{title}`) 페이지 모두 header에
+      상단 네비게이션 바(`<nav class="site-nav">`, 브랜드 로고, 검색
+      입력)가 노출된다.
+
+**자동화**: `php/scripts/smoke-ui-skin.sh`(`UiSkinSmokeTest.php`)가 DB
+없이 GET `/`, GET `/wiki/{title}` 응답에 `site-nav` 마크업이 있는지
+확인한다. 라이브 배포본에서는 `php/scripts/live-e2e-smoke-test.sh`의
+`skin_top_bar_and_brand_check` 시나리오가 동일하게 확인한다.
+
+### 9.3 브랜드색 `#008485` 적용 확인
+
+- [ ] `design-tokens.css`의 `--color-brand`가 `#008485`로 정의되어
+      있고, 버튼/링크/네비게이션 활성 상태 등에 이 색이 실제로 적용된다
+      (DevTools에서 계산된 스타일 확인).
+
+**자동화**: `UiSkinSmokeTest.php`가 배포되는 `design-tokens.css` 파일
+내용에서 `--color-brand: #008485;`를 직접 확인한다.
+`live-e2e-smoke-test.sh`의 `skin_top_bar_and_brand_check` 시나리오가
+라이브 배포본의 `design-tokens.css` asset을 GET해 같은 값을 확인한다.
+
+### 9.4 문서 액션 탭 확인
+
+- [ ] 문서 view 페이지(`/wiki/{title}`)에 읽기/편집/역사/토론 액션 탭
+      (`<ul class="document-tabs">`)이 노출되고, 편집 탭이
+      `/wiki/{title}/edit`로 이어진다.
+
+**자동화**: `UiSkinSmokeTest.php`가 `/wiki/{title}` route 응답에
+`document-tabs` 마크업이 있는지 확인한다. 라이브 배포본에서는
+`live-e2e-smoke-test.sh`의 `skin_document_action_tabs_check` 시나리오가
+관리자 세션으로 생성한 문서를 조회해 확인한다 — 관리자 자격 증명
+(`SMOKE_ADMIN_USER`/`SMOKE_ADMIN_PASSWORD`)이 없으면 안전하게 skip한다.
+
+### 9.5 반응형(Responsive) 확인
+
+- [ ] 좁은 화면(모바일 뷰포트, 640px 이하)에서 사이드바가 접힘 토글
+      메뉴로 전환되고, 데스크톱 폭에서는 고정 폭 컬럼으로 항상 펼쳐진다
+      (`sidebar.css`의 `@media (max-width: 640px)`/`@media (min-width:
+      641px)` 규칙).
+
+**자동화**: `UiSkinSmokeTest.php`가 배포되는 `sidebar.css` 파일에
+반응형 `@media (max-width: ...)` 규칙이 있는지 확인한다.
+`live-e2e-smoke-test.sh`의 `skin_responsive_asset_check` 시나리오가
+라이브 배포본의 `sidebar.css` asset을 GET해 같은 규칙을 확인한다.
+
+## 10. 이 체크리스트가 다루지 않는 것
 
 - Database 마이그레이션이나 초기화 — DB phase checklist 참고 (0411 이후)
 - PHP 런타임 버전/확장 설정 — runtime phase checklist 참고 (0396)

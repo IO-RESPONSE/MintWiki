@@ -1,5 +1,6 @@
 """PHP 배포 패키지 manifest를 검증한다."""
 
+import fnmatch
 import json
 from pathlib import Path
 
@@ -71,6 +72,34 @@ def test_php_deployment_package_manifest_declares_vendor_option():
         "php/vendor/**",
     ]
     assert optional_include["without_vendor"] == []
+
+
+def test_php_deployment_package_manifest_covers_skin_assets():
+    """0695: Phase H 스킨(0689-0694)의 공개 CSS 자산과 갱신된 src/Ui/**가
+    배포 패키지 include 패턴(php/public/**, php/src/**)에 실제로 걸리는지
+    확인한다 — glob 패턴이 바뀌어 스킨 파일이 조용히 빠지는 회귀를 막는다."""
+    manifest = _manifest()
+    include_patterns = manifest["include"]
+
+    css_dir = REPO_ROOT / "php" / "public" / "assets" / "css"
+    css_files = sorted(css_dir.glob("*.css"))
+    assert len(css_files) > 0, "스킨 CSS 파일이 존재해야 한다."
+
+    ui_dir = REPO_ROOT / "php" / "src" / "Ui"
+    ui_files = sorted(ui_dir.glob("*.php"))
+    assert len(ui_files) > 0, "src/Ui 컴포넌트 파일이 존재해야 한다."
+
+    for css_file in css_files:
+        relative_path = css_file.relative_to(REPO_ROOT).as_posix()
+        assert any(
+            fnmatch.fnmatch(relative_path, pattern) for pattern in include_patterns
+        ), f"manifest include 패턴이 스킨 CSS 파일을 포함하지 않는다: {relative_path}"
+
+    for ui_file in ui_files:
+        relative_path = ui_file.relative_to(REPO_ROOT).as_posix()
+        assert any(
+            fnmatch.fnmatch(relative_path, pattern) for pattern in include_patterns
+        ), f"manifest include 패턴이 src/Ui 파일을 포함하지 않는다: {relative_path}"
 
 
 def test_php_deployment_package_manifest_patterns_are_reviewable():
