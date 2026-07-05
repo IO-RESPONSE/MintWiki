@@ -68,6 +68,34 @@ if (!str_contains($htmlWithNav, '로그아웃(alice)')) {
     $failures[] = 'header에 전달한 NavigationBar의 로그인 상태가 그대로 렌더링되어야 한다.';
 }
 
+// 사이드바(0694)는 별도 전달 없이도 기본으로 렌더링되어야 한다.
+if (!str_contains($html, '<div class="site-layout"><div class="site-content">')) {
+    $failures[] = 'body는 site-layout 안의 site-content wrapper 안에 포함되어야 한다(태스크 0694).';
+}
+
+if (!str_contains($html, '<aside class="site-sidebar" aria-label="도구">')) {
+    $failures[] = '기본 Layout이 사이드바(aside.site-sidebar)를 렌더링해야 한다(태스크 0694).';
+}
+
+if (!str_contains($html, 'href="/recent-changes">최근 변경</a>')) {
+    $failures[] = '사이드바에 "최근 변경" 링크가 노출되어야 한다(태스크 0694).';
+}
+
+if (!str_contains($html, '<link rel="stylesheet" href="/assets/css/sidebar.css">')) {
+    $failures[] = 'sidebar CSS를 포함해야 한다(태스크 0694).';
+}
+
+// sidebarContent를 명시적으로 전달하면 그 내용이 그대로 렌더링되어야 한다.
+$customSidebarLayout = new Layout(null, null, '<aside class="custom-sidebar">커스텀</aside>');
+$customSidebarHtml = $customSidebarLayout->render('MintWiki', '<main>본문</main>');
+if (!str_contains($customSidebarHtml, '<aside class="custom-sidebar">커스텀</aside>')) {
+    $failures[] = 'sidebarContent를 명시적으로 전달하면 그 내용이 그대로 렌더링되어야 한다(태스크 0694).';
+}
+
+if (str_contains($customSidebarHtml, 'site-sidebar')) {
+    $failures[] = 'sidebarContent를 명시적으로 전달하면 기본 Sidebar는 렌더링되면 안 된다(태스크 0694).';
+}
+
 // 다른 Layout 인스턴스(navigation 미전달)는 여전히 header가 비어있어야 한다(인스턴스 간 격리 확인).
 $plainHtmlAfterNavUsage = $layout->render('MintWiki', '<main>본문</main>');
 if (!str_contains($plainHtmlAfterNavUsage, '<header></header>')) {

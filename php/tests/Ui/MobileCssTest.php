@@ -155,6 +155,38 @@ if (!is_file($printCssPath)) {
 }
 
 // ============================================================================
+// 5-1. Sidebar CSS의 반응형 media query 확인 (태스크 0694)
+// ============================================================================
+
+$sidebarCssPath = __DIR__ . '/../../public/assets/css/sidebar.css';
+
+if (!is_file($sidebarCssPath)) {
+    $failures[] = '[sidebar-css] sidebar.css 파일이 존재해야 한다.';
+} else {
+    $sidebarCssContent = file_get_contents($sidebarCssPath);
+
+    // (5-1-1) 모바일에서 사이드바가 상단 도구 메뉴로 전환되는 media query 확인
+    if (!str_contains($sidebarCssContent, '@media (max-width: 640px)')) {
+        $failures[] = '[sidebar-css] sidebar.css에 모바일 대응 media query(@media (max-width: 640px))가 포함되어야 한다.';
+    }
+
+    // (5-1-2) 데스크톱에서 사이드바가 항상 펼쳐지는 media query 확인
+    if (!str_contains($sidebarCssContent, '@media (min-width: 641px)')) {
+        $failures[] = '[sidebar-css] sidebar.css에 데스크톱 대응 media query(@media (min-width: 641px))가 포함되어야 한다.';
+    }
+
+    // (5-1-3) 감소된 모션 설정 확인
+    if (!str_contains($sidebarCssContent, '@media (prefers-reduced-motion: reduce)')) {
+        $failures[] = '[sidebar-css] sidebar.css에 감소된 모션 설정 media query가 포함되어야 한다.';
+    }
+
+    // (5-1-4) 다크모드 설정 확인
+    if (!str_contains($sidebarCssContent, '@media (prefers-color-scheme: dark)')) {
+        $failures[] = '[sidebar-css] sidebar.css에 다크모드 설정 media query가 포함되어야 한다.';
+    }
+}
+
+// ============================================================================
 // 6. HTML에 CSS 파일 링크 확인
 // ============================================================================
 
@@ -166,6 +198,11 @@ if (!str_contains($html, '<link rel="stylesheet" href="/assets/css/design-tokens
 // (6-2) buttons.css가 링크되어 있어야 한다.
 if (!str_contains($html, '<link rel="stylesheet" href="/assets/css/buttons.css">')) {
     $failures[] = '[css-links] 레이아웃이 buttons.css를 링크해야 한다.';
+}
+
+// (6-2-1) sidebar.css가 링크되어 있어야 한다 (태스크 0694).
+if (!str_contains($html, '<link rel="stylesheet" href="/assets/css/sidebar.css">')) {
+    $failures[] = '[css-links] 레이아웃이 sidebar.css를 링크해야 한다.';
 }
 
 // (6-3) print.css가 올바른 media 속성과 함께 링크되어야 한다.

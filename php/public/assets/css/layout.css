@@ -3,11 +3,24 @@
  *
  * design-tokens.css의 --content-max-width로 본문을 중앙 정렬하고, footer의
  * 사이트 정보(이름/라이선스 안내)에 여백/구분선을 준다.
+ *
+ * 0694에서 본문 옆에 사이드바(`Sidebar`)를 추가하면서, 폭 중앙 정렬 책임을
+ * site-content에서 이를 감싸는 site-layout으로 옮겼다. site-content는 이제
+ * site-layout 안의 flex item으로 남은 폭을 채운다 — sidebar.css의
+ * `.site-sidebar`가 나머지 고정 폭을 차지한다.
  */
 
-.site-content {
+.site-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-lg);
   max-width: var(--content-max-width);
   margin: 0 auto;
+}
+
+.site-content {
+  flex: 1 1 auto;
+  min-width: 0;
   padding: var(--spacing-lg);
 }
 

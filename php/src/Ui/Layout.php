@@ -19,16 +19,23 @@ namespace MintWiki\Ui;
  * 깨지지 않아야 한다는 계약). footer의 사이트 정보(이름/라이선스 안내)는
  * header와 달리 항상 표시된다. body는 0689의 `--content-max-width` 토큰으로
  * 중앙 정렬되는 콘텐츠 wrapper로 감싼다.
+ *
+ * 0694에서 본문 옆에 사이드바/도구 영역(`Sidebar`)을 추가했다. header와
+ * 달리 사이드바는 currentPath/로그인 상태 같은 페이지별 문맥이 필요 없으므로,
+ * 호출자가 명시적으로 전달하지 않으면 기본 `Sidebar`를 항상 렌더링한다 —
+ * 페이지마다 별도로 wiring하지 않아도 스킨에 사이드바가 일관되게 나타난다.
  */
 final class Layout
 {
     private Escaper $escaper;
     private ?string $headerContent;
+    private string $sidebarContent;
 
-    public function __construct(?Escaper $escaper = null, ?string $headerContent = null)
+    public function __construct(?Escaper $escaper = null, ?string $headerContent = null, ?string $sidebarContent = null)
     {
         $this->escaper = $escaper ?? new Escaper();
         $this->headerContent = $headerContent;
+        $this->sidebarContent = $sidebarContent ?? (new Sidebar($this->escaper))->render();
     }
 
     /**
@@ -81,6 +88,7 @@ final class Layout
             . '<link rel="stylesheet" href="/assets/css/design-tokens.css">'
             . '<link rel="stylesheet" href="/assets/css/navigation.css">'
             . '<link rel="stylesheet" href="/assets/css/layout.css">'
+            . '<link rel="stylesheet" href="/assets/css/sidebar.css">'
             . '<link rel="stylesheet" href="/assets/css/document-header.css">'
             . '<link rel="stylesheet" href="/assets/css/front-page.css">'
             . '<link rel="stylesheet" href="/assets/css/buttons.css">'
@@ -88,7 +96,10 @@ final class Layout
             . '</head>'
             . '<body>'
             . $header
+            . '<div class="site-layout">'
             . '<div class="site-content">' . $body . '</div>'
+            . $this->sidebarContent
+            . '</div>'
             . $footer
             . '</body>'
             . '</html>';

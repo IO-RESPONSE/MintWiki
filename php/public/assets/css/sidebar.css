@@ -1,0 +1,102 @@
+/*
+ * 나무위키풍 사이드바/도구 영역 스타일 (태스크 0694)
+ *
+ * `Sidebar`(0694)가 렌더링하는 <details>/<summary> 토글을 데스크톱에서는
+ * 항상 펼쳐진 고정 폭 컬럼으로, 모바일 좁은 화면에서는 본문 위 접힘 토글
+ * 메뉴로 보여준다. 브랜드 토큰(0689)을 그대로 사용해 나머지 스킨과
+ * 색상/간격 일관성을 유지한다.
+ */
+
+.site-sidebar {
+  flex: 0 0 200px;
+  width: 200px;
+}
+
+.site-sidebar__summary {
+  cursor: pointer;
+  font-weight: bold;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.site-sidebar__menu {
+  list-style: none;
+  margin: var(--spacing-sm) 0 0 0;
+  padding: 0;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 4px;
+}
+
+.site-sidebar__link {
+  display: block;
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  border-bottom: 1px solid var(--color-border-secondary);
+  transition: background-color 0.15s ease;
+}
+
+.site-sidebar__menu li:last-child .site-sidebar__link {
+  border-bottom: none;
+}
+
+.site-sidebar__link:hover {
+  background-color: var(--color-bg-tertiary);
+}
+
+/*
+ * 데스크톱: 사이드바를 본문 옆 고정 폭 컬럼으로 항상 펼쳐서 보여준다.
+ * 화면 너비 641px 이상에서 활성화된다.
+ */
+@media (min-width: 641px) {
+  .site-sidebar__summary {
+    display: none;
+  }
+
+  .site-sidebar__menu {
+    display: block !important;
+  }
+}
+
+/*
+ * 모바일: 사이드바가 본문 위 상단 도구 메뉴로 전환되고, summary를 눌러
+ * 접었다 펼 수 있다(<details> 네이티브 동작이라 JS가 필요 없다).
+ * 화면 너비 640px 이하에서 활성화된다.
+ */
+@media (max-width: 640px) {
+  .site-layout {
+    flex-direction: column;
+  }
+
+  .site-sidebar {
+    order: -1;
+    width: 100%;
+    flex: 1 1 auto;
+  }
+}
+
+/*
+ * 감소된 모션 설정
+ * 프리페르 설정에 따라 링크 hover 트랜지션을 비활성화한다.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .site-sidebar__link {
+    transition: none;
+  }
+}
+
+/*
+ * 다크모드 사이드바 스타일
+ * 다크모드에서도 대비를 유지한다.
+ */
+@media (prefers-color-scheme: dark) {
+  .site-sidebar__summary,
+  .site-sidebar__menu {
+    background-color: var(--color-bg-secondary);
+    border-color: var(--color-border);
+  }
+}
