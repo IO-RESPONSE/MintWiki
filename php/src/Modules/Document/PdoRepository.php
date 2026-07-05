@@ -20,6 +20,17 @@ use PDOException;
  * normalized_title UNIQUE 제약 위반은 SQLSTATE 23 클래스(정합성 위반)로
  * 나타난다 — MariaDB/SQLite는 '23000', PostgreSQL은 '23505'를 사용하므로
  * 앞자리 '23'만 확인해 두 DB 모두에서 이식되게 한다.
+ *
+ * `delete()`(태스크 0715)는 하드 삭제를 택했다 — 휴지통/복구는 out of
+ * scope(0715 노트)라 소프트 삭제용 `deleted_at` 컬럼과 그 컬럼을 반영해야
+ * 하는 모든 조회 경로(문서 보기/검색/최근 문서 등)를 새로 두는 비용이
+ * 지금 당장은 근거가 없다. `revision`/`discussion_thread`/`acl_rule`이
+ * `document_id`를 FK로 참조하고(`discussion_comment`는 다시
+ * `discussion_thread.id`를 참조), 스키마는 [Portable] 정책상 DB마다 다르게
+ * 동작하는 `ON DELETE CASCADE`를 쓰지 않으므로, 이 메서드가 자식 행을
+ * 참조 순서의 역방향(댓글 -> 스레드 -> 리비전 -> acl_rule -> 문서)으로
+ * 명시적으로 지워 FK 위반 없이 정합성을 유지한다. 여러 DELETE를 하나의
+ * 단위로 묶기 위해 트랜잭션으로 감싼다.
  */
 final class PdoRepository implements Repository
 {
@@ -117,6 +128,44 @@ final class PdoRepository implements Repository
         }
 
         return $document;
+    }
+
+    /**
+     * @throws NotFoundError document의 id가 저장소에 없는 경우
+     */
+    public function delete(string $id): void
+    {
+        $existsStatement = $this->connection->prepare('SELECT 1 FROM document WHERE id = :id');
+        $existsStatement->execute(['id' => $id]);
+        if ($existsStatement->fetchColumn() === false) {
+            throw new NotFoundError();
+        }
+
+        $this->connection->beginTransaction();
+
+        try {
+            $this->connection->prepare(
+                'DELETE FROM discussion_comment WHERE thread_id IN '
+                . '(SELECT id FROM discussion_thread WHERE document_id = :document_id)'
+            )->execute(['document_id' => $id]);
+
+            $this->connection->prepare('DELETE FROM discussion_thread WHERE document_id = :document_id')
+                ->execute(['document_id' => $id]);
+
+            $this->connection->prepare('DELETE FROM revision WHERE document_id = :document_id')
+                ->execute(['document_id' => $id]);
+
+            $this->connection->prepare('DELETE FROM acl_rule WHERE document_id = :document_id')
+                ->execute(['document_id' => $id]);
+
+            $this->connection->prepare('DELETE FROM document WHERE id = :id')->execute(['id' => $id]);
+
+            $this->connection->commit();
+        } catch (PDOException $exception) {
+            $this->connection->rollBack();
+
+            throw $exception;
+        }
     }
 
     /**

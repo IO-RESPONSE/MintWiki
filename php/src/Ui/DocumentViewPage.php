@@ -65,19 +65,21 @@ final class DocumentViewPage
      *                                    제공되면 404 화면에 제목/편집 링크를 표시한다.
      * @param string $currentPath 현재 페이지의 경로 (액션 탭 활성 표시 판단용)
      * @param string|null $lastEditedBy 마지막 편집자 정보, 알 수 없으면 생략한다
+     * @param bool $canDelete 삭제 탭 노출 여부 (태스크 0715, 기본값 false: 숨김)
      */
     public function render(
         ?Document $document,
         ?string $source = null,
         ?string $requestedTitle = null,
         string $currentPath = '',
-        ?string $lastEditedBy = null
+        ?string $lastEditedBy = null,
+        bool $canDelete = false
     ): string {
         if ($document === null) {
             return $this->renderNotFound($requestedTitle, $currentPath);
         }
 
-        return $this->renderDocument($document, $source, $currentPath, $lastEditedBy);
+        return $this->renderDocument($document, $source, $currentPath, $lastEditedBy, $canDelete);
     }
 
     /**
@@ -87,9 +89,10 @@ final class DocumentViewPage
         Document $document,
         ?string $source = null,
         string $currentPath = '',
-        ?string $lastEditedBy = null
+        ?string $lastEditedBy = null,
+        bool $canDelete = false
     ): string {
-        $header = $this->documentHeader->render($document->title(), $currentPath, $lastEditedBy);
+        $header = $this->documentHeader->render($document->title(), $currentPath, $lastEditedBy, $canDelete);
 
         // source가 제공되면 렌더러로 렌더링, 아니면 placeholder
         if ($source !== null) {

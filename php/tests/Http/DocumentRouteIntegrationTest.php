@@ -78,6 +78,14 @@ $documentRepository = new class implements Repository {
         $this->documents[$document->id()] = $document;
         return $document;
     }
+
+    public function delete(string $id): void
+    {
+        if (!isset($this->documents[$id])) {
+            throw new \MintWiki\Document\NotFoundError();
+        }
+        unset($this->documents[$id]);
+    }
 };
 
 // 테스트용 revision repository 구현

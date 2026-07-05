@@ -355,6 +355,25 @@ if (!str_contains($xssEmptyDocHtml, '&lt;script&gt;alert(1)&lt;/script&gt;')) {
     $failures[] = '빈 문서 UX: requestedTitle이 올바르게 escape되어야 한다.';
 }
 
+// (22) 삭제 탭 노출 조건(태스크 0715): canDelete를 지정하지 않으면(기본값
+// false) 삭제 탭이 노출되지 않는다.
+$noDeleteHtml = $page->render($tabDocument);
+if (str_contains($noDeleteHtml, '/delete">삭제</a>')) {
+    $failures[] = '삭제 탭: canDelete를 지정하지 않으면 삭제 탭이 노출되면 안 된다.';
+}
+
+// (23) 삭제 탭: canDelete=true면 /wiki/{title}/delete로 링크되는 삭제 탭이 노출된다.
+$withDeleteHtml = $page->render($tabDocument, null, null, '', null, true);
+if (!str_contains($withDeleteHtml, 'href="/wiki/' . $encodedTabTitle . '/delete">삭제</a>')) {
+    $failures[] = '삭제 탭: canDelete=true면 삭제 탭이 /wiki/{title}/delete로 링크되어야 한다.';
+}
+
+// (24) 삭제 탭: 문서가 없는 화면(빈 문서 UX)에는 canDelete를 전달할 대상이
+// 없으므로 삭제 탭이 노출되지 않는다.
+if (str_contains($emptyDocHtml, '/delete">삭제</a>')) {
+    $failures[] = '삭제 탭: 문서가 없는 화면에는 삭제 탭이 노출되면 안 된다.';
+}
+
 if ($failures !== []) {
     fwrite(STDERR, "DocumentViewPage 테스트 실패:\n");
     foreach ($failures as $failure) {

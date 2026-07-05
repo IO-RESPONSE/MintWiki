@@ -69,6 +69,14 @@ $repository = new class implements Repository {
         $this->documents[$document->id()] = $document;
         return $document;
     }
+
+    public function delete(string $id): void
+    {
+        if (!isset($this->documents[$id])) {
+            throw new NotFoundError();
+        }
+        unset($this->documents[$id]);
+    }
 };
 
 $created = $repository->create(new Document('doc-1', 'Title'));
@@ -96,6 +104,20 @@ if ($updated->title() !== 'Updated Title') {
 try {
     $repository->update(new Document('doc-missing', 'Title'));
     $failures[] = 'update()는 없는 id에 대해 NotFoundError를 던져야 한다.';
+} catch (NotFoundError $error) {
+    // 정상 경로 — 아무 것도 하지 않는다.
+}
+
+// delete() 계약 (태스크 0715): 존재하는 id는 조용히 지우고, 없는 id는
+// NotFoundError를 던진다.
+$repository->delete('doc-1');
+if ($repository->get('doc-1') !== null) {
+    $failures[] = 'delete()는 저장소에서 document를 제거해야 한다.';
+}
+
+try {
+    $repository->delete('doc-missing');
+    $failures[] = 'delete()는 없는 id에 대해 NotFoundError를 던져야 한다.';
 } catch (NotFoundError $error) {
     // 정상 경로 — 아무 것도 하지 않는다.
 }

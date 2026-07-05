@@ -82,6 +82,18 @@ if (!str_contains($xssHtml, '&lt;b&gt;bob&lt;/b&gt;')) {
     $failures[] = '[XSS] lastEditedBy가 올바르게 escape되어야 한다.';
 }
 
+// (6) 삭제 탭(태스크 0715): canDelete를 지정하지 않으면(기본값 false) 삭제
+// 탭이 노출되지 않고, true면 노출된다.
+$noDeleteHtml = $header->render('테스트 문서');
+if (str_contains($noDeleteHtml, '/delete">삭제</a>')) {
+    $failures[] = '[삭제] canDelete를 지정하지 않으면 삭제 탭이 노출되면 안 된다.';
+}
+
+$withDeleteHtml = $header->render('테스트 문서', '', null, true);
+if (!str_contains($withDeleteHtml, 'href="/wiki/' . $encodedTitle . '/delete">삭제</a>')) {
+    $failures[] = '[삭제] canDelete=true면 삭제 탭이 /wiki/{title}/delete로 링크되어야 한다.';
+}
+
 if ($failures !== []) {
     fwrite(STDERR, "DocumentHeader 테스트 실패:\n");
     foreach ($failures as $failure) {

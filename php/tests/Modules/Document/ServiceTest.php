@@ -66,6 +66,14 @@ $repository = new class implements Repository {
         $this->documents[$document->id()] = $document;
         return $document;
     }
+
+    public function delete(string $id): void
+    {
+        if (!isset($this->documents[$id])) {
+            throw new NotFoundError();
+        }
+        unset($this->documents[$id]);
+    }
 };
 
 $service = new Service($repository);

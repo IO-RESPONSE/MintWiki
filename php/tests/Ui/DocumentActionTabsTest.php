@@ -85,6 +85,23 @@ if (!str_contains($xssHtml, rawurlencode($xssTitle))) {
     $failures[] = '[XSS] 제목이 URL 인코딩되어 href에 반영되어야 한다.';
 }
 
+// (6) 삭제 탭(태스크 0715): canDelete가 false(기본값)면 삭제 탭이 노출되지 않는다.
+$noDeleteHtml = $actionTabs->render('테스트 문서');
+if (str_contains($noDeleteHtml, '/delete">삭제</a>')) {
+    $failures[] = '[삭제] canDelete를 지정하지 않으면 삭제 탭이 노출되면 안 된다.';
+}
+
+$explicitNoDeleteHtml = $actionTabs->render('테스트 문서', '', false);
+if (str_contains($explicitNoDeleteHtml, '/delete">삭제</a>')) {
+    $failures[] = '[삭제] canDelete=false면 삭제 탭이 노출되면 안 된다.';
+}
+
+// (7) 삭제 탭: canDelete가 true면 /wiki/{title}/delete로 링크되는 삭제 탭이 노출된다.
+$withDeleteHtml = $actionTabs->render('테스트 문서', '', true);
+if (!str_contains($withDeleteHtml, 'href="/wiki/' . $encodedTitle . '/delete">삭제</a>')) {
+    $failures[] = '[삭제] canDelete=true면 삭제 탭이 /wiki/{title}/delete로 링크되어야 한다.';
+}
+
 if ($failures !== []) {
     fwrite(STDERR, "DocumentActionTabs 테스트 실패:\n");
     foreach ($failures as $failure) {

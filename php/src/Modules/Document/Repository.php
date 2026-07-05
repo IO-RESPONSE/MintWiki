@@ -32,4 +32,13 @@ interface Repository
      * @throws NotFoundError document의 id가 저장소에 없는 경우
      */
     public function update(Document $document): Document;
+
+    /**
+     * 문서를 삭제한다 (태스크 0715). 리비전/토론 스레드·댓글/문서별 ACL
+     * 규칙 등 이 문서를 참조하는 하위 데이터도 함께 정리해야 한다(구현체
+     * 계약, `docs/repository-port-contracts.md` 참고).
+     *
+     * @throws NotFoundError document의 id가 저장소에 없는 경우
+     */
+    public function delete(string $id): void;
 }

@@ -63,4 +63,18 @@ final class InMemoryRepository implements Repository
 
         return $document;
     }
+
+    /**
+     * @throws NotFoundError document의 id가 저장소에 없는 경우
+     */
+    public function delete(string $id): void
+    {
+        if (!isset($this->documents[$id])) {
+            throw new NotFoundError();
+        }
+
+        $normalizedTitle = $this->documents[$id]->normalizedTitle();
+        unset($this->documents[$id]);
+        unset($this->normalizedTitleToId[$normalizedTitle]);
+    }
 }

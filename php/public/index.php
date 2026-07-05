@@ -137,9 +137,19 @@ declare(strict_types=1);
  * 반환한다. CSRF 검증 실패는 403으로, 제목/본문이 비어있으면(Thread/Comment
  * 생성자의 `Empty*Error`) 422로 폼에 오류를 담아 되돌리며, 성공하면
  * `GET /wiki/{title}/discussion`으로 302 리다이렉트한다. 댓글 POST는 URL의
- * threadId가 그 문서 소속 스레드가 아니면(또는 없으면) 404를 반환한다. 나머지
- * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
- * 이어진다.
+ * threadId가 그 문서 소속 스레드가 아니면(또는 없으면) 404를 반환한다. 0715에서
+ * `GET`/`POST /wiki/{title}/delete`를 등록해 문서 삭제 흐름을 완성했다 — GET은
+ * `Permission::Delete` 검사를 통과한 사용자에게만 `DocumentDeletePage`(체크박스
+ * 확인 + CSRF 토큰)를 보여주고, POST는 CSRF 검증(실패 403), 삭제 권한 재검사,
+ * 확인 체크박스 누락(422)을 모두 통과해야 `Document\Service::delete()`(0715
+ * `PdoRepository::delete()` — 리비전/토론 스레드·댓글/문서별 acl_rule을 먼저
+ * 지우는 하드 삭제)를 호출한다. 성공하면 감사 이벤트(module=document,
+ * action=deleted)를 남기고 `/`로 302 리다이렉트한다. 익명은 두 route 모두 위
+ * edit route와 같은 관례로 `/login`으로 302, 문서 자체가 없으면 404다. 위 GET
+ * `/wiki/{title}`도 이 태스크에서 `Permission::Delete` 검사 결과로 액션 탭의
+ * "삭제" 링크 노출 여부(`$canDelete`)를 판단하게 했다 — 로그인 + 권한이 모두
+ * 있어야 노출된다. 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는
+ * 이후 태스크에서 이어진다.
  */
 
 $autoloadPath = __DIR__ . '/../vendor/autoload.php';
@@ -202,6 +212,7 @@ use MintWiki\Ui\AuditViewerPage;
 use MintWiki\Ui\BackupPage;
 use MintWiki\Ui\BlockUserFormPage;
 use MintWiki\Ui\DiscussionPage;
+use MintWiki\Ui\DocumentDeletePage;
 use MintWiki\Ui\DocumentDiffPage;
 use MintWiki\Ui\DocumentEditorPage;
 use MintWiki\Ui\DocumentHistoryPage;
@@ -738,7 +749,12 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use (
         $lastEditedBy = $currentRevision?->authorId();
     }
 
-    return Response::html($documentViewPage->render($document, $source, null, $requestPath, $lastEditedBy));
+    // 삭제 탭 노출 여부 (태스크 0715): 로그인 + delete 권한이 모두 있어야 한다 —
+    // 익명은 default policy가 항상 deny하므로 이 검사만으로 충분히 걸러진다.
+    $deleteDecision = $aclService->check(AclPermission::Delete, $subjectType, $subjectId, $documentAcl);
+    $canDelete = $subjectType === AclSubjectType::User && $deleteDecision->isAllowed();
+
+    return Response::html($documentViewPage->render($document, $source, null, $requestPath, $lastEditedBy, $canDelete));
 });
 
 // GET/POST /wiki/{title}/edit — 문서 생성/편집 (태스크 0685, ACL 적용은
@@ -1366,6 +1382,142 @@ $router->register('POST', '/wiki/{title}/discussion/{threadId}/comment', static 
     }
 
     return new Response(302, ['Location' => '/wiki/' . rawurlencode($document->title()) . '/discussion']);
+});
+
+// GET/POST /wiki/{title}/delete — 문서 삭제 (태스크 0715). 위 edit/discussion
+// route와 동일한 관례를 따른다: 문서가 없으면 ErrorPage로 404, `Permission::Delete`
+// 검사가 거부되면 익명은 `/login`으로 302, 로그인한 사용자는 403이다. GET은
+// `DocumentDeletePage`(체크박스 확인 + CSRF 토큰)를 보여주기만 하고 아직 아무것도
+// 지우지 않는다. POST는 CSRF 검증(실패 403) -> 삭제 권한 재검사 -> 확인
+// 체크박스(`confirm_delete`) 누락 시 422로 순서대로 검증한 뒤에만
+// `Document\Service::delete()`를 호출한다. 성공하면 `PdoAuditRecorder`(0714)로
+// module=document, action=deleted 감사 이벤트를 남기고(기록 실패는 위
+// POST /wiki/{title}/edit과 동일하게 무시) `/`로 302 리다이렉트한다.
+$router->register('GET', '/wiki/{title}/delete', static function (array $params) use (
+    $documentRepository,
+    $aclRuleRepository,
+    $aclService,
+    $accountRepository,
+    $sessionAdapter,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $requestedTitle = rawurldecode($params['title'] ?? '');
+
+    if ($documentRepository === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentService = new DocumentService($documentRepository);
+
+    try {
+        $document = $documentService->getByTitle($requestedTitle);
+    } catch (EmptyTitleError) {
+        $document = null;
+    }
+
+    if ($document === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentAcl = $aclRuleRepository?->documentAcl($document->id());
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    $decision = $aclService->check(AclPermission::Delete, $subjectType, $subjectId, $documentAcl);
+
+    if ($decision->isDenied()) {
+        if ($subjectType === AclSubjectType::Anonymous) {
+            return new Response(302, ['Location' => '/login']);
+        }
+
+        $permissionDeniedPage = new PermissionDeniedPage(null, $layout);
+
+        return Response::html($permissionDeniedPage->render($decision), 403);
+    }
+
+    $documentDeletePage = new DocumentDeletePage(null, $layout);
+
+    return Response::html($documentDeletePage->render($document->title()));
+});
+
+$router->register('POST', '/wiki/{title}/delete', static function (array $params) use (
+    $documentRepository,
+    $aclRuleRepository,
+    $aclService,
+    $accountRepository,
+    $sessionAdapter,
+    $requestPath,
+    $auditRecorder
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $requestedTitle = rawurldecode($params['title'] ?? '');
+
+    if ($documentRepository === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentService = new DocumentService($documentRepository);
+
+    try {
+        $document = $documentService->getByTitle($requestedTitle);
+    } catch (EmptyTitleError) {
+        $document = null;
+    }
+
+    if ($document === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentAcl = $aclRuleRepository?->documentAcl($document->id());
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    $decision = $aclService->check(AclPermission::Delete, $subjectType, $subjectId, $documentAcl);
+
+    if ($decision->isDenied()) {
+        if ($subjectType === AclSubjectType::Anonymous) {
+            return new Response(302, ['Location' => '/login']);
+        }
+
+        $permissionDeniedPage = new PermissionDeniedPage(null, $layout);
+
+        return Response::html($permissionDeniedPage->render($decision), 403);
+    }
+
+    $documentDeletePage = new DocumentDeletePage(null, $layout);
+    $csrfToken = is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '';
+
+    if (!(new CsrfTokenService())->validate($csrfToken)) {
+        return Response::html(
+            $documentDeletePage->render($document->title(), [
+                '_form' => '유효하지 않은 요청입니다. 다시 시도하세요.',
+            ]),
+            403
+        );
+    }
+
+    if (($_POST['confirm_delete'] ?? null) !== '1') {
+        return Response::html(
+            $documentDeletePage->render($document->title(), [
+                'confirm_delete' => '삭제를 실행하려면 위험 작업 확인에 동의해야 합니다.',
+            ]),
+            422
+        );
+    }
+
+    $documentService->delete($document->id());
+
+    try {
+        $auditRecorder->record(new AuditEvent(
+            id: mintwiki_generate_uuid_v4(),
+            module: 'document',
+            action: 'deleted',
+            occurredAt: new \DateTimeImmutable('now'),
+            actorId: $subjectType === AclSubjectType::Anonymous ? 'anonymous' : $subjectId,
+            metadata: ['entity_id' => $document->id()]
+        ));
+    } catch (\Throwable $exception) {
+        \error_log('Audit recording failed: ' . $exception->getMessage());
+    }
+
+    return new Response(302, ['Location' => '/']);
 });
 
 // GET /admin — 관리자 콘솔 진입점 (태스크 0697). 0696 AdminAccessGate로

@@ -70,6 +70,17 @@ final class Service
     }
 
     /**
+     * 문서를 삭제한다 (태스크 0715). 리비전/토론 등 하위 데이터 정리는
+     * 저장소 구현체(`PdoRepository::delete()`)의 책임이다.
+     *
+     * @throws NotFoundError document의 id가 저장소에 없는 경우
+     */
+    public function delete(string $id): void
+    {
+        $this->documentRepository->delete($id);
+    }
+
+    /**
      * UUID v4 문자열을 생성한다 (문서 id 발급용).
      */
     private static function generateId(): string

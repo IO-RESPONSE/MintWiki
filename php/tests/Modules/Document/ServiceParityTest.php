@@ -90,6 +90,14 @@ function makeService(): Service
             $this->documents[$document->id()] = $document;
             return $document;
         }
+
+        public function delete(string $id): void
+        {
+            if (!isset($this->documents[$id])) {
+                throw new NotFoundError();
+            }
+            unset($this->documents[$id]);
+        }
     };
 
     return new Service($repository);

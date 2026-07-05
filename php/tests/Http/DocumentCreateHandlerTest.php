@@ -74,6 +74,14 @@ $repository = new class implements Repository {
         $this->documents[$document->id()] = $document;
         return $document;
     }
+
+    public function delete(string $id): void
+    {
+        if (!isset($this->documents[$id])) {
+            throw new \MintWiki\Document\NotFoundError();
+        }
+        unset($this->documents[$id]);
+    }
 };
 
 // 감사 hook 테스트를 위한 mock recorder

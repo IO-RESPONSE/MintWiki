@@ -29,11 +29,12 @@ final class DocumentHeader
      * @param string $title 문서 제목 (h1 및 탭 링크 구성에 사용)
      * @param string $currentPath 현재 페이지의 경로 (활성 탭 판단용)
      * @param string|null $lastEditedBy 마지막 편집자 정보, 없으면 메타 정보를 생략한다
+     * @param bool $canDelete 삭제 탭 노출 여부 (태스크 0715, 기본값 false: 숨김)
      */
-    public function render(string $title, string $currentPath = '', ?string $lastEditedBy = null): string
+    public function render(string $title, string $currentPath = '', ?string $lastEditedBy = null, bool $canDelete = false): string
     {
         $escapedTitle = $this->escaper->html($title);
-        $tabsHtml = $this->actionTabs->render($title, $currentPath);
+        $tabsHtml = $this->actionTabs->render($title, $currentPath, $canDelete);
 
         $meta = '';
         if ($lastEditedBy !== null && trim($lastEditedBy) !== '') {

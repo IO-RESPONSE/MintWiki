@@ -22,6 +22,8 @@ final class DefaultPolicy
     public const LOGGED_IN_EDIT_RULE_ID = 'default-logged-in-edit-allow';
     public const ANONYMOUS_DISCUSS_DENY_RULE_ID = 'default-anonymous-discuss-deny';
     public const LOGGED_IN_DISCUSS_RULE_ID = 'default-logged-in-discuss-allow';
+    public const ANONYMOUS_DELETE_DENY_RULE_ID = 'default-anonymous-delete-deny';
+    public const LOGGED_IN_DELETE_RULE_ID = 'default-logged-in-delete-allow';
 
     /**
      * @return Rule[]
@@ -36,6 +38,11 @@ final class DefaultPolicy
             // ALL 허용 규칙으로 참여할 수 있게 한다(first-match-wins 순서 유지).
             new Rule(self::ANONYMOUS_DISCUSS_DENY_RULE_ID, SubjectType::Anonymous, Permission::Discuss, Effect::Deny),
             new Rule(self::LOGGED_IN_DISCUSS_RULE_ID, SubjectType::All, Permission::Discuss, Effect::Allow),
+            // 삭제(delete)도 동일한 패턴: 익명은 먼저 거부하고, 로그인 사용자는 ALL
+            // 허용 규칙으로 삭제할 수 있게 한다(문서별 acl_rule이 있으면 그것이
+            // 우선 적용된다 — first-match-wins 순서 유지).
+            new Rule(self::ANONYMOUS_DELETE_DENY_RULE_ID, SubjectType::Anonymous, Permission::Delete, Effect::Deny),
+            new Rule(self::LOGGED_IN_DELETE_RULE_ID, SubjectType::All, Permission::Delete, Effect::Allow),
         ];
     }
 
