@@ -125,7 +125,19 @@ declare(strict_types=1);
  * 없거나 `$documentRepository === null`(DB 미설정/오류)인 경우도 동일하게
  * 404로 처리한다. 리비전 비교는 `DocumentDiffPage`가 두 source를 줄 단위
  * LCS diff로 비교해 보여준다(렌더 결과가 아닌 원문 기준 diff, out of scope인
- * 되돌리기는 다루지 않는다). 나머지
+ * 되돌리기는 다루지 않는다). 0712에서 `GET`/`POST /wiki/{title}/discussion`과
+ * `POST /wiki/{title}/discussion/{threadId}/comment`를 등록해 액션 탭의
+ * "토론" 링크가 실제로 동작하게 했다 — 0711 `Discussion\PdoRepository`/
+ * `Discussion\Service`로 문서의 스레드·댓글을 읽고 쓴다. GET은 위 history/diff
+ * route와 동일한 ACL read 검사를 거치고(거부되면 403), 그와 별개로
+ * `Permission::Discuss` 검사 결과를 `DiscussionPage`에 넘겨 새 스레드/댓글
+ * form을 보여줄지(허용) 로그인 안내로 대체할지(거부) 정한다. 두 POST route도
+ * discuss 권한을 검사해 거부되면 위 edit route와 같은 관례로 익명은
+ * `/login`으로 302, 로그인한 사용자는 `PermissionDeniedPage`로 403을
+ * 반환한다. CSRF 검증 실패는 403으로, 제목/본문이 비어있으면(Thread/Comment
+ * 생성자의 `Empty*Error`) 422로 폼에 오류를 담아 되돌리며, 성공하면
+ * `GET /wiki/{title}/discussion`으로 302 리다이렉트한다. 댓글 POST는 URL의
+ * threadId가 그 문서 소속 스레드가 아니면(또는 없으면) 404를 반환한다. 나머지
  * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
  * 이어진다.
  */
@@ -149,6 +161,12 @@ use MintWiki\App\LocalConfigLoader;
 use MintWiki\App\MaintenanceModeStateStore;
 use MintWiki\App\StoragePathConfig;
 use MintWiki\Audit\RecentAuditEventsQuery;
+use MintWiki\Discussion\EmptyCommentBodyError;
+use MintWiki\Discussion\EmptyCommentCreatedByError;
+use MintWiki\Discussion\EmptyThreadCreatedByError;
+use MintWiki\Discussion\EmptyThreadTitleError;
+use MintWiki\Discussion\PdoRepository as DiscussionPdoRepository;
+use MintWiki\Discussion\Service as DiscussionService;
 use MintWiki\Document\Document;
 use MintWiki\Document\DuplicateNormalizedTitleError;
 use MintWiki\Document\EmptyTitleError;
@@ -180,6 +198,7 @@ use MintWiki\Ui\AdminReportListPage;
 use MintWiki\Ui\AuditViewerPage;
 use MintWiki\Ui\BackupPage;
 use MintWiki\Ui\BlockUserFormPage;
+use MintWiki\Ui\DiscussionPage;
 use MintWiki\Ui\DocumentDiffPage;
 use MintWiki\Ui\DocumentEditorPage;
 use MintWiki\Ui\DocumentHistoryPage;
@@ -322,6 +341,48 @@ function mintwiki_normalize_edit_summary(string $summaryInput): string
     $trimmed = trim($summaryInput);
 
     return $trimmed === '' ? '편집 요약 없음' : $trimmed;
+}
+
+/**
+ * 문서의 토론 스레드/댓글 목록을 조회한다 (태스크 0712). `$pdo`가 없으면(DB
+ * 미설정/오류) 빈 목록을 반환해 `DiscussionPage`가 빈 상태를 안전하게
+ * 그리게 한다.
+ *
+ * @return array{0: array<int, \MintWiki\Discussion\Thread>, 1: array<string, array<int, \MintWiki\Discussion\Comment>>}
+ */
+function mintwiki_load_discussion_data(?PDO $pdo, string $documentId): array
+{
+    if ($pdo === null) {
+        return [[], []];
+    }
+
+    $discussionService = new DiscussionService(new DiscussionPdoRepository($pdo));
+    $threads = $discussionService->listThreadsByDocumentId($documentId);
+
+    $commentsByThreadId = [];
+    foreach ($threads as $thread) {
+        $commentsByThreadId[$thread->id()] = $discussionService->listCommentsByThreadId($thread->id());
+    }
+
+    return [$threads, $commentsByThreadId];
+}
+
+/**
+ * 새 스레드/댓글의 작성자로 기록할 식별자를 정한다 (태스크 0712). 로그인한
+ * 사용자가 있으면 그 username을, 없으면(익명 쓰기가 acl_rule로 명시적으로
+ * 허용된 드문 경우) 'anonymous'를 대체값으로 쓴다 — Thread/Comment
+ * 생성자는 빈 문자열 createdBy를 거부하므로 항상 채워진 값이 필요하다.
+ */
+function mintwiki_resolve_discussion_created_by(?AccountRepository $accountRepository, PhpSessionAdapter $sessionAdapter): string
+{
+    if ($accountRepository !== null) {
+        $currentUser = (new SessionUserResolver($sessionAdapter, $accountRepository))->resolve();
+        if ($currentUser !== null) {
+            return $currentUser->username();
+        }
+    }
+
+    return 'anonymous';
 }
 
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI';
@@ -1039,6 +1100,231 @@ $router->register('GET', '/wiki/{title}/diff', static function (array $params) u
     $documentDiffPage = new DocumentDiffPage(null, $layout);
 
     return Response::html($documentDiffPage->render($document, $fromRevision, $toRevision));
+});
+
+// GET /wiki/{title}/discussion, POST /wiki/{title}/discussion(새 스레드),
+// POST /wiki/{title}/discussion/{threadId}/comment(댓글 추가) — 문서별 토론
+// (태스크 0712). 0711이 만든 `Discussion\PdoRepository`/`Discussion\Service`로
+// 실제 스레드/댓글을 읽고 쓴다. GET은 위 history/diff route와 동일하게 read
+// 권한을 확인한다(거부되면 PermissionDeniedPage로 403). 그와 별개로 discuss
+// 권한을 확인해 그 결과(`$discussDecision->isAllowed()`)를 DiscussionPage에
+// 넘긴다 — 거부되면(로그인하지 않았거나 acl_rule로 명시적으로 막힌 경우) 새
+// 스레드/댓글 form 대신 로그인 안내를 보여준다. 두 POST route는 문서를 찾을
+// 수 없으면 404, discuss 권한이 없으면 위 edit route와 동일한 관례로
+// 익명은 /login으로 302, 로그인한 사용자는 403(PermissionDeniedPage)을
+// 반환한다. CSRF 토큰 검증에 실패하면 403으로 폼을 다시 보여주고, 제목/본문이
+// 비어있으면(Thread/Comment 생성자가 `Empty*Error`를 던진다) 422로 오류를
+// 담아 되돌린다. 저장에 성공하면 `GET /wiki/{title}/discussion`으로 302
+// 리다이렉트한다. 댓글 POST는 URL의 threadId가 이 문서 소속 스레드가 아니면
+// (또는 존재하지 않으면) 404를 반환한다.
+$router->register('GET', '/wiki/{title}/discussion', static function (array $params) use (
+    $documentRepository,
+    $aclRuleRepository,
+    $aclService,
+    $accountRepository,
+    $sessionAdapter,
+    $requestPath,
+    $pdo
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $requestedTitle = rawurldecode($params['title'] ?? '');
+
+    if ($documentRepository === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentService = new DocumentService($documentRepository);
+
+    try {
+        $document = $documentService->getByTitle($requestedTitle);
+    } catch (EmptyTitleError) {
+        $document = null;
+    }
+
+    if ($document === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentAcl = $aclRuleRepository?->documentAcl($document->id());
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    $readDecision = $aclService->check(AclPermission::Read, $subjectType, $subjectId, $documentAcl);
+
+    if ($readDecision->isDenied()) {
+        $permissionDeniedPage = new PermissionDeniedPage(null, $layout);
+
+        return Response::html($permissionDeniedPage->render($readDecision), 403);
+    }
+
+    $discussDecision = $aclService->check(AclPermission::Discuss, $subjectType, $subjectId, $documentAcl);
+
+    [$threads, $commentsByThreadId] = mintwiki_load_discussion_data($pdo, $document->id());
+
+    $discussionPage = new DiscussionPage(null, $layout);
+
+    return Response::html(
+        $discussionPage->render($document, $threads, $commentsByThreadId, [], [], $discussDecision->isAllowed())
+    );
+});
+
+$router->register('POST', '/wiki/{title}/discussion', static function (array $params) use (
+    $documentRepository,
+    $aclRuleRepository,
+    $aclService,
+    $accountRepository,
+    $sessionAdapter,
+    $requestPath,
+    $pdo
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $requestedTitle = rawurldecode($params['title'] ?? '');
+    $csrfTokenService = new CsrfTokenService();
+
+    $titleInput = is_string($_POST['title'] ?? null) ? $_POST['title'] : '';
+    $csrfToken = is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '';
+
+    if ($documentRepository === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentService = new DocumentService($documentRepository);
+
+    try {
+        $document = $documentService->getByTitle($requestedTitle);
+    } catch (EmptyTitleError) {
+        $document = null;
+    }
+
+    if ($document === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentAcl = $aclRuleRepository?->documentAcl($document->id());
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    $decision = $aclService->check(AclPermission::Discuss, $subjectType, $subjectId, $documentAcl);
+
+    if ($decision->isDenied()) {
+        if ($subjectType === AclSubjectType::Anonymous) {
+            return new Response(302, ['Location' => '/login']);
+        }
+
+        $permissionDeniedPage = new PermissionDeniedPage(null, $layout);
+
+        return Response::html($permissionDeniedPage->render($decision), 403);
+    }
+
+    [$threads, $commentsByThreadId] = mintwiki_load_discussion_data($pdo, $document->id());
+    $discussionPage = new DiscussionPage(null, $layout);
+
+    if (!$csrfTokenService->validate($csrfToken)) {
+        return Response::html(
+            $discussionPage->render($document, $threads, $commentsByThreadId, [
+                '_form' => '유효하지 않은 요청입니다. 다시 시도하세요.',
+            ], [], true),
+            403
+        );
+    }
+
+    $discussionService = new DiscussionService(new DiscussionPdoRepository($pdo));
+    $createdBy = mintwiki_resolve_discussion_created_by($accountRepository, $sessionAdapter);
+
+    try {
+        $discussionService->createThread($document->id(), $titleInput, $createdBy);
+    } catch (EmptyThreadTitleError) {
+        return Response::html(
+            $discussionPage->render($document, $threads, $commentsByThreadId, [
+                'title' => '스레드 제목을 입력하세요.',
+            ], [], true),
+            422
+        );
+    } catch (EmptyThreadCreatedByError) {
+        return new Response(302, ['Location' => '/login']);
+    }
+
+    return new Response(302, ['Location' => '/wiki/' . rawurlencode($document->title()) . '/discussion']);
+});
+
+$router->register('POST', '/wiki/{title}/discussion/{threadId}/comment', static function (array $params) use (
+    $documentRepository,
+    $aclRuleRepository,
+    $aclService,
+    $accountRepository,
+    $sessionAdapter,
+    $requestPath,
+    $pdo
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $requestedTitle = rawurldecode($params['title'] ?? '');
+    $threadId = $params['threadId'] ?? '';
+    $csrfTokenService = new CsrfTokenService();
+
+    $bodyInput = is_string($_POST['body'] ?? null) ? $_POST['body'] : '';
+    $csrfToken = is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '';
+
+    if ($documentRepository === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentService = new DocumentService($documentRepository);
+
+    try {
+        $document = $documentService->getByTitle($requestedTitle);
+    } catch (EmptyTitleError) {
+        $document = null;
+    }
+
+    if ($document === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentAcl = $aclRuleRepository?->documentAcl($document->id());
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    $decision = $aclService->check(AclPermission::Discuss, $subjectType, $subjectId, $documentAcl);
+
+    if ($decision->isDenied()) {
+        if ($subjectType === AclSubjectType::Anonymous) {
+            return new Response(302, ['Location' => '/login']);
+        }
+
+        $permissionDeniedPage = new PermissionDeniedPage(null, $layout);
+
+        return Response::html($permissionDeniedPage->render($decision), 403);
+    }
+
+    $discussionService = new DiscussionService(new DiscussionPdoRepository($pdo));
+    $thread = $discussionService->getThread($threadId);
+
+    if ($thread === null || $thread->documentId() !== $document->id()) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    [$threads, $commentsByThreadId] = mintwiki_load_discussion_data($pdo, $document->id());
+    $discussionPage = new DiscussionPage(null, $layout);
+
+    if (!$csrfTokenService->validate($csrfToken)) {
+        return Response::html(
+            $discussionPage->render($document, $threads, $commentsByThreadId, [], [
+                $threadId => ['_form' => '유효하지 않은 요청입니다. 다시 시도하세요.'],
+            ], true),
+            403
+        );
+    }
+
+    $createdBy = mintwiki_resolve_discussion_created_by($accountRepository, $sessionAdapter);
+
+    try {
+        $discussionService->addComment($threadId, $bodyInput, $createdBy);
+    } catch (EmptyCommentBodyError) {
+        return Response::html(
+            $discussionPage->render($document, $threads, $commentsByThreadId, [], [
+                $threadId => ['body' => '댓글 본문을 입력하세요.'],
+            ], true),
+            422
+        );
+    } catch (EmptyCommentCreatedByError) {
+        return new Response(302, ['Location' => '/login']);
+    }
+
+    return new Response(302, ['Location' => '/wiki/' . rawurlencode($document->title()) . '/discussion']);
 });
 
 // GET /admin — 관리자 콘솔 진입점 (태스크 0697). 0696 AdminAccessGate로
