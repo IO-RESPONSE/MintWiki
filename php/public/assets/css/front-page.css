@@ -1,0 +1,91 @@
+/*
+ * 나무위키풍 대문(프론트페이지) 스타일 (태스크 0693)
+ *
+ * design-tokens.css의 브랜드/간격 토큰(--color-brand, --spacing-* 등)을
+ * 그대로 사용해 0689~0692에서 정의한 팔레트/레이아웃과 일관성을 유지한다.
+ */
+
+.front-page__search {
+  text-align: center;
+  padding: var(--spacing-xxl) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--spacing-xl);
+}
+
+.front-page__title {
+  color: var(--color-brand);
+  margin: 0 0 var(--spacing-lg) 0;
+}
+
+.front-page__search-form {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-sm);
+}
+
+.front-page__search-input {
+  width: 100%;
+  max-width: 480px;
+  padding: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.front-page__search-button {
+  background-color: var(--color-brand);
+  color: var(--color-on-brand);
+  border: none;
+}
+
+.front-page__search-button:hover {
+  background-color: var(--color-brand-hover);
+}
+
+.front-page__search-button:active {
+  background-color: var(--color-brand-active);
+}
+
+.front-page__section-title {
+  border-bottom: 1px solid var(--color-border-secondary);
+  padding-bottom: var(--spacing-xs);
+}
+
+.front-page__recent,
+.front-page__about {
+  margin-bottom: var(--spacing-xl);
+}
+
+.front-page__recent-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.front-page__recent-item {
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid var(--color-border-secondary);
+}
+
+.front-page__recent-item a {
+  color: var(--color-link);
+  text-decoration: none;
+}
+
+.front-page__recent-item a:visited {
+  color: var(--color-link-visited);
+}
+
+/*
+ * 좁은 화면(모바일)에서는 검색 폼을 세로로 쌓는다.
+ */
+@media (max-width: 640px) {
+  .front-page__search-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .front-page__search-input {
+    max-width: none;
+  }
+}

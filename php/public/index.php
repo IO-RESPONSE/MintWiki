@@ -80,7 +80,11 @@ declare(strict_types=1);
  * `GET /wiki/{title}`, `GET`/`POST /wiki/{title}/edit`와 404 fallback이 이
  * `Layout` 인스턴스를 재사용해 상단 네비게이션 바를 일관되게 보여준다.
  * navigation 메뉴 항목은 아직 비어있고(브랜드/검색/로그인 상태만 표시),
- * 실제 메뉴 구성은 이후 태스크에서 채운다. 나머지
+ * 실제 메뉴 구성은 이후 태스크에서 채운다. 0693에서 `GET /`가 인라인
+ * 검색 폼 대신 `FrontPage`(검색 영역 + 최근 편집된 문서 목록 + 사이트
+ * 소개)를 렌더링하도록 개편했다 — 최근 문서 목록은 `RecentDocumentsQuery`로
+ * DB가 연결된 경우에만 조회하고, 미설정/오류 상태에서는 빈 목록으로
+ * 대체해 `FrontPage`가 빈 상태 안내를 보여주게 한다. 나머지
  * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
  * 이어진다.
  */
@@ -99,6 +103,7 @@ use MintWiki\Document\Document;
 use MintWiki\Document\DuplicateNormalizedTitleError;
 use MintWiki\Document\EmptyTitleError;
 use MintWiki\Document\PdoRepository;
+use MintWiki\Document\RecentDocumentsQuery;
 use MintWiki\Document\Service as DocumentService;
 use MintWiki\Http\DocumentApiRoutes;
 use MintWiki\Http\Request;
@@ -121,6 +126,7 @@ use MintWiki\Security\SessionUserResolver;
 use MintWiki\Ui\DocumentEditorPage;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\ErrorPage;
+use MintWiki\Ui\FrontPage;
 use MintWiki\Ui\InstallAdminAccountFormPage;
 use MintWiki\Ui\InstallDBFormPage;
 use MintWiki\Ui\InstallRequiredPage;
@@ -249,18 +255,27 @@ if ($pdo !== null) {
 
 $router = new Router();
 
-// GET / — 문서 검색 진입점 (태스크 0526, 상단 네비게이션 바 연결은 0691)
-$router->register('GET', '/', static function () use ($accountRepository, $sessionAdapter): Response {
+// GET / — 나무위키식 대문(프론트페이지) (태스크 0526, 상단 네비게이션 바
+// 연결은 0691, 대문 개편은 0693). FrontPage(검색 영역 + 최근 편집된 문서
+// 목록 + 사이트 소개)를 Layout(0691 스킨) 위에 렌더링한다. 최근 문서
+// 목록은 DB가 연결된 경우에만 RecentDocumentsQuery로 조회하고, 미설정/
+// 오류 상태(schema 미적용 포함)에서는 빈 목록으로 대체해 FrontPage가
+// 안전하게 빈 상태 안내를 보여주게 한다 — 0674 계약(GET /가 죽지 않음)과
+// 동일한 판단이다.
+$router->register('GET', '/', static function () use ($accountRepository, $sessionAdapter, $pdo): Response {
     $layout = mintwiki_build_layout('/', $accountRepository, $sessionAdapter);
-    $body = '<main>'
-        . '<h1>문서 검색</h1>'
-        . '<form method="get" action="/api/documents/by-title">'
-        . '<input type="text" name="q" placeholder="검색어를 입력하세요" required>'
-        . '<button type="submit">검색</button>'
-        . '</form>'
-        . '</main>';
+    $frontPage = new FrontPage(null, $layout);
 
-    return Response::html($layout->render('MintWiki', $body));
+    $recentDocuments = [];
+    if ($pdo !== null) {
+        try {
+            $recentDocuments = (new RecentDocumentsQuery($pdo))->listRecentlyUpdated();
+        } catch (\Throwable $exception) {
+            $recentDocuments = [];
+        }
+    }
+
+    return Response::html($frontPage->render($recentDocuments));
 });
 
 // GET /install — 설치 마법사 시작 화면 (태스크 0677). 설치가 이미 끝난
