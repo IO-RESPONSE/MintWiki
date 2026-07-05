@@ -99,6 +99,56 @@ if (!str_contains($htmlWithRevisions, 'ID: rev-3')) {
     $failures[] = '히스토리 page가 모든 리비전을 표시해야 한다.';
 }
 
+// (2-1) 시각/보기 링크/비교 라디오 버튼 (태스크 0710)
+if (!str_contains($htmlWithRevisions, '시각: -')) {
+    $failures[] = 'createdAt이 없는 리비전은 "시각: -"로 표시해야 한다.';
+}
+
+if (!str_contains($htmlWithRevisions, '최초 버전')) {
+    $failures[] = '부모가 없는 첫 리비전은 "최초 버전"으로 표시해야 한다.';
+}
+
+if (!str_contains($htmlWithRevisions, 'diff?from=rev-1&amp;to=rev-2')) {
+    $failures[] = '부모가 있는 리비전은 직전 리비전과 비교하는 "보기" 링크를 가져야 한다.';
+}
+
+if (!str_contains($htmlWithRevisions, '<form method="get" action="/wiki/')) {
+    $failures[] = '리비전이 둘 이상이면 비교용 form이 있어야 한다.';
+}
+
+if (!str_contains($htmlWithRevisions, '<button type="submit">선택한 리비전 비교</button>')) {
+    $failures[] = '리비전이 둘 이상이면 비교 제출 버튼이 있어야 한다.';
+}
+
+if (substr_count($htmlWithRevisions, 'name="from"') !== 3 || substr_count($htmlWithRevisions, 'name="to"') !== 3) {
+    $failures[] = '리비전마다 from/to 라디오 버튼이 하나씩 있어야 한다.';
+}
+
+// 첫 번째(index 0) 리비전은 "이후(to)"가, 두 번째(index 1) 리비전은
+// "이전(from)"이 기본 선택되어 있어야 한다(가장 최근 두 리비전을 바로
+// 비교할 수 있도록).
+if (!preg_match('/name="to" value="rev-1" checked/', $htmlWithRevisions)) {
+    $failures[] = '첫 번째 리비전의 to 라디오가 기본 선택되어야 한다.';
+}
+if (!preg_match('/name="from" value="rev-2" checked/', $htmlWithRevisions)) {
+    $failures[] = '두 번째 리비전의 from 라디오가 기본 선택되어야 한다.';
+}
+
+// (2-2) 생성 시각이 주어지면 그대로 표시한다.
+$revisionWithTimestamp = new Revision('rev-ts', 'doc-123', '내용', 'user-1', '요약', null, '2026-07-01 12:00:00');
+$timestampHtml = $page->render($document, [$revisionWithTimestamp]);
+if (!str_contains($timestampHtml, '시각: 2026-07-01 12:00:00')) {
+    $failures[] = 'createdAt이 주어지면 그 값을 "시각: "으로 표시해야 한다.';
+}
+
+// (2-3) 리비전이 1개뿐이면 비교 form/라디오 버튼을 표시하지 않는다.
+if (str_contains($timestampHtml, '<form') || str_contains($timestampHtml, 'type="radio"')) {
+    $failures[] = '리비전이 1개뿐이면 비교 form/라디오 버튼이 없어야 한다.';
+}
+if (!str_contains($timestampHtml, '최초 버전')) {
+    $failures[] = '리비전이 1개뿐이면(부모 없음) "최초 버전"으로 표시해야 한다.';
+}
+
 // (3) 문서 제목에 XSS 공격이 포함된 경우 escape 확인
 $xssDocument = new Document('xss-id', '<script>alert("xss")</script>', null);
 $xssHtml = $page->render($xssDocument, []);

@@ -40,6 +40,14 @@ if ($withoutParent->summary() !== 'Initial content') {
 if ($withoutParent->parentRevisionId() !== null) {
     $failures[] = 'parentRevisionId 기본값은 null이어야 한다.';
 }
+if ($withoutParent->createdAt() !== null) {
+    $failures[] = 'createdAt 기본값은 null이어야 한다.';
+}
+
+$withCreatedAt = new Revision('rev-ts', 'doc1', 'content', 'user1', 'summary', null, '2026-07-01 00:00:00');
+if ($withCreatedAt->createdAt() !== '2026-07-01 00:00:00') {
+    $failures[] = 'createdAt()이 생성자에 전달한 값을 반환하지 않았다.';
+}
 
 $withParent = new Revision('rev2', 'doc1', 'Updated content', 'user2', 'Update content', 'rev1');
 

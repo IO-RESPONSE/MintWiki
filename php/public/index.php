@@ -112,8 +112,22 @@ declare(strict_types=1);
  * 그대로 따른다. JS 없이도 "미리보기" 버튼의 `formaction`으로 이 route에
  * 도달해 페이지 전체가 다시 그려지고(원문 유지), `assets/js/edit-preview.js`가
  * 있으면 fetch로 그 이동을 가로채 미리보기 영역만 갱신한다(CSRF 토큰도 응답의
- * 새 값으로 교체). 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는
- * 이후 태스크에서 이어진다.
+ * 새 값으로 교체). 0710에서 `GET /wiki/{title}/history`와
+ * `GET /wiki/{title}/diff?from={revId}&to={revId}`를 등록해 액션 탭(0692)의
+ * "역사" 링크가 실제로 동작하게 했다 — 둘 다 `GET /wiki/{title}`과 동일한
+ * ACL read 검사를 거친다(거부되면 `PermissionDeniedPage`로 403). history는
+ * `$revisionRepository->listByDocumentId()`가 반환하는(생성 순서, 오름차순)
+ * 목록을 뒤집어 시간 내림차순으로 `DocumentHistoryPage`에 넘긴다 — 리비전이
+ * 없거나 1개뿐이면 그 page가 알아서 빈 상태/단일 상태를 안전하게 그린다.
+ * diff는 쿼리 문자열의 `from`/`to` id로 `$revisionRepository->get()`을 두 번
+ * 호출해 두 리비전을 찾고, 하나라도 없거나 문서가 다르면(다른 문서의
+ * 리비전 id를 섞어 넣는 시도 포함) `ErrorPage`로 404를 반환한다. 문서 자체가
+ * 없거나 `$documentRepository === null`(DB 미설정/오류)인 경우도 동일하게
+ * 404로 처리한다. 리비전 비교는 `DocumentDiffPage`가 두 source를 줄 단위
+ * LCS diff로 비교해 보여준다(렌더 결과가 아닌 원문 기준 diff, out of scope인
+ * 되돌리기는 다루지 않는다). 나머지
+ * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
+ * 이어진다.
  */
 
 $autoloadPath = __DIR__ . '/../vendor/autoload.php';
@@ -166,7 +180,9 @@ use MintWiki\Ui\AdminReportListPage;
 use MintWiki\Ui\AuditViewerPage;
 use MintWiki\Ui\BackupPage;
 use MintWiki\Ui\BlockUserFormPage;
+use MintWiki\Ui\DocumentDiffPage;
 use MintWiki\Ui\DocumentEditorPage;
+use MintWiki\Ui\DocumentHistoryPage;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\ErrorPage;
 use MintWiki\Ui\FilePermissionDiagnosticsPage;
@@ -905,6 +921,124 @@ $router->register('POST', '/wiki/{title}/preview', static function (array $param
     return Response::html(
         $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, [], $summaryInput, $previewHtml)
     );
+});
+
+// GET /wiki/{title}/history — 문서 히스토리 (태스크 0710). ACL read 검사는
+// GET /wiki/{title}과 동일한 로직을 그대로 따른다(문서별 규칙 -> 없으면
+// 네임스페이스 기본값). revisionRepository->listByDocumentId()는 생성
+// 순서(오름차순)로 반환하므로 array_reverse()로 뒤집어 시간 내림차순으로
+// DocumentHistoryPage에 넘긴다 — 그 page가 빈/단일 리비전 상태를 안전하게
+// 그린다. documentRepository가 없거나(DB 미설정/오류) 문서를 찾을 수 없으면
+// ErrorPage로 404를 반환한다.
+$router->register('GET', '/wiki/{title}/history', static function (array $params) use (
+    $documentRepository,
+    $revisionRepository,
+    $aclRuleRepository,
+    $aclService,
+    $accountRepository,
+    $sessionAdapter,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $requestedTitle = rawurldecode($params['title'] ?? '');
+
+    if ($documentRepository === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentService = new DocumentService($documentRepository);
+
+    try {
+        $document = $documentService->getByTitle($requestedTitle);
+    } catch (EmptyTitleError) {
+        $document = null;
+    }
+
+    if ($document === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentAcl = $aclRuleRepository?->documentAcl($document->id());
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    $decision = $aclService->check(AclPermission::Read, $subjectType, $subjectId, $documentAcl);
+
+    if ($decision->isDenied()) {
+        $permissionDeniedPage = new PermissionDeniedPage(null, $layout);
+
+        return Response::html($permissionDeniedPage->render($decision), 403);
+    }
+
+    $revisions = $revisionRepository !== null
+        ? array_reverse($revisionRepository->listByDocumentId($document->id()))
+        : [];
+
+    $documentHistoryPage = new DocumentHistoryPage(null, $layout);
+
+    return Response::html($documentHistoryPage->render($document, $revisions));
+});
+
+// GET /wiki/{title}/diff?from={revId}&to={revId} — 리비전 간 diff (태스크
+// 0710). ACL read 검사는 위 history route와 동일하다. 쿼리 문자열의
+// from/to id로 revisionRepository->get()을 각각 호출해 두 리비전을 찾고,
+// 하나라도 없거나 이 문서의 리비전이 아니면(다른 문서 리비전 id를 섞어
+// 넣는 시도 포함) ErrorPage로 404를 반환한다. 통과하면 DocumentDiffPage가
+// 두 리비전 source를 줄 단위로 비교해 보여준다.
+$router->register('GET', '/wiki/{title}/diff', static function (array $params) use (
+    $documentRepository,
+    $revisionRepository,
+    $aclRuleRepository,
+    $aclService,
+    $accountRepository,
+    $sessionAdapter,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $requestedTitle = rawurldecode($params['title'] ?? '');
+
+    if ($documentRepository === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentService = new DocumentService($documentRepository);
+
+    try {
+        $document = $documentService->getByTitle($requestedTitle);
+    } catch (EmptyTitleError) {
+        $document = null;
+    }
+
+    if ($document === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentAcl = $aclRuleRepository?->documentAcl($document->id());
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    $decision = $aclService->check(AclPermission::Read, $subjectType, $subjectId, $documentAcl);
+
+    if ($decision->isDenied()) {
+        $permissionDeniedPage = new PermissionDeniedPage(null, $layout);
+
+        return Response::html($permissionDeniedPage->render($decision), 403);
+    }
+
+    $fromId = is_string($_GET['from'] ?? null) ? $_GET['from'] : '';
+    $toId = is_string($_GET['to'] ?? null) ? $_GET['to'] : '';
+
+    $fromRevision = ($revisionRepository !== null && $fromId !== '') ? $revisionRepository->get($fromId) : null;
+    $toRevision = ($revisionRepository !== null && $toId !== '') ? $revisionRepository->get($toId) : null;
+
+    if (
+        $fromRevision === null
+        || $toRevision === null
+        || $fromRevision->documentId() !== $document->id()
+        || $toRevision->documentId() !== $document->id()
+    ) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $documentDiffPage = new DocumentDiffPage(null, $layout);
+
+    return Response::html($documentDiffPage->render($document, $fromRevision, $toRevision));
 });
 
 // GET /admin — 관리자 콘솔 진입점 (태스크 0697). 0696 AdminAccessGate로

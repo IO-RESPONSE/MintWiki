@@ -11,6 +11,11 @@ namespace MintWiki\Revision;
  * 두어 Python `Revision`(src/modules/revision/model.py)과 필드를 맞춘다.
  * parentRevisionId는 선택 필드로, 첫 리비전은 null이다. Document와 달리
  * 정규화 로직은 없다 — source/summary를 그대로 저장한다.
+ *
+ * 0710에서 히스토리 화면에 생성 시각을 표시하기 위해 선택 필드
+ * `createdAt`을 추가했다 — 기존 호출부가 깨지지 않도록 마지막 인자로
+ * 두고 기본값을 null로 둔다. `db/schema/revision.sql`의 `created_at`
+ * 컬럼 값을 그대로 담으며, `PdoRepository`만 이 값을 채워 넣는다.
  */
 final class Revision
 {
@@ -20,7 +25,8 @@ final class Revision
         private readonly string $source,
         private readonly string $authorId,
         private readonly string $summary,
-        private readonly ?string $parentRevisionId = null
+        private readonly ?string $parentRevisionId = null,
+        private readonly ?string $createdAt = null
     ) {
     }
 
@@ -52,6 +58,11 @@ final class Revision
     public function parentRevisionId(): ?string
     {
         return $this->parentRevisionId;
+    }
+
+    public function createdAt(): ?string
+    {
+        return $this->createdAt;
     }
 }
 

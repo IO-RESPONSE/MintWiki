@@ -75,8 +75,47 @@ if (!str_contains($html, '리비전 비교')) {
     $failures[] = 'diff page가 "리비전 비교" 텍스트를 포함해야 한다.';
 }
 
-if (!str_contains($html, '실제 diff 내용은 후속 작업에서 구현됩니다.')) {
-    $failures[] = 'diff page가 placeholder 메시지를 표시해야 한다.';
+// (2-1) 실제 줄 단위 diff 내용이 렌더링되는지 확인 (태스크 0710)
+if (!str_contains($html, '<li class="document-diff__line--removed">- 초기 내용</li>')) {
+    $failures[] = 'diff page가 삭제된 줄을 "-" 표시와 함께 보여줘야 한다.';
+}
+
+if (!str_contains($html, '<li class="document-diff__line--added">+ 수정된 내용</li>')) {
+    $failures[] = 'diff page가 추가된 줄을 "+" 표시와 함께 보여줘야 한다.';
+}
+
+// (2-2) 여러 줄 중 일부만 바뀐 경우 변경 없는 줄은 unchanged로 표시된다.
+$multilineFrom = new Revision('rev-multi-1', 'doc-123', "첫째 줄\n둘째 줄\n셋째 줄", 'user-1', '초기', null);
+$multilineTo = new Revision('rev-multi-2', 'doc-123', "첫째 줄\n수정된 둘째 줄\n셋째 줄", 'user-2', '수정', 'rev-multi-1');
+$multilineHtml = $page->render($document, $multilineFrom, $multilineTo);
+
+if (!str_contains($multilineHtml, '<li class="document-diff__line--unchanged">  첫째 줄</li>')) {
+    $failures[] = '바뀌지 않은 줄은 unchanged로 표시되어야 한다.';
+}
+if (!str_contains($multilineHtml, '<li class="document-diff__line--removed">- 둘째 줄</li>')) {
+    $failures[] = '바뀐 줄의 이전 내용은 removed로 표시되어야 한다.';
+}
+if (!str_contains($multilineHtml, '<li class="document-diff__line--added">+ 수정된 둘째 줄</li>')) {
+    $failures[] = '바뀐 줄의 새 내용은 added로 표시되어야 한다.';
+}
+if (!str_contains($multilineHtml, '<li class="document-diff__line--unchanged">  셋째 줄</li>')) {
+    $failures[] = '마지막 줄이 바뀌지 않았다면 unchanged로 표시되어야 한다.';
+}
+
+// (2-3) 두 리비전의 source가 동일하면 "변경 사항이 없습니다."를 보여준다.
+$sameFrom = new Revision('rev-same-1', 'doc-123', '동일한 내용', 'user-1', '초기', null);
+$sameTo = new Revision('rev-same-2', 'doc-123', '동일한 내용', 'user-2', '동일 편집', 'rev-same-1');
+$sameHtml = $page->render($document, $sameFrom, $sameTo);
+if (!str_contains($sameHtml, '변경 사항이 없습니다.')) {
+    $failures[] = '두 리비전의 source가 같으면 "변경 사항이 없습니다."를 표시해야 한다.';
+}
+
+// (2-4) diff 대상 source에 포함된 HTML은 escape되어야 한다.
+$xssSourceFrom = new Revision('rev-xss-src-1', 'doc-123', '안전한 내용', 'user-1', '초기', null);
+$xssSourceTo = new Revision('rev-xss-src-2', 'doc-123', '<script>alert(1)</script>', 'user-2', '수정', 'rev-xss-src-1');
+$xssSourceHtml = $page->render($document, $xssSourceFrom, $xssSourceTo);
+if (!str_contains($xssSourceHtml, '+ &lt;script&gt;alert(1)&lt;/script&gt;')) {
+    $failures[] = 'diff에 표시되는 source 내용도 escape되어야 한다.';
 }
 
 // (3) 문서 제목에 XSS 공격이 포함된 경우 escape 확인

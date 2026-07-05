@@ -17,6 +17,10 @@ use PDO;
  * 리비전은 append-only이므로(`docs/persistence-boundaries.md`) update/delete는
  * 없다. `listByDocumentId()`는 `created_at` 오름차순으로 정렬하며, 같은
  * 시각에 생성된 리비전이 있을 수 있어 `id`를 2차 정렬 기준으로 더한다.
+ *
+ * 0710에서 히스토리 화면에 표시할 생성 시각을 위해 `get()`/
+ * `listByDocumentId()`가 `created_at`을 함께 읽어 `Revision::createdAt()`에
+ * 채운다. `create()`도 실제로 INSERT한 시각을 반환값에 그대로 반영한다.
  */
 final class PdoRepository implements Repository
 {
@@ -26,6 +30,8 @@ final class PdoRepository implements Repository
 
     public function create(Revision $revision): Revision
     {
+        $createdAt = self::nowUtc();
+
         $statement = $this->connection->prepare(
             'INSERT INTO revision (id, document_id, source, author_id, summary, parent_revision_id, created_at) '
             . 'VALUES (:id, :document_id, :source, :author_id, :summary, :parent_revision_id, :created_at)'
@@ -38,16 +44,24 @@ final class PdoRepository implements Repository
             'author_id' => $revision->authorId(),
             'summary' => $revision->summary(),
             'parent_revision_id' => $revision->parentRevisionId(),
-            'created_at' => self::nowUtc(),
+            'created_at' => $createdAt,
         ]);
 
-        return $revision;
+        return new Revision(
+            $revision->id(),
+            $revision->documentId(),
+            $revision->source(),
+            $revision->authorId(),
+            $revision->summary(),
+            $revision->parentRevisionId(),
+            $createdAt
+        );
     }
 
     public function get(string $id): ?Revision
     {
         $statement = $this->connection->prepare(
-            'SELECT id, document_id, source, author_id, summary, parent_revision_id '
+            'SELECT id, document_id, source, author_id, summary, parent_revision_id, created_at '
             . 'FROM revision WHERE id = :id'
         );
         $statement->execute(['id' => $id]);
@@ -63,7 +77,7 @@ final class PdoRepository implements Repository
     public function listByDocumentId(string $documentId): array
     {
         $statement = $this->connection->prepare(
-            'SELECT id, document_id, source, author_id, summary, parent_revision_id '
+            'SELECT id, document_id, source, author_id, summary, parent_revision_id, created_at '
             . 'FROM revision WHERE document_id = :document_id ORDER BY created_at ASC, id ASC'
         );
         $statement->execute(['document_id' => $documentId]);
@@ -84,7 +98,8 @@ final class PdoRepository implements Repository
             (string) $row['source'],
             (string) $row['author_id'],
             (string) $row['summary'],
-            $row['parent_revision_id'] === null ? null : (string) $row['parent_revision_id']
+            $row['parent_revision_id'] === null ? null : (string) $row['parent_revision_id'],
+            (string) $row['created_at']
         );
     }
 
