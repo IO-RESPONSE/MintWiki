@@ -647,6 +647,21 @@ $router->register('GET', '/write', static function () use (
     $requestPath
 ): Response {
     $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+
+    // 새 문서 작성도 edit 권한이 필요하다. GET /wiki/{title}/edit(0687)과 동일하게
+    // 폼을 보여주기 전에 먼저 권한을 확인한다 — 익명은 폼 노출 없이 /login으로
+    // 유도하고(로그인 없이 글쓰기가 되는 것처럼 보이던 문제 해결), 로그인했지만
+    // 권한이 없으면 403. 새 문서라 documentAcl은 null(네임스페이스 기본값 적용).
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    $decision = $aclService->check(AclPermission::Edit, $subjectType, $subjectId, null);
+    if ($decision->isDenied()) {
+        if ($subjectType === AclSubjectType::Anonymous) {
+            return new Response(302, ['Location' => '/login']);
+        }
+
+        return Response::html((new PermissionDeniedPage(null, $layout))->render($decision), 403);
+    }
+
     $documentEditorPage = new DocumentEditorPage(null, $layout);
 
     return Response::html($documentEditorPage->render('__new__', '', '', true));
