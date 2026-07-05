@@ -63,6 +63,27 @@ final class FileBackupRunner implements BackupRunner
         return $backups;
     }
 
+    /**
+     * 다운로드 요청 파일명이 실제 백업 목록에 있는 안전한 파일인지 확인하고
+     * 전체 경로를 반환한다 (태스크 0716).
+     *
+     * 경로 traversal(`/`, `..` 포함) 및 목록에 없는 파일명은 모두 null을
+     * 반환한다 — `listBackups()`가 나열하는 화이트리스트에 속한 항목만
+     * 통과시킨다.
+     */
+    public function resolveBackupPath(string $name): ?string
+    {
+        if ($name === '' || $name !== basename($name)) {
+            return null;
+        }
+
+        if (!in_array($name, $this->listBackups(), true)) {
+            return null;
+        }
+
+        return $this->backupDirectory . '/' . $name;
+    }
+
     public function restoreBackup(array $uploadedFile): string
     {
         $this->ensureBackupDirectory();

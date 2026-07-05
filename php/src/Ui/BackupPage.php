@@ -46,7 +46,11 @@ final class BackupPage
         $escapedCsrfToken = $this->escaper->html($csrfToken);
         $backupItems = '';
         foreach ($backups as $backup) {
-            $backupItems .= '<li>' . $this->escaper->html($backup) . '</li>';
+            $escapedName = $this->escaper->html($backup);
+            $downloadHref = '/admin/backup/download/' . $this->escaper->attribute(rawurlencode($backup));
+            $backupItems .= '<li>' . $escapedName
+                . ' <a href="' . $downloadHref . '">다운로드</a>'
+                . '</li>';
         }
         $backupList = $backupItems === ''
             ? '<p>생성된 백업이 없습니다.</p>'

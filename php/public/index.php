@@ -249,6 +249,15 @@ function mintwiki_send_response(Response $response): void
         }
     }
 
+    $streamFilePath = $response->streamFilePath();
+    if ($streamFilePath !== null) {
+        // 백업 다운로드(태스크 0716) 등 대용량 파일 응답은 body 문자열을
+        // 메모리에 올리지 않고 readfile()로 직접 스트리밍한다.
+        readfile($streamFilePath);
+
+        return;
+    }
+
     echo $response->body();
 }
 
@@ -1780,6 +1789,59 @@ $router->register('POST', '/admin/backup', static function () use (
     }
 
     return Response::html($page->render($backupRunner->listBackups(), '백업을 생성했습니다: ' . $backupName));
+});
+
+// GET /admin/backup/download/{name} — 백업 파일 직접 다운로드 (태스크 0716).
+//
+// name은 반드시 listBackups()가 나열하는 실제 백업 파일 목록에 속해야
+// 한다(FileBackupRunner::resolveBackupPath()) — 경로 traversal이나 목록에
+// 없는 파일은 404로 거부한다. 본문은 readfile()로 스트리밍해 대용량
+// 파일에도 메모리 사용량이 일정하게 유지된다.
+$router->register('GET', '/admin/backup/download/{name}', static function (array $params) use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $backupRunner,
+    $auditRecorder,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $gateResponse = mintwiki_authorize_admin_route($accountRepository, $sessionAdapter, $aclService, $layout);
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $requestedName = rawurldecode($params['name'] ?? '');
+    $path = $backupRunner->resolveBackupPath($requestedName);
+
+    if ($path === null) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $fileSize = filesize($path);
+    if ($fileSize === false) {
+        return Response::html((new ErrorPage(null, $layout))->renderNotFound($requestPath), 404);
+    }
+
+    $contentType = preg_match('/\.json\z/i', $requestedName) === 1
+        ? 'application/json'
+        : 'application/octet-stream';
+
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    try {
+        $auditRecorder->record(new AuditEvent(
+            id: mintwiki_generate_uuid_v4(),
+            module: 'backup',
+            action: 'downloaded',
+            occurredAt: new \DateTimeImmutable('now'),
+            actorId: $subjectType === AclSubjectType::Anonymous ? 'anonymous' : $subjectId,
+            metadata: ['entity_id' => $requestedName]
+        ));
+    } catch (\Throwable $exception) {
+        \error_log('Audit recording failed: ' . $exception->getMessage());
+    }
+
+    return Response::download($path, $requestedName, $contentType, $fileSize);
 });
 
 // GET/POST /admin/restore — 복원 파일 접수 (태스크 0701).

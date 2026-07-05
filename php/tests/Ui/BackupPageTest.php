@@ -60,6 +60,27 @@ if (!str_contains($html, '<footer>')) {
     $failures[] = '백업 page가 footer landmark를 포함해야 한다.';
 }
 
+// (2) 백업 목록의 각 항목에 다운로드 링크가 노출되어야 한다 (태스크 0716).
+$listHtml = $page->render(['mintwiki-backup-20260706-000000-abcd1234.json']);
+
+if (!str_contains($listHtml, 'mintwiki-backup-20260706-000000-abcd1234.json')) {
+    $failures[] = '백업 목록에 백업 파일명이 표시되어야 한다.';
+}
+
+if (!str_contains($listHtml, '/admin/backup/download/mintwiki-backup-20260706-000000-abcd1234.json')) {
+    $failures[] = '백업 목록 각 항목에 다운로드 route로 향하는 링크가 있어야 한다.';
+}
+
+if (!str_contains($listHtml, '>다운로드</a>')) {
+    $failures[] = '백업 목록 각 항목의 다운로드 링크에 "다운로드" 문구가 있어야 한다.';
+}
+
+// (3) 파일명은 escape되어야 한다 (XSS 방지).
+$xssHtml = $page->render(['<script>alert(1)</script>.json']);
+if (str_contains($xssHtml, '<script>alert(1)</script>')) {
+    $failures[] = '백업 파일명이 escape되지 않은 채 렌더링되면 안 된다.';
+}
+
 if ($failures !== []) {
     fwrite(STDERR, "BackupPage 테스트 실패:\n");
     foreach ($failures as $failure) {

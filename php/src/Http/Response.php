@@ -18,7 +18,8 @@ final class Response
     public function __construct(
         private readonly int $status,
         private readonly array $headers = [],
-        private readonly string $body = ''
+        private readonly string $body = '',
+        private readonly ?string $streamFilePath = null
     ) {
     }
 
@@ -38,6 +39,18 @@ final class Response
     public function body(): string
     {
         return $this->body;
+    }
+
+    /**
+     * 전송 시점에 `readfile()`로 스트리밍해야 할 파일 경로 (태스크 0716).
+     *
+     * body 문자열에 파일 전체를 담지 않고 경로만 보관해, 대용량 백업
+     * 파일도 메모리에 통째로 올리지 않고 내려받게 한다. 일반 응답은
+     * null을 반환한다.
+     */
+    public function streamFilePath(): ?string
+    {
+        return $this->streamFilePath;
     }
 
     /**
@@ -110,6 +123,27 @@ final class Response
         ];
 
         return new self($status, $defaultHeaders + $headers, $body);
+    }
+
+    /**
+     * 파일을 첨부(attachment) 다운로드로 내려보내는 Response를 생성한다
+     * (태스크 0716). body는 비워두고 파일 경로만 담아, 실제 전송은
+     * `mintwiki_send_response()`가 `readfile()`로 스트리밍하게 한다.
+     *
+     * @param array<string, string> $headers 기본 헤더들에 병합할 추가 헤더
+     */
+    public static function download(string $filePath, string $downloadFilename, string $contentType, int $contentLength, array $headers = []): self
+    {
+        $safeFilename = str_replace(['"', "\r", "\n"], '', $downloadFilename);
+
+        $defaultHeaders = [
+            'Content-Type' => $contentType,
+            'Content-Disposition' => 'attachment; filename="' . $safeFilename . '"',
+            'Content-Length' => (string) $contentLength,
+            'X-Content-Type-Options' => 'nosniff',
+        ];
+
+        return new self(200, $defaultHeaders + $headers, '', $filePath);
     }
 
     /**
