@@ -89,9 +89,14 @@ declare(strict_types=1);
  * 익명은 `/login`으로 302, 비관리자는 403으로 먼저 걸러내고, 관리자만
  * `AdminDashboardPage`(0691 `Layout` 재사용)를 보게 한다. 대시보드는 이후
  * 태스크(0698-0702)가 등록할 관리 하위 화면(감사 로그/신고/사용자 차단/
- * 유지보수/백업·복원/진단) 링크 목록을 보여준다. 나머지
- * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
- * 이어진다.
+ * 유지보수/백업·복원/진단) 링크 목록을 보여준다. 0698에서
+ * `GET /admin/audit`(감사 로그 뷰어)을 등록했다 — 동일한 0696
+ * `AdminAccessGate`로 인가를 확인한 뒤, `$pdo`가 연결된 경우에만
+ * `RecentAuditEventsQuery`로 `audit_event` 테이블의 최근 이벤트(최대
+ * 100건)를 조회해 `AuditViewerPage`(`AuditRow` 재사용)에 주입한다.
+ * 미설정/오류/조회 실패 시에는 빈 목록으로 대체해 빈 상태를 보여준다.
+ * 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후
+ * 태스크에서 이어진다.
  */
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -104,6 +109,7 @@ use MintWiki\Acl\Permission as AclPermission;
 use MintWiki\Acl\SubjectType as AclSubjectType;
 use MintWiki\App\AppBootstrap;
 use MintWiki\App\ConfigLoader;
+use MintWiki\Audit\RecentAuditEventsQuery;
 use MintWiki\Document\Document;
 use MintWiki\Document\DuplicateNormalizedTitleError;
 use MintWiki\Document\EmptyTitleError;
@@ -130,6 +136,7 @@ use MintWiki\Security\LogoutHandler;
 use MintWiki\Security\PhpSessionAdapter;
 use MintWiki\Security\SessionUserResolver;
 use MintWiki\Ui\AdminDashboardPage;
+use MintWiki\Ui\AuditViewerPage;
 use MintWiki\Ui\DocumentEditorPage;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\ErrorPage;
@@ -724,6 +731,48 @@ $router->register('GET', '/admin', static function () use (
     $adminDashboardPage = new AdminDashboardPage(null, $layout);
 
     return Response::html($adminDashboardPage->render());
+});
+
+// GET /admin/audit — 감사 로그 뷰어 (태스크 0698). 위 GET /admin과 동일하게
+// 0696 AdminAccessGate로 익명(302 /login)/비관리자(403)를 먼저 걸러내고,
+// 관리자만 통과시킨다. `$pdo`가 연결된 경우에만 RecentAuditEventsQuery로
+// audit_event 테이블의 최근 이벤트(occurred_at 내림차순, 최대 100건)를 읽어
+// AuditViewerPage(AuditRow 재사용)에 주입하고, 미설정/오류/조회 실패 시에는
+// 빈 목록으로 대체해 AuditViewerPage가 빈 상태를 보여주게 한다 — 0674/0693과
+// 동일한 판단이다.
+$router->register('GET', '/admin/audit', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $pdo,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+
+    if ($accountRepository === null) {
+        return new Response(302, ['Location' => '/login']);
+    }
+
+    $sessionUserResolver = new SessionUserResolver($sessionAdapter, $accountRepository);
+    $adminAccessGate = new AdminAccessGate($aclService, $sessionUserResolver, $layout);
+
+    $gateResponse = $adminAccessGate->authorize();
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $auditEvents = [];
+    if ($pdo !== null) {
+        try {
+            $auditEvents = (new RecentAuditEventsQuery($pdo))->listRecentEvents();
+        } catch (\Throwable $exception) {
+            $auditEvents = [];
+        }
+    }
+
+    $auditViewerPage = new AuditViewerPage(null, $layout);
+
+    return Response::html($auditViewerPage->render($auditEvents));
 });
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)
