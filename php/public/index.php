@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684, 0687, 0691, 0703, 0706, 0708).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684, 0687, 0691, 0703, 0706, 0708, 0714).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -160,6 +160,9 @@ use MintWiki\App\ConfigLoader;
 use MintWiki\App\LocalConfigLoader;
 use MintWiki\App\MaintenanceModeStateStore;
 use MintWiki\App\StoragePathConfig;
+use MintWiki\Audit\AuditEvent;
+use MintWiki\Audit\NoOpAuditRecorder;
+use MintWiki\Audit\PdoAuditRecorder;
 use MintWiki\Audit\RecentAuditEventsQuery;
 use MintWiki\Discussion\EmptyCommentBodyError;
 use MintWiki\Discussion\EmptyCommentCreatedByError;
@@ -406,6 +409,11 @@ if ($bootstrap->connectionConfig() !== null) {
     }
 }
 
+// 감사 로그 recorder (태스크 0714). $pdo가 연결된 경우에만 실제로
+// audit_event 테이블에 기록하는 PdoAuditRecorder를 쓰고, 미설정/오류
+// 상태에서는 NoOpAuditRecorder로 대체해 죽지 않게 한다.
+$auditRecorder = $pdo !== null ? new PdoAuditRecorder($pdo) : new NoOpAuditRecorder();
+
 // 로그인 세션 (태스크 0686). $accountRepository는 $pdo가 연결된 경우에만
 // 만든다. 0691에서 위치를 앞당겼다 — 상단 네비게이션 바(로그인/로그아웃
 // 상태 표시)가 GET / 등 모든 route에서 필요하기 때문이다.
@@ -605,7 +613,9 @@ $backupRunner = new FileBackupRunner($storagePathConfig->rootPath() . '/backups'
 
 // GET/POST /login, GET/POST /logout (태스크 0686). $accountRepository/
 // $sessionAdapter는 위에서(태스크 0691) 앞당겨 정의했다 — 로그인 상태
-// 확인/자격 증명 대조에 그대로 쓴다.
+// 확인/자격 증명 대조에 그대로 쓴다. 0714에서 위 $auditRecorder를
+// LoginHandler/LogoutHandler에 주입해 로그인 성공/로그아웃을 감사 이벤트로
+// 남긴다.
 
 $router->register('GET', '/login', static function () use ($accountRepository, $sessionAdapter, $aclService): Response {
     if ($accountRepository !== null) {
@@ -621,14 +631,14 @@ $router->register('GET', '/login', static function () use ($accountRepository, $
     return Response::html($loginPage->render());
 });
 
-$router->register('POST', '/login', static function (): Response {
-    $loginHandler = new LoginHandler();
+$router->register('POST', '/login', static function () use ($auditRecorder): Response {
+    $loginHandler = new LoginHandler(auditRecorder: $auditRecorder);
 
     return $loginHandler->handle($_POST);
 });
 
-$logoutRouteHandler = static function (): Response {
-    $logoutHandler = new LogoutHandler();
+$logoutRouteHandler = static function () use ($auditRecorder): Response {
+    $logoutHandler = new LogoutHandler(auditRecorder: $auditRecorder);
 
     return $logoutHandler->handle();
 };
@@ -808,7 +818,8 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
     $aclService,
     $accountRepository,
     $sessionAdapter,
-    $requestPath
+    $requestPath,
+    $auditRecorder
 ): Response {
     $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
     $documentEditorPage = new DocumentEditorPage(null, $layout);
@@ -915,6 +926,21 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
             ], $summaryInput),
             409
         );
+    }
+
+    // 감사 hook 호출 (태스크 0714). 문서 생성/편집 저장에 성공한 뒤 기록하며,
+    // 실패해도 저장은 이미 끝났으므로 리다이렉트를 그대로 진행한다.
+    try {
+        $auditRecorder->record(new AuditEvent(
+            id: mintwiki_generate_uuid_v4(),
+            module: 'document',
+            action: $isNew ? 'created' : 'updated',
+            occurredAt: new \DateTimeImmutable('now'),
+            actorId: $subjectType === AclSubjectType::Anonymous ? 'anonymous' : $subjectId,
+            metadata: ['entity_id' => $document->id(), 'related_entity_id' => $revision->id()]
+        ));
+    } catch (\Throwable $exception) {
+        \error_log('Audit recording failed: ' . $exception->getMessage());
     }
 
     return new Response(302, ['Location' => '/wiki/' . rawurlencode($document->title())]);

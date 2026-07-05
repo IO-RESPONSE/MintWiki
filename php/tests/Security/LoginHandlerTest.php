@@ -17,6 +17,10 @@ declare(strict_types=1);
  * (5) 올바른 자격 증명이면 302로 홈으로 리다이렉트하고, 세션에 계정 id가
  *     저장되며(`SessionUserResolver::SESSION_KEY`), 세션 ID가 재발급된다
  *     (session fixation 방지). 응답 본문에 평문 비밀번호가 노출되지 않는다.
+ * (6) 로그인 성공 시 주입된 `AuditRecorder`로 module=auth,
+ *     action=login_succeeded 감사 이벤트가 기록된다(태스크 0714).
+ * (7) 감사 기록이 예외를 던져도 로그인 처리(302, 세션 저장)는 그대로
+ *     성공해야 한다 — 방어적 try/catch.
  */
 
 $autoloadFile = __DIR__ . '/../../vendor/autoload.php';
@@ -29,6 +33,8 @@ if (!is_file($autoloadFile)) {
 require $autoloadFile;
 
 use MintWiki\App\AppBootstrap;
+use MintWiki\Audit\AuditEvent;
+use MintWiki\Audit\AuditRecorder;
 use MintWiki\Security\CsrfTokenService;
 use MintWiki\Security\LoginHandler;
 use MintWiki\Security\SessionUserResolver;
@@ -226,6 +232,89 @@ try {
     }
 } catch (Exception $e) {
     $failures[] = '(5) 정상 로그인 테스트 중 예외: ' . $e->getMessage();
+}
+
+// (6) 로그인 성공 시 주입된 AuditRecorder로 감사 이벤트가 기록되어야 한다.
+try {
+    $_SESSION = [];
+    $csrfService6 = new CsrfTokenService();
+    $validToken6 = $csrfService6->generate();
+
+    $fakePdo6 = mintwiki_login_handler_test_pdo($accountSql);
+    $accountId6 = (new AccountRepository($fakePdo6))->create('admin', password_hash($plainPassword, PASSWORD_DEFAULT));
+    $bootstrap6 = new AppBootstrap(mintwiki_login_handler_test_config_dir(), static fn (): PDO => $fakePdo6);
+
+    $mockAuditRecorder6 = new class implements AuditRecorder {
+        /** @var AuditEvent[] */
+        public array $recordedEvents = [];
+
+        public function record(AuditEvent $event): void
+        {
+            $this->recordedEvents[] = $event;
+        }
+    };
+
+    $handler6 = new LoginHandler($csrfService6, $bootstrap6, null, null, $mockAuditRecorder6);
+    $response6 = $handler6->handle([
+        'csrf_token' => $validToken6,
+        'username' => 'admin',
+        'password' => $plainPassword,
+    ]);
+
+    if ($response6->status() !== 302) {
+        $failures[] = '(6) 감사 recorder가 주입되어도 로그인 성공은 302를 반환해야 하는데 ' . $response6->status() . '이었다.';
+    }
+    if (count($mockAuditRecorder6->recordedEvents) !== 1) {
+        $failures[] = '(6) 로그인 성공 시 감사 이벤트가 정확히 1건 기록되어야 하는데 '
+            . count($mockAuditRecorder6->recordedEvents) . '건이었다.';
+    } else {
+        $recordedEvent6 = $mockAuditRecorder6->recordedEvents[0];
+        if ($recordedEvent6->module() !== 'auth' || $recordedEvent6->action() !== 'login_succeeded') {
+            $failures[] = '(6) 감사 이벤트는 module=auth, action=login_succeeded여야 한다.';
+        }
+        if ($recordedEvent6->actorId() !== $accountId6) {
+            $failures[] = '(6) 감사 이벤트의 actorId는 로그인한 계정 id여야 한다.';
+        }
+        if (($recordedEvent6->metadata()['entity_id'] ?? null) !== $accountId6) {
+            $failures[] = '(6) 감사 이벤트 metadata의 entity_id는 로그인한 계정 id여야 한다.';
+        }
+    }
+} catch (Exception $e) {
+    $failures[] = '(6) 로그인 성공 감사 기록 테스트 중 예외: ' . $e->getMessage();
+}
+
+// (7) 감사 기록이 예외를 던져도 로그인 처리는 그대로 성공해야 한다.
+try {
+    $_SESSION = [];
+    $csrfService7 = new CsrfTokenService();
+    $validToken7 = $csrfService7->generate();
+
+    $fakePdo7 = mintwiki_login_handler_test_pdo($accountSql);
+    $accountId7 = (new AccountRepository($fakePdo7))->create('admin', password_hash($plainPassword, PASSWORD_DEFAULT));
+    $bootstrap7 = new AppBootstrap(mintwiki_login_handler_test_config_dir(), static fn (): PDO => $fakePdo7);
+
+    $failingAuditRecorder7 = new class implements AuditRecorder {
+        public function record(AuditEvent $event): void
+        {
+            throw new \Exception('Audit recording failure');
+        }
+    };
+
+    $handler7 = new LoginHandler($csrfService7, $bootstrap7, null, null, $failingAuditRecorder7);
+    $response7 = $handler7->handle([
+        'csrf_token' => $validToken7,
+        'username' => 'admin',
+        'password' => $plainPassword,
+    ]);
+
+    if ($response7->status() !== 302) {
+        $failures[] = '(7) 감사 기록이 실패해도 로그인 성공은 302를 반환해야 하는데 ' . $response7->status() . '이었다.';
+    }
+    if (($_SESSION[SessionUserResolver::SESSION_KEY] ?? null) !== $accountId7) {
+        $failures[] = '(7) 감사 기록이 실패해도 세션에 계정 id가 저장되어야 한다.';
+    }
+} catch (Exception $e) {
+    $failures[] = '(7) 감사 기록 실패 방어 테스트 중 예외: ' . $e->getMessage();
 }
 
 foreach ($createdConfigDirs as $dir) {

@@ -36,3 +36,16 @@ manifest가 audit의 책임으로 명시한 document/permission/admin/auth/job
 세 클래스는 아직 CODE 상수를 갖지 않는다 — Python 쪽에 대응하는 error
 code가 없어서다(`docs/portable-exception-code-policy.md`). code 부여는
 0416(PHP error code registry)의 범위다.
+
+## PdoAuditRecorder (태스크 0714)
+
+`AuditRecorder`의 실제 PDO 구현체 — `audit_event` 테이블(`db/schema/audit_event.sql`)에
+INSERT한다. 문서 생성/편집, 로그인 성공, 로그아웃이 이 recorder로 이벤트를
+남긴다(`public/index.php`, `Security\LoginHandler`, `Security\LogoutHandler`).
+
+`AuditEvent`의 `module`/`action`/`actorId`/`occurredAt`은 테이블 컬럼에 그대로
+대응하지만, 테이블의 `entity_id`(NOT NULL)/`related_entity_id`(nullable)는
+`AuditEvent`에 전용 필드가 없어 호출자가 `metadata`에 `entity_id`(필수)/
+`related_entity_id`(선택) 키로 채워 넣는 관례로 전달한다. `entity_id`가 없으면
+`MissingAuditEventEntityIdError`를 던지며, 호출자는 이 호출을 항상 try/catch로
+감싸 감사 기록 실패가 사용자 요청을 깨뜨리지 않게 한다.
