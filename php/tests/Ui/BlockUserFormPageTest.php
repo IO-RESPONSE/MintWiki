@@ -48,7 +48,7 @@ if (!str_contains($html, '<h1>사용자 차단</h1>')) {
     $failures[] = '사용자 차단 form이 h1으로 "사용자 차단"를 표시해야 한다.';
 }
 
-if (!str_contains($html, '<form method="post" action="/admin/block-user">')) {
+if (!str_contains($html, '<form method="post" action="/admin/users/block">')) {
     $failures[] = '사용자 차단 form이 POST form을 포함해야 한다.';
 }
 

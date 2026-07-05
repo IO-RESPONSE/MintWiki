@@ -46,7 +46,7 @@ final class BlockUserFormPage
         $body = '<main>'
             . '<h1>사용자 차단</h1>'
             . $errorSummary
-            . '<form method="post" action="/admin/block-user">'
+            . '<form method="post" action="/admin/users/block">'
             . '<input type="hidden" name="csrf_token" value="' . $csrfTokenEscaped . '">'
             . '<label for="user_id">사용자 ID</label>'
             . '<input type="text" id="user_id" name="user_id" required>'

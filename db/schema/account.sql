@@ -22,6 +22,13 @@
 -- 옮길지 재검토한다. 평문 비밀번호는 저장하지 않고 `password_hash()`
 -- 등으로 해시된 값만 저장한다.
 --
+-- blocked_at (태스크 0699 추가): 관리자 사용자 차단 기능이 저장할 곳이
+-- 아직 없어 이 테이블에 최소 컬럼으로 추가한다. 별도 boolean 컬럼 대신
+-- [Portable Timestamp Column Policy]를 따르는 nullable 타임스탬프로 둬,
+-- NULL이면 차단되지 않은 상태, 값이 있으면 그 시각(UTC)에 차단됐음을
+-- 뜻하게 한다 — acl_rule.expires_at/audit_event.occurred_at과 동일한
+-- 컬럼 정의 근거다. 차단 사유 저장은 범위 밖이다(0699 Out of Scope).
+--
 -- created_at/updated_at 없음: User(model.py)가 이 필드를 갖지 않는다 —
 -- document/revision과 달리 아직 DatabaseUserRepository도 Alembic
 -- 마이그레이션도 없어(user-portable-repository-plan.md §1) 이 파일이
@@ -46,6 +53,7 @@ CREATE TABLE account (
     username VARCHAR(255) NOT NULL,
     display_name VARCHAR(255) NULL,
     password_hash VARCHAR(255) NULL,
+    blocked_at TIMESTAMP NULL,
     CONSTRAINT pk_account PRIMARY KEY (id),
     CONSTRAINT uq_account_username UNIQUE (username)
 );

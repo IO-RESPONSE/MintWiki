@@ -108,6 +108,19 @@ if ($repository->findById('no-such-id') !== null) {
     $failures[] = '존재하지 않는 id의 findById()는 null을 반환해야 한다.';
 }
 
+// (9) block()은 blocked_at을 채워야 한다(태스크 0699, 사용자 차단).
+$blockedAtBefore = $connection->query('SELECT blocked_at FROM account WHERE id = ' . $connection->quote($id))->fetchColumn();
+if ($blockedAtBefore !== null) {
+    $failures[] = 'block() 호출 전 blocked_at은 NULL이어야 한다.';
+}
+
+$repository->block($id);
+
+$blockedAtAfter = $connection->query('SELECT blocked_at FROM account WHERE id = ' . $connection->quote($id))->fetchColumn();
+if ($blockedAtAfter === null || $blockedAtAfter === false || (string) $blockedAtAfter === '') {
+    $failures[] = 'block() 호출 후 blocked_at이 채워져 있어야 한다.';
+}
+
 if ($failures !== []) {
     fwrite(STDERR, "AccountRepository 테스트 실패:\n");
     foreach ($failures as $failure) {

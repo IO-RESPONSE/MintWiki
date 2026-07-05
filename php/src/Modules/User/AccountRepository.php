@@ -90,6 +90,22 @@ final class AccountRepository
     }
 
     /**
+     * 계정을 차단 상태로 표시한다 (태스크 0699).
+     *
+     * 차단 여부는 `blocked_at`의 NULL 여부로 판정한다 — 별도 boolean 컬럼
+     * 대신 차단된 시각(UTC)을 남겨 언제 차단됐는지도 함께 기록한다. 차단
+     * 해제(NULL로 되돌리기)는 이 태스크의 범위 밖이다.
+     */
+    public function block(string $id): void
+    {
+        $statement = $this->connection->prepare('UPDATE account SET blocked_at = :blocked_at WHERE id = :id');
+        $statement->execute([
+            'blocked_at' => gmdate('Y-m-d H:i:s'),
+            'id' => $id,
+        ]);
+    }
+
+    /**
      * UUID v4 문자열을 생성한다 (계정 id 발급용, `Document\Service`와 동일한 방식).
      */
     private static function generateId(): string

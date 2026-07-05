@@ -95,8 +95,13 @@ declare(strict_types=1);
  * `RecentAuditEventsQuery`로 `audit_event` 테이블의 최근 이벤트(최대
  * 100건)를 조회해 `AuditViewerPage`(`AuditRow` 재사용)에 주입한다.
  * 미설정/오류/조회 실패 시에는 빈 목록으로 대체해 빈 상태를 보여준다.
- * 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후
- * 태스크에서 이어진다.
+ * 0699에서 `GET /admin/reports`(`AdminReportListPage`), `GET /admin/users/block`
+ * (`BlockUserFormPage` 폼), `POST /admin/users/block`(`BlockUserHandler`)을
+ * 등록했다 — 세 route 모두 동일한 0696 `AdminAccessGate`로 보호되고,
+ * POST는 기존 `CsrfTokenService`로 CSRF 토큰을 검증한 뒤
+ * `AccountRepository::block()`으로 대상 계정을 차단하고 폼으로 302
+ * 리다이렉트한다. 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는
+ * 이후 태스크에서 이어진다.
  */
 
 require __DIR__ . '/../vendor/autoload.php';
@@ -136,7 +141,9 @@ use MintWiki\Security\LogoutHandler;
 use MintWiki\Security\PhpSessionAdapter;
 use MintWiki\Security\SessionUserResolver;
 use MintWiki\Ui\AdminDashboardPage;
+use MintWiki\Ui\AdminReportListPage;
 use MintWiki\Ui\AuditViewerPage;
+use MintWiki\Ui\BlockUserFormPage;
 use MintWiki\Ui\DocumentEditorPage;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\ErrorPage;
@@ -152,6 +159,7 @@ use MintWiki\Ui\Navigation;
 use MintWiki\Ui\NavigationBar;
 use MintWiki\Ui\PermissionDeniedPage;
 use MintWiki\User\AccountRepository;
+use MintWiki\User\BlockUserHandler;
 
 /**
  * Response를 실제 HTTP 응답(상태 코드/헤더/본문)으로 내보낸다.
@@ -773,6 +781,92 @@ $router->register('GET', '/admin/audit', static function () use (
     $auditViewerPage = new AuditViewerPage(null, $layout);
 
     return Response::html($auditViewerPage->render($auditEvents));
+});
+
+// GET /admin/reports — 신고 목록 (태스크 0699). 위 GET /admin/audit과 동일하게
+// 0696 AdminAccessGate로 익명(302 /login)/비관리자(403)를 먼저 걸러내고
+// 관리자만 AdminReportListPage(Layout 재사용)를 렌더링한다. 신고 접수(사용자측)
+// 흐름과 실데이터 연동은 이 태스크의 범위 밖이라 빈 상태만 보여준다.
+$router->register('GET', '/admin/reports', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+
+    if ($accountRepository === null) {
+        return new Response(302, ['Location' => '/login']);
+    }
+
+    $sessionUserResolver = new SessionUserResolver($sessionAdapter, $accountRepository);
+    $adminAccessGate = new AdminAccessGate($aclService, $sessionUserResolver, $layout);
+
+    $gateResponse = $adminAccessGate->authorize();
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $adminReportListPage = new AdminReportListPage(null, $layout);
+
+    return Response::html($adminReportListPage->render());
+});
+
+// GET /admin/users/block — 사용자 차단 form (태스크 0699). 동일한 게이트를
+// 적용한 뒤 BlockUserFormPage(CSRF 토큰 포함)를 렌더링한다.
+$router->register('GET', '/admin/users/block', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+
+    if ($accountRepository === null) {
+        return new Response(302, ['Location' => '/login']);
+    }
+
+    $sessionUserResolver = new SessionUserResolver($sessionAdapter, $accountRepository);
+    $adminAccessGate = new AdminAccessGate($aclService, $sessionUserResolver, $layout);
+
+    $gateResponse = $adminAccessGate->authorize();
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $blockUserFormPage = new BlockUserFormPage(null, $layout);
+
+    return Response::html($blockUserFormPage->render());
+});
+
+// POST /admin/users/block — 사용자 차단 처리 (태스크 0699). 위와 동일한
+// 게이트를 통과한 뒤 BlockUserHandler(CSRF 검증 + AccountRepository::block())로
+// 제출을 처리한다. $accountRepository가 없으면(DB 미설정) 게이트가 이미
+// /login으로 302하므로 이 지점에는 DB가 항상 연결되어 있다.
+$router->register('POST', '/admin/users/block', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+
+    if ($accountRepository === null) {
+        return new Response(302, ['Location' => '/login']);
+    }
+
+    $sessionUserResolver = new SessionUserResolver($sessionAdapter, $accountRepository);
+    $adminAccessGate = new AdminAccessGate($aclService, $sessionUserResolver, $layout);
+
+    $gateResponse = $adminAccessGate->authorize();
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $blockUserFormPage = new BlockUserFormPage(null, $layout);
+    $blockUserHandler = new BlockUserHandler($accountRepository, new CsrfTokenService(), $blockUserFormPage);
+
+    return $blockUserHandler->handle($_POST);
 });
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)
