@@ -42,19 +42,24 @@ final class DocumentEditorPage
      * @param string $sourceValue source textarea에 채울 값
      * @param bool $isNew true면 "새 문서 만들기", false면 "문서 편집" 화면으로 표시
      * @param array<string, string|array<string>> $errors 필드명 => 오류 메시지(들)
+     * @param string $summaryValue 편집 요약 입력 필드에 채울 값(태스크 0707).
+     *     title/source와 달리 선택 입력이라 required를 붙이지 않는다 — 빈
+     *     값 처리는 저장 경로(POST 핸들러)에서 기본 문자열로 대체한다.
      */
     public function render(
         string $actionTitle,
         string $titleValue = '',
         string $sourceValue = '',
         bool $isNew = true,
-        array $errors = []
+        array $errors = [],
+        string $summaryValue = ''
     ): string {
         $heading = $isNew ? '새 문서 만들기' : '문서 편집';
         $actionUrl = '/wiki/' . rawurlencode($actionTitle) . '/edit';
         $escapedAction = $this->escaper->attribute($actionUrl);
         $escapedTitleValue = $this->escaper->html($titleValue);
         $escapedSourceValue = $this->escaper->html($sourceValue);
+        $escapedSummaryValue = $this->escaper->html($summaryValue);
         $csrfToken = $this->csrfTokenService->generate();
         $escapedCsrfToken = $this->escaper->html($csrfToken);
 
@@ -67,6 +72,8 @@ final class DocumentEditorPage
             . '<input type="text" id="title" name="title" value="' . $escapedTitleValue . '" required>'
             . '<label for="source">내용</label>'
             . '<textarea id="source" name="source" required>' . $escapedSourceValue . '</textarea>'
+            . '<label for="summary">편집 요약</label>'
+            . '<input type="text" id="summary" name="summary" value="' . $escapedSummaryValue . '" maxlength="500">'
             . '<button type="submit">저장</button>'
             . '</form>'
             . '</main>';

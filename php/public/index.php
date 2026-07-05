@@ -286,6 +286,20 @@ function mintwiki_generate_uuid_v4(): string
     );
 }
 
+/**
+ * 편집 요약 입력값을 정규화한다 (태스크 0707).
+ *
+ * 앞뒤 공백을 제거하고, 비어 있으면 기본 문자열로 대체해 리비전에는 항상
+ * 사람이 읽을 수 있는 요약이 남게 한다. 길이 제한(500자)은 저장 전
+ * 검증 단계에서 별도로 걸러내므로 여기서는 자르지 않는다.
+ */
+function mintwiki_normalize_edit_summary(string $summaryInput): string
+{
+    $trimmed = trim($summaryInput);
+
+    return $trimmed === '' ? '편집 요약 없음' : $trimmed;
+}
+
 $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'CLI';
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 $requestPath = parse_url($requestUri, PHP_URL_PATH) ?? '/';
@@ -612,10 +626,14 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use (
 });
 
 // GET/POST /wiki/{title}/edit — 문서 생성/편집 (태스크 0685, ACL 적용은
-// 0687). DocumentEditorPage로 제목·본문·CSRF 토큰이 있는 폼을 렌더링한다.
+// 0687, 편집 요약 필드는 0707). DocumentEditorPage로 제목·본문·편집 요약·
+// CSRF 토큰이 있는 폼을 렌더링한다.
 // GET은 문서가 있으면 현재 리비전의 source로 미리 채우고, 없으면 빈 새
-// 문서 폼으로 동작한다. POST는 CSRF 토큰을 검증하고(실패 시 403), 제목/
-// 본문이 비어있으면 폼으로 되돌려 오류를 보여준다(422). 통과하면
+// 문서 폼으로 동작한다(편집 요약은 리비전마다 새로 입력하므로 항상 빈 값).
+// POST는 CSRF 토큰을 검증하고(실패 시 403), 제목/본문이 비어있거나 편집
+// 요약이 500자를 넘으면 폼으로 되돌려 오류를 보여준다(422). 편집 요약이
+// 비어 있으면 mintwiki_normalize_edit_summary()가 기본 문자열로 대체한다.
+// 통과하면
 // Document\Service로 문서를 생성/갱신하고 Revision\Repository로 새 리비전을
 // 만든 뒤 문서의 currentRevisionId를 그 리비전으로 연결한다(0029
 // create-first-revision과 동일한 순서). 저장에 성공하면 GET /wiki/{title}로
@@ -693,13 +711,14 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
 
     $titleInput = is_string($_POST['title'] ?? null) ? $_POST['title'] : '';
     $sourceInput = is_string($_POST['source'] ?? null) ? $_POST['source'] : '';
+    $summaryInput = is_string($_POST['summary'] ?? null) ? $_POST['summary'] : '';
     $csrfToken = is_string($_POST['csrf_token'] ?? null) ? $_POST['csrf_token'] : '';
 
     if ($documentRepository === null || $revisionRepository === null) {
         return Response::html(
             $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, true, [
                 '_form' => '데이터베이스가 설정되지 않아 저장할 수 없습니다.',
-            ]),
+            ], $summaryInput),
             503
         );
     }
@@ -731,7 +750,7 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
         return Response::html(
             $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, [
                 '_form' => '유효하지 않은 요청입니다. 다시 시도하세요.',
-            ]),
+            ], $summaryInput),
             403
         );
     }
@@ -743,10 +762,13 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
     if (trim($sourceInput) === '') {
         $validationErrors['source'] = '내용을 입력하세요.';
     }
+    if (mb_strlen(trim($summaryInput)) > 500) {
+        $validationErrors['summary'] = '편집 요약은 500자 이하로 입력하세요.';
+    }
 
     if ($validationErrors !== []) {
         return Response::html(
-            $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, $validationErrors),
+            $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, $validationErrors, $summaryInput),
             422
         );
     }
@@ -768,7 +790,7 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
             $document->id(),
             $sourceInput,
             '',
-            '',
+            mintwiki_normalize_edit_summary($summaryInput),
             $parentRevisionId
         ));
 
@@ -777,14 +799,14 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
         return Response::html(
             $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, [
                 'title' => '제목을 입력하세요.',
-            ]),
+            ], $summaryInput),
             422
         );
     } catch (DuplicateNormalizedTitleError) {
         return Response::html(
             $documentEditorPage->render($requestedTitle, $titleInput, $sourceInput, $isNew, [
                 'title' => '이미 존재하는 제목입니다.',
-            ]),
+            ], $summaryInput),
             409
         );
     }
