@@ -25,9 +25,52 @@ use MintWiki\Security\CsrfTokenService;
  * 응답을 fetch로 받아 미리보기 영역만 갱신하고(CSRF 토큰도 응답의 새 값으로
  * 교체), 페이지 전체를 새로고침하지 않는다 — 두 경로 모두 같은 서버
  * 렌더링 결과에 의존하므로 표시가 갈라지지 않는다.
+ *
+ * 0709에서 textarea 위에 NamuMark 문법 삽입 툴바와, 그 아래 접이식 문법
+ * 도움말(치트시트)을 추가했다. 툴바 버튼은 전부 `type="button"`이라 JS 없이는
+ * 아무 폼도 제출하지 않는 무동작 버튼일 뿐이고(사용자가 문법을 직접 타이핑하면
+ * 되므로 편집/저장 자체는 계속 정상 동작), `assets/js/edit-toolbar.js`가
+ * 로드되면 각 버튼의 `data-markup-before`/`data-markup-after` 속성값으로
+ * textarea 선택 영역을 감싸거나 삽입한다. 도움말 패널은 `<details>/<summary>`로
+ * 만들어 JS 없이도 순수 HTML/CSS만으로 펼쳐진다.
  */
 final class DocumentEditorPage
 {
+    /**
+     * 툴바 버튼 정의. label은 버튼에 표시되는 텍스트, before/after는
+     * textarea 선택 영역을 감쌀(또는 삽입할) NamuMark 문법이다(0709 Acceptance
+     * Criteria의 문법 목록과 동일).
+     *
+     * @var list<array{label: string, before: string, after: string}>
+     */
+    private const TOOLBAR_BUTTONS = [
+        ['label' => '굵게', 'before' => "'''", 'after' => "'''"],
+        ['label' => '기울임', 'before' => "''", 'after' => "''"],
+        ['label' => '밑줄', 'before' => '__', 'after' => '__'],
+        ['label' => '링크', 'before' => '[[', 'after' => ']]'],
+        ['label' => '제목', 'before' => '== ', 'after' => ' =='],
+        ['label' => '목록', 'before' => '* ', 'after' => ''],
+        ['label' => '표', 'before' => '|| ', 'after' => ' ||'],
+    ];
+
+    /**
+     * 문법 도움말 예시. 입력(NamuMark source)과 결과(렌더링된 HTML)를
+     * 나란히 보여준다. 결과 HTML은 0705/0706 BlockParser/InlineParser의
+     * 실제 렌더링 규칙과 동일한, 개발자가 직접 작성한 정적 HTML이다(사용자
+     * 입력이 아니므로 escape하지 않는다).
+     *
+     * @var list<array{input: string, outputHtml: string}>
+     */
+    private const HELP_EXAMPLES = [
+        ['input' => "'''굵게'''", 'outputHtml' => '<strong>굵게</strong>'],
+        ['input' => "''기울임''", 'outputHtml' => '<em>기울임</em>'],
+        ['input' => '__밑줄__', 'outputHtml' => '<u>밑줄</u>'],
+        ['input' => '[[문서제목]]', 'outputHtml' => '<a href="/wiki/문서제목">문서제목</a>'],
+        ['input' => '== 제목 ==', 'outputHtml' => '<h2>제목</h2>'],
+        ['input' => '* 목록 항목', 'outputHtml' => '<ul><li>목록 항목</li></ul>'],
+        ['input' => '||셀1||셀2||', 'outputHtml' => '<table><tbody><tr><td>셀1</td><td>셀2</td></tr></tbody></table>'],
+    ];
+
     private Escaper $escaper;
     private Layout $layout;
     private CsrfTokenService $csrfTokenService;
@@ -90,7 +133,9 @@ final class DocumentEditorPage
             . '<label for="title">제목</label>'
             . '<input type="text" id="title" name="title" value="' . $escapedTitleValue . '" required>'
             . '<label for="source">내용</label>'
+            . $this->renderToolbar()
             . '<textarea id="source" name="source" required>' . $escapedSourceValue . '</textarea>'
+            . $this->renderHelpPanel()
             . '<label for="summary">편집 요약</label>'
             . '<input type="text" id="summary" name="summary" value="' . $escapedSummaryValue . '" maxlength="500">'
             . '<button type="submit">저장</button>'
@@ -102,8 +147,54 @@ final class DocumentEditorPage
             . '<div class="document-content" id="edit-preview-content">' . ($previewHtml ?? '') . '</div>'
             . '</section>'
             . '<script src="/assets/js/edit-preview.js" defer></script>'
+            . '<script src="/assets/js/edit-toolbar.js" defer></script>'
             . '</main>';
 
         return $this->layout->render($heading, $body);
+    }
+
+    /**
+     * NamuMark 문법 삽입 툴바를 렌더링한다. 각 버튼은 `type="button"`이라
+     * JS 없이는 폼을 제출하지 않는 무동작 버튼일 뿐이고,
+     * `assets/js/edit-toolbar.js`가 `data-markup-before`/`data-markup-after`
+     * 속성을 읽어 textarea 선택 영역에 문법을 감싸거나 삽입한다.
+     */
+    private function renderToolbar(): string
+    {
+        $buttonsHtml = '';
+        foreach (self::TOOLBAR_BUTTONS as $button) {
+            $escapedLabel = $this->escaper->html($button['label']);
+            $escapedBefore = $this->escaper->attribute($button['before']);
+            $escapedAfter = $this->escaper->attribute($button['after']);
+            $buttonsHtml .= '<button type="button" class="editor-toolbar__button" '
+                . 'data-markup-before="' . $escapedBefore . '" data-markup-after="' . $escapedAfter . '" '
+                . 'aria-label="' . $escapedLabel . ' 서식 삽입">' . $escapedLabel . '</button>';
+        }
+
+        return '<div class="editor-toolbar" role="toolbar" aria-label="문법 삽입 도구모음" aria-controls="source">'
+            . $buttonsHtml
+            . '</div>';
+    }
+
+    /**
+     * 접이식 문법 도움말(치트시트)을 렌더링한다. `<details>/<summary>`라
+     * JS 없이도 클릭만으로 펼쳐진다.
+     */
+    private function renderHelpPanel(): string
+    {
+        $examplesHtml = '';
+        foreach (self::HELP_EXAMPLES as $example) {
+            $escapedInput = $this->escaper->html($example['input']);
+            $examplesHtml .= '<div class="editor-help__example">'
+                . '<code class="editor-help__input">' . $escapedInput . '</code>'
+                . '<span class="editor-help__arrow" aria-hidden="true">&rarr;</span>'
+                . '<div class="editor-help__output">' . $example['outputHtml'] . '</div>'
+                . '</div>';
+        }
+
+        return '<details class="editor-help">'
+            . '<summary>문법 도움말</summary>'
+            . '<div class="editor-help__examples">' . $examplesHtml . '</div>'
+            . '</details>';
     }
 }

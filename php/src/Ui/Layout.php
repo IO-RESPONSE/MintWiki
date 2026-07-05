@@ -93,6 +93,7 @@ final class Layout
             . '<link rel="stylesheet" href="/assets/css/document-content.css">'
             . '<link rel="stylesheet" href="/assets/css/front-page.css">'
             . '<link rel="stylesheet" href="/assets/css/buttons.css">'
+            . '<link rel="stylesheet" href="/assets/css/editor-toolbar.css">'
             . '<link rel="stylesheet" href="/assets/css/print.css" media="print">'
             . '</head>'
             . '<body>'
