@@ -84,7 +84,12 @@ declare(strict_types=1);
  * 검색 폼 대신 `FrontPage`(검색 영역 + 최근 편집된 문서 목록 + 사이트
  * 소개)를 렌더링하도록 개편했다 — 최근 문서 목록은 `RecentDocumentsQuery`로
  * DB가 연결된 경우에만 조회하고, 미설정/오류 상태에서는 빈 목록으로
- * 대체해 `FrontPage`가 빈 상태 안내를 보여주게 한다. 나머지
+ * 대체해 `FrontPage`가 빈 상태 안내를 보여주게 한다. 0697에서
+ * `GET /admin`(관리자 콘솔 진입점)을 등록했다 — 0696 `AdminAccessGate`로
+ * 익명은 `/login`으로 302, 비관리자는 403으로 먼저 걸러내고, 관리자만
+ * `AdminDashboardPage`(0691 `Layout` 재사용)를 보게 한다. 대시보드는 이후
+ * 태스크(0698-0702)가 등록할 관리 하위 화면(감사 로그/신고/사용자 차단/
+ * 유지보수/백업·복원/진단) 링크 목록을 보여준다. 나머지
  * route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는 이후 태스크에서
  * 이어진다.
  */
@@ -118,11 +123,13 @@ use MintWiki\Installer\RequirementCheck;
 use MintWiki\Installer\SchemaApplyHandler;
 use MintWiki\Revision\PdoRepository as RevisionPdoRepository;
 use MintWiki\Revision\Revision;
+use MintWiki\Security\AdminAccessGate;
 use MintWiki\Security\CsrfTokenService;
 use MintWiki\Security\LoginHandler;
 use MintWiki\Security\LogoutHandler;
 use MintWiki\Security\PhpSessionAdapter;
 use MintWiki\Security\SessionUserResolver;
+use MintWiki\Ui\AdminDashboardPage;
 use MintWiki\Ui\DocumentEditorPage;
 use MintWiki\Ui\DocumentViewPage;
 use MintWiki\Ui\ErrorPage;
@@ -685,6 +692,38 @@ $router->register('POST', '/wiki/{title}/edit', static function (array $params) 
     }
 
     return new Response(302, ['Location' => '/wiki/' . rawurlencode($document->title())]);
+});
+
+// GET /admin — 관리자 콘솔 진입점 (태스크 0697). 0696 AdminAccessGate로
+// 익명(302 /login)/비관리자(403)를 먼저 걸러내고, 관리자만 통과시켜
+// AdminDashboardPage(Layout 재사용)를 렌더링해 관리 하위 화면(감사 로그,
+// 신고, 사용자 차단, 유지보수, 백업/복원, 진단) 링크 목록을 보여준다.
+// $accountRepository가 없으면(DB 미설정/오류) 세션에서 로그인 사용자를
+// 복원할 수 없으므로 익명으로 간주해 /login으로 302한다 — 0674 계약과
+// 동일한 판단이다.
+$router->register('GET', '/admin', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter);
+
+    if ($accountRepository === null) {
+        return new Response(302, ['Location' => '/login']);
+    }
+
+    $sessionUserResolver = new SessionUserResolver($sessionAdapter, $accountRepository);
+    $adminAccessGate = new AdminAccessGate($aclService, $sessionUserResolver, $layout);
+
+    $gateResponse = $adminAccessGate->authorize();
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $adminDashboardPage = new AdminDashboardPage(null, $layout);
+
+    return Response::html($adminDashboardPage->render());
 });
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)
