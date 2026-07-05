@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace MintWiki\Installer;
 
+use MintWiki\Acl\Effect;
+use MintWiki\Acl\NamespaceAclDefaults;
+use MintWiki\Acl\PdoRepository as AclPdoRepository;
+use MintWiki\Acl\Permission as AclPermission;
+use MintWiki\Acl\SubjectType as AclSubjectType;
 use MintWiki\App\AppBootstrap;
 use MintWiki\Http\Response;
 use MintWiki\Security\CsrfTokenService;
@@ -23,6 +28,11 @@ use Throwable;
  *    중복 여부를 `AccountRepository`로 확인한다.
  * 4. 검증을 통과하면 `password_hash()`로 해시한 뒤 `AccountRepository::create()`로
  *    `account` 테이블에 관리자 계정을 생성한다.
+ * 5. 생성한 계정 id에 `Acl\PdoRepository::grantNamespacePermission()`으로
+ *    `Permission::Admin` 허용 규칙을 부여한다(태스크 0696) — `account`
+ *    테이블에 role/is_admin 컬럼을 두지 않고 기존 ACL을 그대로 정본으로
+ *    쓰기 때문에, 이 단계가 없으면 어떤 사용자도 관리자 게이트
+ *    (`Security\AdminAccessGate`)를 통과할 수 없다.
  *
  * 비밀번호는 로그나 응답 본문에 그대로 노출하지 않는다 — 검증 오류 메시지는
  * 항상 고정된 안내 문구만 사용하고, 해시 전 평문은 이 클래스 밖으로 전달되지
@@ -81,7 +91,15 @@ final class AdminAccountSetupHandler
         }
 
         $passwordHash = password_hash((string) $formData['password'], PASSWORD_DEFAULT);
-        $accountRepository->create(trim((string) $formData['username']), $passwordHash);
+        $accountId = $accountRepository->create(trim((string) $formData['username']), $passwordHash);
+
+        (new AclPdoRepository($pdo))->grantNamespacePermission(
+            NamespaceAclDefaults::DEFAULT_NAMESPACE,
+            AclSubjectType::User,
+            AclPermission::Admin,
+            Effect::Allow,
+            $accountId
+        );
 
         return Response::html($this->renderSuccess());
     }

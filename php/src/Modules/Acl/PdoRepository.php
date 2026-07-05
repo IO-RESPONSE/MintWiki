@@ -61,6 +61,94 @@ final class PdoRepository
     }
 
     /**
+     * 네임스페이스 범위 규칙을 하나 추가한다 (태스크 0696, 최초 관리자 권한
+     * 부여용).
+     *
+     * 같은 namespace/subject_type/subject_id/permission 조합의 규칙이 이미
+     * 있으면 아무 것도 하지 않는다 — 중복 삽입을 막는다. sort_order는 해당
+     * namespace에 등록된 규칙 중 가장 큰 값 + 1로 이어붙인다.
+     */
+    public function grantNamespacePermission(
+        string $namespace,
+        SubjectType $subjectType,
+        Permission $permission,
+        Effect $effect,
+        ?string $subjectId = null
+    ): void {
+        if ($this->namespaceRuleExists($namespace, $subjectType, $permission, $subjectId)) {
+            return;
+        }
+
+        $statement = $this->connection->prepare(
+            'INSERT INTO acl_namespace_rule (id, namespace, subject_type, subject_id, permission, effect, expires_at, sort_order) '
+            . 'VALUES (:id, :namespace, :subject_type, :subject_id, :permission, :effect, NULL, :sort_order)'
+        );
+        $statement->execute([
+            'id' => self::generateId(),
+            'namespace' => $namespace,
+            'subject_type' => $subjectType->value,
+            'subject_id' => $subjectId,
+            'permission' => $permission->value,
+            'effect' => $effect->value,
+            'sort_order' => $this->nextSortOrder($namespace),
+        ]);
+    }
+
+    private function namespaceRuleExists(
+        string $namespace,
+        SubjectType $subjectType,
+        Permission $permission,
+        ?string $subjectId
+    ): bool {
+        $statement = $this->connection->prepare(
+            'SELECT 1 FROM acl_namespace_rule '
+            . 'WHERE namespace = :namespace AND subject_type = :subject_type AND permission = :permission '
+            . 'AND (subject_id = :subject_id_eq OR (subject_id IS NULL AND :subject_id_null IS NULL))'
+        );
+        $statement->execute([
+            'namespace' => $namespace,
+            'subject_type' => $subjectType->value,
+            'permission' => $permission->value,
+            'subject_id_eq' => $subjectId,
+            'subject_id_null' => $subjectId,
+        ]);
+
+        return $statement->fetchColumn() !== false;
+    }
+
+    private function nextSortOrder(string $namespace): int
+    {
+        $statement = $this->connection->prepare(
+            'SELECT MAX(sort_order) FROM acl_namespace_rule WHERE namespace = :namespace'
+        );
+        $statement->execute(['namespace' => $namespace]);
+        $maxSortOrder = $statement->fetchColumn();
+
+        return $maxSortOrder === false || $maxSortOrder === null ? 0 : ((int) $maxSortOrder) + 1;
+    }
+
+    /**
+     * UUID v4 문자열을 생성한다 (규칙 id 발급용, `AccountRepository`/
+     * `Document\Service`와 동일한 방식).
+     */
+    private static function generateId(): string
+    {
+        $bytes = random_bytes(16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+        $hex = bin2hex($bytes);
+
+        return sprintf(
+            '%s-%s-%s-%s-%s',
+            substr($hex, 0, 8),
+            substr($hex, 8, 4),
+            substr($hex, 12, 4),
+            substr($hex, 16, 4),
+            substr($hex, 20, 12)
+        );
+    }
+
+    /**
      * @param array<int, array<string, mixed>> $rows
      * @return Rule[]
      */

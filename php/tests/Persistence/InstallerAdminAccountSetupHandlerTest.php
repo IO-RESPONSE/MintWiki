@@ -16,6 +16,8 @@ declare(strict_types=1);
  * (5) 이미 존재하는 username이면 422로 거부된다(중복 계정 생성 없음).
  * (6) 모든 검증을 통과하면 200으로 성공 화면을 보여주고, `account` 테이블에 해시된
  *     비밀번호로 행이 생성되며, 응답 본문에 평문 비밀번호가 노출되지 않는다.
+ * (7) (태스크 0696) (6)에서 생성된 계정 id에 `acl_namespace_rule`로
+ *     `Permission::Admin` allow 규칙이 정확히 1건 부여된다.
  */
 
 $autoloadFile = __DIR__ . '/../../vendor/autoload.php';
@@ -37,8 +39,9 @@ if (session_status() === PHP_SESSION_NONE) {
 
 $failures = [];
 $accountSql = file_get_contents(__DIR__ . '/../../../db/schema/account.sql');
-if ($accountSql === false) {
-    fwrite(STDERR, "db/schema/account.sql을 읽을 수 없습니다.\n");
+$aclNamespaceRuleSql = file_get_contents(__DIR__ . '/../../../db/schema/acl_namespace_rule.sql');
+if ($accountSql === false || $aclNamespaceRuleSql === false) {
+    fwrite(STDERR, "db/schema/account.sql 또는 db/schema/acl_namespace_rule.sql을 읽을 수 없습니다.\n");
     exit(1);
 }
 
@@ -63,10 +66,11 @@ function mintwiki_admin_account_handler_test_config_dir(): string
     return $dir;
 }
 
-function mintwiki_admin_account_handler_test_pdo(string $accountSql): PDO
+function mintwiki_admin_account_handler_test_pdo(string $accountSql, string $aclNamespaceRuleSql): PDO
 {
     $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
     $pdo->exec($accountSql);
+    $pdo->exec($aclNamespaceRuleSql);
 
     return $pdo;
 }
@@ -84,7 +88,7 @@ try {
     $csrfService = new CsrfTokenService();
     $csrfService->generate();
 
-    $fakePdo1 = mintwiki_admin_account_handler_test_pdo($accountSql);
+    $fakePdo1 = mintwiki_admin_account_handler_test_pdo($accountSql, $aclNamespaceRuleSql);
     $bootstrap1 = new AppBootstrap(mintwiki_admin_account_handler_test_config_dir(), static fn (): PDO => $fakePdo1);
 
     $handler1 = new AdminAccountSetupHandler($csrfService, $bootstrap1);
@@ -129,7 +133,7 @@ try {
     $csrfService3 = new CsrfTokenService();
     $validToken3 = $csrfService3->generate();
 
-    $fakePdo3 = mintwiki_admin_account_handler_test_pdo($accountSql);
+    $fakePdo3 = mintwiki_admin_account_handler_test_pdo($accountSql, $aclNamespaceRuleSql);
     $bootstrap3 = new AppBootstrap(mintwiki_admin_account_handler_test_config_dir(), static fn (): PDO => $fakePdo3);
 
     $handler3 = new AdminAccountSetupHandler($csrfService3, $bootstrap3);
@@ -162,7 +166,7 @@ try {
     $csrfService4 = new CsrfTokenService();
     $validToken4 = $csrfService4->generate();
 
-    $fakePdo4 = mintwiki_admin_account_handler_test_pdo($accountSql);
+    $fakePdo4 = mintwiki_admin_account_handler_test_pdo($accountSql, $aclNamespaceRuleSql);
     $bootstrap4 = new AppBootstrap(mintwiki_admin_account_handler_test_config_dir(), static fn (): PDO => $fakePdo4);
 
     $handler4 = new AdminAccountSetupHandler($csrfService4, $bootstrap4);
@@ -192,7 +196,7 @@ try {
     $csrfService5 = new CsrfTokenService();
     $validToken5 = $csrfService5->generate();
 
-    $fakePdo5 = mintwiki_admin_account_handler_test_pdo($accountSql);
+    $fakePdo5 = mintwiki_admin_account_handler_test_pdo($accountSql, $aclNamespaceRuleSql);
     $fakePdo5->exec(
         "INSERT INTO account (id, username, display_name, password_hash) "
         . "VALUES ('existing-id', 'admin', NULL, 'existing-hash')"
@@ -220,7 +224,7 @@ try {
     $csrfService6 = new CsrfTokenService();
     $validToken6 = $csrfService6->generate();
 
-    $fakePdo6 = mintwiki_admin_account_handler_test_pdo($accountSql);
+    $fakePdo6 = mintwiki_admin_account_handler_test_pdo($accountSql, $aclNamespaceRuleSql);
     $bootstrap6 = new AppBootstrap(mintwiki_admin_account_handler_test_config_dir(), static fn (): PDO => $fakePdo6);
 
     $handler6 = new AdminAccountSetupHandler($csrfService6, $bootstrap6);
@@ -233,7 +237,7 @@ try {
         $failures[] = '성공 응답 본문에 평문 비밀번호가 노출되면 안 된다.';
     }
 
-    $row6 = $fakePdo6->query('SELECT username, password_hash FROM account WHERE username = ' . $fakePdo6->quote('admin'))
+    $row6 = $fakePdo6->query('SELECT id, username, password_hash FROM account WHERE username = ' . $fakePdo6->quote('admin'))
         ->fetch(PDO::FETCH_ASSOC);
     if ($row6 === false) {
         $failures[] = '정상 제출 후 account 테이블에 행이 생성되어야 한다.';
@@ -243,6 +247,27 @@ try {
         }
         if (!password_verify('correct horse battery staple', (string) $row6['password_hash'])) {
             $failures[] = '저장된 password_hash는 원래 비밀번호로 검증되어야 한다.';
+        }
+
+        // (7) 태스크 0696: 생성된 계정 id에 관리자 ACL 규칙이 정확히 1건 부여되어야 한다.
+        $adminRuleRows = $fakePdo6->query(
+            'SELECT subject_type, subject_id, permission, effect FROM acl_namespace_rule '
+            . "WHERE namespace = '*' AND subject_id = " . $fakePdo6->quote((string) $row6['id'])
+        )->fetchAll(PDO::FETCH_ASSOC);
+
+        if (count($adminRuleRows) !== 1) {
+            $failures[] = '생성된 관리자 계정에는 acl_namespace_rule 행이 정확히 1건 있어야 하는데 ' . count($adminRuleRows) . '건이었다.';
+        } else {
+            $adminRuleRow = $adminRuleRows[0];
+            if ($adminRuleRow['subject_type'] !== 'user') {
+                $failures[] = '관리자 ACL 규칙의 subject_type은 user여야 한다.';
+            }
+            if ($adminRuleRow['permission'] !== 'admin') {
+                $failures[] = '관리자 ACL 규칙의 permission은 admin이어야 한다.';
+            }
+            if ($adminRuleRow['effect'] !== 'allow') {
+                $failures[] = '관리자 ACL 규칙의 effect는 allow여야 한다.';
+            }
         }
     }
 
