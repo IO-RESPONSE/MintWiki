@@ -5,16 +5,84 @@
  * 스타일링한다.
  */
 
+/* 편집 폼 전체 레이아웃 — 라벨/입력을 세로로 쌓고 넉넉한 편집 영역을 준다. */
+.document-editor-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.document-editor-form label {
+  font-weight: bold;
+  margin-top: var(--spacing-sm);
+}
+
+.document-editor-form #title,
+.document-editor-form #summary {
+  width: 100%;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 1em;
+}
+
+/* 위키 원문 편집 영역 — 넓고 높게, 고정폭 글꼴로. */
+.document-editor-form #source {
+  width: 100%;
+  min-height: 22rem;
+  resize: vertical;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.document-editor-form button[type="submit"] {
+  align-self: flex-start;
+  margin-top: var(--spacing-sm);
+}
+
 .editor-toolbar {
   display: flex;
   flex-wrap: wrap;
   gap: var(--spacing-xs);
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+  padding: var(--spacing-xs);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background-color: var(--color-bg-secondary);
 }
 
 .editor-toolbar__button {
   padding: var(--spacing-xs) var(--spacing-sm);
   font-size: 0.9em;
+  min-width: 2.2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.editor-toolbar__button:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+/* 미리보기 영역 — 편집 영역과 시각적으로 구분한다. */
+.edit-preview {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-sm);
+  border-top: 2px solid var(--color-border);
+}
+
+.edit-preview #edit-preview-content {
+  padding: var(--spacing-sm);
+  border: 1px dashed var(--color-border);
+  border-radius: 4px;
+  min-height: 3rem;
 }
 
 .editor-help {

@@ -20,6 +20,8 @@ final class DefaultPolicy
     public const PUBLIC_READ_RULE_ID = 'default-public-read-allow';
     public const ANONYMOUS_EDIT_DENY_RULE_ID = 'default-anonymous-edit-deny';
     public const LOGGED_IN_EDIT_RULE_ID = 'default-logged-in-edit-allow';
+    public const ANONYMOUS_DISCUSS_DENY_RULE_ID = 'default-anonymous-discuss-deny';
+    public const LOGGED_IN_DISCUSS_RULE_ID = 'default-logged-in-discuss-allow';
 
     /**
      * @return Rule[]
@@ -30,6 +32,10 @@ final class DefaultPolicy
             new Rule(self::PUBLIC_READ_RULE_ID, SubjectType::All, Permission::Read, Effect::Allow),
             new Rule(self::ANONYMOUS_EDIT_DENY_RULE_ID, SubjectType::Anonymous, Permission::Edit, Effect::Deny),
             new Rule(self::LOGGED_IN_EDIT_RULE_ID, SubjectType::All, Permission::Edit, Effect::Allow),
+            // 토론(discuss)도 편집과 같은 정책: 익명은 먼저 거부하고, 로그인 사용자는
+            // ALL 허용 규칙으로 참여할 수 있게 한다(first-match-wins 순서 유지).
+            new Rule(self::ANONYMOUS_DISCUSS_DENY_RULE_ID, SubjectType::Anonymous, Permission::Discuss, Effect::Deny),
+            new Rule(self::LOGGED_IN_DISCUSS_RULE_ID, SubjectType::All, Permission::Discuss, Effect::Allow),
         ];
     }
 

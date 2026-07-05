@@ -16,9 +16,9 @@ declare(strict_types=1);
  * 검증 대상:
  * (1) GET은 스레드/댓글을 렌더링하고, 스레드/댓글이 없으면 빈 상태를
  *     안전하게 렌더링한다.
- * (2) discuss 권한이 없으면(acl_rule 없음, 로그인 사용자도 포함) GET은
- *     새 스레드/댓글 form 대신 로그인 안내를 보여준다 — discuss는 read와
- *     달리 규칙이 없으면 기본적으로 거부된다.
+ * (2) discuss 기본 정책: 익명은 거부(GET이 새 스레드/댓글 form 대신 로그인
+ *     안내), 로그인 사용자는 허용(form 노출). 단 문서별 acl_rule로 discuss를
+ *     특정 사용자에게만 준 경우(discussableDoc)엔 그 외 로그인 사용자는 거부된다.
  * (3) 읽기 권한이 없는 문서는 GET이 403(PermissionDeniedPage)을 반환한다.
  * (4) 새 스레드 POST: 익명은 /login으로 302, discuss 권한 없는 로그인
  *     사용자는 403, CSRF 실패는 403, 빈 제목은 422, 성공하면 스레드가
@@ -380,8 +380,8 @@ $insertRule = $pdo->prepare(
 $insertRule->execute(['id' => 'rule-discussable-read-all', 'document_id' => $discussableDoc->id(), 'subject_type' => 'all', 'subject_id' => null, 'permission' => 'read', 'effect' => 'allow', 'sort_order' => 0]);
 $insertRule->execute(['id' => 'rule-discussable-discuss-member', 'document_id' => $discussableDoc->id(), 'subject_type' => 'user', 'subject_id' => $memberId, 'permission' => 'discuss', 'effect' => 'allow', 'sort_order' => 1]);
 
-// openDoc: acl_rule이 전혀 없다 — read는 네임스페이스 기본값(공개)이지만
-// discuss는 규칙이 없어 로그인 여부와 무관하게 항상 거부되어야 한다.
+// openDoc: acl_rule이 전혀 없다 — read는 네임스페이스 기본값(공개)이고,
+// discuss는 기본 정책상 익명은 거부, 로그인 사용자는 허용(edit과 동일 패턴).
 $openDoc = $documentService->create('Open Doc');
 
 // lockedDoc: 전체 읽기 거부.
@@ -412,8 +412,11 @@ $openOutsiderResponse = $router->match(new Request('GET', '/wiki/Open Doc/discus
 if ($openOutsiderResponse->status() !== 200) {
     $failures[] = "(2) openDoc 로그인 사용자 GET은 200이어야 하는데 {$openOutsiderResponse->status()}이었다.";
 }
-if (!str_contains($openOutsiderResponse->body(), '로그인이 필요합니다')) {
-    $failures[] = '(2) acl_rule이 전혀 없으면 로그인한 사용자도 discuss가 거부되어야 한다(규칙 없음 = 거부 기본값).';
+if (str_contains($openOutsiderResponse->body(), '로그인이 필요합니다')) {
+    $failures[] = '(2) acl_rule이 없어도 로그인 사용자는 discuss 기본 허용이므로 로그인 안내가 보이면 안 된다.';
+}
+if (!str_contains($openOutsiderResponse->body(), '<form method="post"')) {
+    $failures[] = '(2) discuss 기본 허용된 로그인 사용자는 새 스레드 form을 볼 수 있어야 한다.';
 }
 
 // (3) 읽기 거부된 문서는 GET이 403이어야 한다.
