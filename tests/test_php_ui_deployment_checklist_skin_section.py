@@ -53,10 +53,17 @@ def test_deployment_checklist_skin_section_references_existing_automation():
 
 def test_deployment_checklist_numbering_still_ends_with_out_of_scope_and_related_docs():
     """새 절을 9번으로 끼워 넣으면서 기존 "다루지 않는 것"/"관련 문서" 절
-    번호가 밀렸는지 확인한다."""
+    번호가 밀렸는지 확인한다. 0713에서 11절(Phase J)이 추가로 끼어들며
+    "다루지 않는 것"이 다시 12번으로 밀렸다 — 정확한 절 번호 자체보다
+    "관리자 콘솔 확인 다음에 최소 하나 이상의 절을 거쳐 다루지 않는 것/
+    관련 문서로 끝난다"는 상대 순서를 확인한다."""
     content = _content()
 
     assert "## 10. 관리자 콘솔 확인" in content
-    assert "## 11. 이 체크리스트가 다루지 않는 것" in content
     assert "## 관련 문서" in content
     assert "## 9. 이 체크리스트가 다루지 않는 것" not in content
+
+    admin_console_index = content.index("## 10. 관리자 콘솔 확인")
+    related_docs_index = content.index("## 관련 문서")
+    out_of_scope_index = content.index("이 체크리스트가 다루지 않는 것")
+    assert admin_console_index < out_of_scope_index < related_docs_index

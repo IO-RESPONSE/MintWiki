@@ -102,6 +102,45 @@ def test_php_deployment_package_manifest_covers_skin_assets():
         ), f"manifest include 패턴이 src/Ui 파일을 포함하지 않는다: {relative_path}"
 
 
+def test_php_deployment_package_manifest_covers_phase_j_assets():
+    """0713: Phase J(NamuMark 렌더 + 편집 UX + history/discussion, 0704-0712)의
+    공개 CSS/JS 자산과 새 도메인 모듈(Modules/Parser, Modules/Render,
+    Modules/Discussion, Modules/Revision)이 배포 패키지 include 패턴
+    (php/public/**, php/src/**)에 실제로 걸리는지 확인한다 — 0695가 CSS/
+    src/Ui만 확인하고 JS 자산과 Modules/ 하위 디렉터리는 다루지 않아 새
+    js 파일이나 모듈이 조용히 빠지는 회귀를 막는다."""
+    manifest = _manifest()
+    include_patterns = manifest["include"]
+
+    js_dir = REPO_ROOT / "php" / "public" / "assets" / "js"
+    js_files = sorted(js_dir.glob("*.js"))
+    assert len(js_files) > 0, "편집 UX(툴바/미리보기) JS 파일이 존재해야 한다."
+
+    phase_j_module_dirs = [
+        REPO_ROOT / "php" / "src" / "Modules" / "Parser",
+        REPO_ROOT / "php" / "src" / "Modules" / "Render",
+        REPO_ROOT / "php" / "src" / "Modules" / "Discussion",
+        REPO_ROOT / "php" / "src" / "Modules" / "Revision",
+    ]
+    module_files = []
+    for module_dir in phase_j_module_dirs:
+        found = sorted(module_dir.glob("*.php"))
+        assert len(found) > 0, f"{module_dir}에 PHP 파일이 존재해야 한다."
+        module_files.extend(found)
+
+    for js_file in js_files:
+        relative_path = js_file.relative_to(REPO_ROOT).as_posix()
+        assert any(
+            fnmatch.fnmatch(relative_path, pattern) for pattern in include_patterns
+        ), f"manifest include 패턴이 Phase J JS 자산을 포함하지 않는다: {relative_path}"
+
+    for module_file in module_files:
+        relative_path = module_file.relative_to(REPO_ROOT).as_posix()
+        assert any(
+            fnmatch.fnmatch(relative_path, pattern) for pattern in include_patterns
+        ), f"manifest include 패턴이 Phase J 도메인 모듈을 포함하지 않는다: {relative_path}"
+
+
 def test_php_deployment_package_manifest_patterns_are_reviewable():
     """패턴은 상대 경로이며 중복과 상위 디렉터리 탈출을 허용하지 않는다."""
     manifest = _manifest()

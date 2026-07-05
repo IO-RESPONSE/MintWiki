@@ -642,7 +642,103 @@ deploy:
 확인한다. 관리자 자격 증명이 없으면 인증이 필요한 시나리오는 안전하게
 skip한다.
 
-## 11. 이 체크리스트가 다루지 않는 것
+## 11. Phase J 확인 (NamuMark 렌더 + 편집 UX + history/discussion, 0704-0712)
+
+위키 문법(NamuMark) 렌더링, 편집 화면의 요약/미리보기/툴바/문법 도움말,
+문서별 history/discussion이 배포 산출물에 빠짐없이 포함되고, 실제로
+동작하는지 확인한다. 해당 태스크: 0704(inline parser), 0705(block
+parser), 0706(renderer/view 통합), 0707(편집 요약 필드), 0708(편집
+미리보기), 0709(편집 툴바/문법 도움말), 0710(history route), 0711
+(discussion persistence), 0712(discussion route), 0713(통합 QA/배포
+패키지 갱신).
+
+### 11.1 Phase J 자산 배포 확인
+
+- [ ] `php/public/assets/css/document-content.css`(문서 본문/표/TOC
+      스타일), `php/public/assets/css/editor-toolbar.css`(편집 툴바/문법
+      도움말 스타일)이 배포 패키지에 포함되었다.
+- [ ] `php/public/assets/js/edit-preview.js`(미리보기 fetch 갱신),
+      `php/public/assets/js/edit-toolbar.js`(툴바 버튼 문법 삽입)이
+      배포 패키지에 포함되었다. `php/deployment-package-manifest.json`의
+      `php/public/**` include 패턴이 이 JS 파일들을 포함하는지 확인:
+      ```bash
+      find php/public/assets/js -name '*.js'
+      ```
+- [ ] 갱신된 `php/src/Modules/Parser/**`, `php/src/Modules/Render/**`
+      (NamuMark 파서/렌더러), `php/src/Modules/Discussion/**`,
+      `php/src/Modules/Revision/**`(history/discussion 저장소)도 배포
+      패키지의 `php/src/**` include 패턴에 포함되었다.
+
+**자동화**: `tests/test_php_deployment_package_manifest.py`의
+`test_php_deployment_package_manifest_covers_phase_j_assets`가 현재
+디스크의 Phase J JS 자산과 도메인 모듈 파일 목록이 manifest include
+패턴에 실제로 걸리는지 회귀 검사한다.
+
+### 11.2 NamuMark 렌더 확인
+
+- [ ] `/wiki/{title}`가 저장된 위키 문법을 실제 HTML로 렌더링한다:
+      굵게(`'''텍스트'''` → `<strong>`), 내부 링크(`[[문서]]` → `<a
+      href="/wiki/...">`), 표(`||셀||셀||` → `<table>`), 제목(`==
+      제목 ==` → `<h2>` 등)이 원문 그대로가 아니라 실제 마크업으로
+      나타난다.
+- [ ] 문서에 제목이 2개 이상이면 본문 위에 목차(TOC, `<nav
+      class="toc">`)가 함께 렌더링된다.
+
+**자동화**: `php/tests/Http/DocumentViewNamuMarkRouteTest.php`가 route
+수준에서, `php/tests/Http/UiPhaseJSmokeTest.php`
+(`php/scripts/smoke-ui-phase-j.sh`)가 DB 없이 컴포넌트 수준에서 굵게/
+링크/표/TOC 렌더링을 확인한다. 라이브 배포본에서는
+`php/scripts/live-e2e-smoke-test.sh`의 `phase_j_namumark_render_check`
+시나리오가 실제로 생성한 문서의 렌더된 HTML에서 `<strong>`/`<table>`/
+`<nav class="toc"` 마크업을 확인한다.
+
+### 11.3 편집 화면 확인
+
+- [ ] `/wiki/{title}/edit` 화면에 편집 요약 입력(`<label
+      for="summary">`), 저장 전 미리보기 영역(`class="edit-preview"`),
+      NamuMark 문법 삽입 툴바(`class="editor-toolbar"`), 접이식 문법
+      도움말(`class="editor-help"`)이 모두 나타난다.
+- [ ] `assets/js/edit-preview.js`/`assets/js/edit-toolbar.js`가 로드되면
+      미리보기 버튼과 툴바 버튼이 페이지 새로고침 없이 동작한다(JS
+      없이도 각각 `/preview` 폼 제출과 원문 직접 입력으로 대체된다).
+
+**자동화**: `php/tests/Http/EditSummaryFieldTest.php`,
+`php/tests/Http/DocumentEditPreviewRouteTest.php`가 route 수준에서,
+`php/tests/Http/UiPhaseJSmokeTest.php`가 DB 없이 컴포넌트 수준에서
+편집 화면 마크업을 확인한다. 라이브 배포본에서는
+`live-e2e-smoke-test.sh`의 `phase_j_edit_ux_check` 시나리오가 관리자
+세션으로 연 편집 폼 응답에서 같은 마크업을 확인한다 — 관리자 자격
+증명이 없으면 안전하게 skip한다.
+
+### 11.4 history 확인
+
+- [ ] `GET /wiki/{title}/history`가 200으로 응답하고, 문서의 리비전
+      목록(작성자/시각/편집 요약)을 시간 내림차순으로 보여준다.
+
+**자동화**: `php/tests/Http/DocumentHistoryDiffRouteTest.php`가 route
+수준에서, `php/tests/Http/UiPhaseJSmokeTest.php`가 DB 없이
+`DocumentHistoryPage` 렌더링을 확인한다. 라이브 배포본에서는
+`live-e2e-smoke-test.sh`의 `phase_j_history_route_check` 시나리오가
+실제 배포본의 history 경로 응답 상태(200 또는 접근 제어에 따른
+302/403)를 확인한다.
+
+### 11.5 discussion 확인
+
+- [ ] `GET /wiki/{title}/discussion`이 200으로 응답하고, 문서의 토론
+      스레드/댓글 목록과 새 스레드 작성 form을 보여준다.
+- [ ] 로그인한 사용자가 `POST /wiki/{title}/discussion`으로 새 스레드를,
+      `POST /wiki/{title}/discussion/{threadId}/comment`로 댓글을 실제로
+      작성할 수 있다.
+
+**자동화**: `php/tests/Http/DiscussionRouteTest.php`가 route 수준에서,
+`php/tests/Http/UiPhaseJSmokeTest.php`가 DB 없이 스레드/댓글 생성과
+`DiscussionPage` 렌더링을 확인한다. 라이브 배포본에서는
+`live-e2e-smoke-test.sh`의 `phase_j_discussion_route_check`(읽기),
+`phase_j_discussion_write_check`/`phase_j_comment_write_check`(스레드/
+댓글 작성)가 확인한다 — 관리자 자격 증명이 없으면 쓰기 시나리오는
+안전하게 skip한다.
+
+## 12. 이 체크리스트가 다루지 않는 것
 
 - Database 마이그레이션이나 초기화 — DB phase checklist 참고 (0411 이후)
 - PHP 런타임 버전/확장 설정 — runtime phase checklist 참고 (0396)

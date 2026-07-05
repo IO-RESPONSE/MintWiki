@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # 라이브 호스팅 배포본에 대한 API/HTTP 기반 end-to-end smoke test (태스크 0672,
-# 실사용 흐름에 맞춘 0688 갱신).
+# 실사용 흐름에 맞춘 0688 갱신, Phase J NamuMark 렌더/편집 UX/history/
+# discussion 확인을 추가한 0713 갱신).
 #
 # post-cutover-validate.sh(골격)나 live-http-smoke-test.sh(루트 응답/민감
 # 경로 차단만 확인)와 달리, 이 스크립트는 관리자 세션으로 실제 로그인,
 # 설치 마법사(`/install`) 접속 상태, 문서 생성/편집/조회, 익명 사용자에 대한
-# 권한(읽기 허용/쓰기 거부) 확인을 curl로 직접 수행하고 결과를 기록한다.
+# 권한(읽기 허용/쓰기 거부), NamuMark 렌더/편집 화면/history/discussion
+# 확인을 curl로 직접 수행하고 결과를 기록한다.
 #
 # 0672 작성 시점에는 `php/public/index.php`가 `GET /`와 `GET /health`만
 # 연결되어 있어 `/documents`, `/admin/users` 같은 가상의 route를 대상으로
@@ -38,14 +40,24 @@ Usage: php/scripts/live-e2e-smoke-test.sh --base-url URL [options]
   8. 생성한 문서를 조회한다(GET /wiki/{title}). 조회에 성공하면 문서
      액션 탭(document-tabs, 태스크 0692) 마크업도 함께 확인한다.
   9. 관리자 세션으로 테스트 문서를 편집한다(GET/POST /wiki/{title}/edit).
+     Phase J(0704-0709) 통합 확인: 편집 화면이 편집 요약/미리보기
+     (edit-preview)/문법 삽입 툴바(editor-toolbar)/문법 도움말
+     (editor-help)을 모두 갖췄는지, 저장한 NamuMark 문법(굵게/링크/표/
+     제목 2개)이 이후 문서 조회에서 실제 HTML(+ 목차)로 렌더링되는지
+     확인한다.
   10. 익명 사용자로 같은 문서를 읽을 수 있는지 확인한다(권한 확인: 읽기 허용).
   11. 익명 사용자가 같은 문서 편집을 시도하면 거부되는지 확인한다(권한 확인:
      쓰기 거부, `/login`으로 리다이렉트).
+  12. Phase J(history/discussion route, 태스크 0710/0712) 통합 확인: 익명
+     사용자로 `/wiki/{title}/history`, `/wiki/{title}/discussion`의 응답
+     형태(200/302/403)를 확인한다.
+  13. 관리자 세션으로 토론 스레드를 만들고(POST /wiki/{title}/discussion)
+     그 스레드에 댓글을 추가한다(POST /wiki/{title}/discussion/{id}/comment).
 
 각 단계는 실패해도 스크립트를 중단하지 않는다 — route가 아직 연결되지
 않았거나(404) 전제 단계가 실패하면 "blocked"/"skip"으로 기록하고 다음
 단계로 넘어간다. SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD가 없으면 로그인이
-필요한 모든 단계(5-9)를 안전하게 skip한다 — 설치 마법사를 거쳐 관리자
+필요한 모든 단계(5-9, 13)를 안전하게 skip한다 — 설치 마법사를 거쳐 관리자
 계정을 만드는 것은 실제 자격 증명을 가진 운영자가 브라우저로 수행할 일이며
 (이 저장소의 `/install`은 DB 접속 정보·schema 적용·관리자 계정 생성을
 여러 단계로 나눠 처리하는 실제 설치 절차다), 이 스크립트가 대신 만들지
@@ -109,6 +121,13 @@ DOC_TITLE="SmokeTest-${RUN_ID}"
 ADMIN_USER_NAME="${SMOKE_ADMIN_USER:-}"
 ADMIN_PASSWORD="${SMOKE_ADMIN_PASSWORD:-}"
 
+# Phase J(NamuMark 렌더, 태스크 0704-0706) 통합 확인용 source. 최초 생성
+# 시에는 평문을 쓰고, 편집 단계에서 굵게/링크/표/제목(2개, TOC 유발) 문법을
+# 담은 source로 덮어써 그 결과를 이후 anonymous_read_document_check에서
+# 확인한다(편집이 문서의 최종 상태이므로).
+DOC_SOURCE_INITIAL="smoke test body ${RUN_ID}"
+DOC_SOURCE_EDITED="$(printf '== 개요 ==\n%s 문단이며 [[SmokeLink]]로 이어진다.\n|| a || b ||\n\n== 상세 ==\n추가 내용' "'''smoke-edited-${RUN_ID}'''")"
+
 WORKDIR="$(mktemp -d)"
 trap 'rm -rf "${WORKDIR}"' EXIT
 
@@ -157,11 +176,18 @@ http_post_form() {
   header_file="$(mktemp "${WORKDIR}/header.XXXXXX")"
   config_file="$(mktemp "${WORKDIR}/curlcfg.XXXXXX")"
 
+  # curl config(-K) 값은 큰따옴표로 묶인 하나의 줄이어야 하므로, 필드
+  # 값(NamuMark source처럼 실제 줄바꿈을 담을 수 있는 값, 태스크 0713)의
+  # `\`/`"`/줄바꿈을 curl -K가 지원하는 이스케이프 시퀀스(`\\`/`\"`/`\n`)로
+  # 바꿔서 한 줄로 만든다 — curl이 파싱할 때 다시 원래 문자로 복원한다.
   {
     printf 'url = "%s"\n' "${url}"
     printf 'request = "POST"\n'
     for field in "$@"; do
-      printf 'data-urlencode = "%s"\n' "${field}"
+      local escaped_field="${field//\\/\\\\}"
+      escaped_field="${escaped_field//\"/\\\"}"
+      escaped_field="${escaped_field//$'\n'/\\n}"
+      printf 'data-urlencode = "%s"\n' "${escaped_field}"
     done
   } > "${config_file}"
 
@@ -338,7 +364,7 @@ else
   http_get "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${ADMIN_JAR}"
   if [ "${LAST_STATUS}" = "200" ]; then
     token="$(extract_csrf_token "${LAST_BODY_FILE}")"
-    http_post_form "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${ADMIN_JAR}" "title=${DOC_TITLE}" "source=smoke test body ${RUN_ID}" "csrf_token=${token}"
+    http_post_form "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${ADMIN_JAR}" "title=${DOC_TITLE}" "source=${DOC_SOURCE_INITIAL}" "csrf_token=${token}"
     case "${LAST_STATUS}" in
       302)
         DOC_CREATED=1
@@ -377,11 +403,24 @@ fi
 DOC_EDITED=0
 if [ "${DOC_CREATED}" -ne 1 ]; then
   record skip admin_edit_document GET/POST "${BASE_URL}/wiki/${DOC_TITLE}/edit" "n/a" "" "skipped: document was not created"
+  record skip phase_j_edit_ux_check GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "n/a" "" "skipped: document was not created"
 else
   http_get "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${ADMIN_JAR}"
   if [ "${LAST_STATUS}" = "200" ]; then
+    # 6.1 Phase J(태스크 0707-0709) 통합 확인: 편집 화면에 편집 요약 입력,
+    #     미리보기 영역, 문법 삽입 툴바, 문법 도움말이 모두 나타나는지
+    #     확인한다.
+    if grep -q 'for="summary"' "${LAST_BODY_FILE}" 2>/dev/null \
+      && grep -q 'class="edit-preview"' "${LAST_BODY_FILE}" 2>/dev/null \
+      && grep -q 'class="editor-toolbar"' "${LAST_BODY_FILE}" 2>/dev/null \
+      && grep -q 'class="editor-help"' "${LAST_BODY_FILE}" 2>/dev/null; then
+      record pass phase_j_edit_ux_check GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "edit screen has summary/preview/toolbar/help markup"
+    else
+      record fail phase_j_edit_ux_check GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "edit screen missing summary/preview/toolbar/help markup"
+    fi
+
     token="$(extract_csrf_token "${LAST_BODY_FILE}")"
-    http_post_form "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${ADMIN_JAR}" "title=${DOC_TITLE}" "source=smoke test body edited ${RUN_ID}" "csrf_token=${token}"
+    http_post_form "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${ADMIN_JAR}" "title=${DOC_TITLE}" "source=${DOC_SOURCE_EDITED}" "csrf_token=${token}"
     case "${LAST_STATUS}" in
       302)
         DOC_EDITED=1
@@ -393,6 +432,7 @@ else
     esac
   else
     record blocked admin_edit_document GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "document edit form route not available"
+    record blocked phase_j_edit_ux_check GET "${BASE_URL}/wiki/${DOC_TITLE}/edit" "${LAST_STATUS}" "${LAST_REDIRECT}" "document edit form route not available"
   fi
 fi
 
@@ -400,6 +440,7 @@ fi
 #    (DefaultPolicy: 공개 읽기 허용).
 if [ "${DOC_CREATED}" -ne 1 ]; then
   record skip anonymous_read_document_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "n/a" "" "skipped: document was not created"
+  record skip phase_j_namumark_render_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "n/a" "" "skipped: document was not created"
 else
   http_get "${BASE_URL}/wiki/${DOC_TITLE}" "${ANON_JAR}"
   case "${LAST_STATUS}" in
@@ -407,6 +448,18 @@ else
     403) record fail anonymous_read_document_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "anonymous user denied read, expected allowed by default policy" ;;
     *) record blocked anonymous_read_document_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "unexpected status" ;;
   esac
+
+  # 7.1 Phase J(태스크 0704-0706) 통합 확인: 편집 단계에서 저장한 NamuMark
+  #     문법(굵게/링크/표/제목 2개)이 실제 HTML(+ TOC)로 렌더링되어 있는지
+  #     확인한다.
+  if [ "${LAST_STATUS}" = "200" ] \
+    && grep -q '<strong>' "${LAST_BODY_FILE}" 2>/dev/null \
+    && grep -q '<table>' "${LAST_BODY_FILE}" 2>/dev/null \
+    && grep -q 'class="toc"' "${LAST_BODY_FILE}" 2>/dev/null; then
+    record pass phase_j_namumark_render_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "document renders NamuMark markup (<strong>/<table>/TOC)"
+  else
+    record fail phase_j_namumark_render_check GET "${BASE_URL}/wiki/${DOC_TITLE}" "${LAST_STATUS}" "${LAST_REDIRECT}" "document missing rendered NamuMark markup (<strong>/<table>/TOC)"
+  fi
 fi
 
 # 8. 권한 확인(쓰기 거부): 익명 사용자가 같은 문서 편집을 시도하면
@@ -427,12 +480,75 @@ else
   esac
 fi
 
+# 9. Phase J(history/discussion route, 태스크 0710/0712) 통합 확인: 읽기는
+#    문서 view와 동일한 read ACL을 따르므로(DefaultPolicy: 공개 읽기 허용)
+#    자격 증명 없이도 익명 사용자로 200/302/403 응답 형태를 확인할 수 있다.
+if [ "${DOC_CREATED}" -ne 1 ]; then
+  record skip phase_j_history_route_check GET "${BASE_URL}/wiki/${DOC_TITLE}/history" "n/a" "" "skipped: document was not created"
+  record skip phase_j_discussion_route_check GET "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "n/a" "" "skipped: document was not created"
+else
+  http_get "${BASE_URL}/wiki/${DOC_TITLE}/history" "${ANON_JAR}"
+  case "${LAST_STATUS}" in
+    200) record pass phase_j_history_route_check GET "${BASE_URL}/wiki/${DOC_TITLE}/history" "${LAST_STATUS}" "${LAST_REDIRECT}" "history route reachable" ;;
+    302|403) record pass phase_j_history_route_check GET "${BASE_URL}/wiki/${DOC_TITLE}/history" "${LAST_STATUS}" "${LAST_REDIRECT}" "history route responded with access-control status" ;;
+    *) record fail phase_j_history_route_check GET "${BASE_URL}/wiki/${DOC_TITLE}/history" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 200/302/403" ;;
+  esac
+
+  http_get "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "${ANON_JAR}"
+  case "${LAST_STATUS}" in
+    200) record pass phase_j_discussion_route_check GET "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "${LAST_STATUS}" "${LAST_REDIRECT}" "discussion route reachable" ;;
+    302|403) record pass phase_j_discussion_route_check GET "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "${LAST_STATUS}" "${LAST_REDIRECT}" "discussion route responded with access-control status" ;;
+    *) record fail phase_j_discussion_route_check GET "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 200/302/403" ;;
+  esac
+fi
+
+# 9.5 Phase J(discussion 쓰기, 태스크 0711/0712) 통합 확인: 관리자 세션으로
+#     새 스레드를 만들고 그 스레드에 댓글을 추가한다. 자격 증명이 없으면
+#     안전하게 skip한다. 스레드 id는 목록 응답의 "ID: {threadId}" 표기 중
+#     가장 마지막 항목(생성 순 오름차순이므로 방금 만든 스레드)을 추출한다.
+THREAD_ID=""
+if [ "${ADMIN_AUTHENTICATED}" -ne 1 ] || [ "${DOC_CREATED}" -ne 1 ]; then
+  record skip phase_j_discussion_write_check POST "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "n/a" "" "skipped: no authenticated admin session or document"
+  record skip phase_j_comment_write_check POST "${BASE_URL}/wiki/${DOC_TITLE}/discussion/{threadId}/comment" "n/a" "" "skipped: no authenticated admin session or document"
+else
+  token="$(fresh_csrf_token "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "${ADMIN_JAR}")"
+  http_post_form "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "${ADMIN_JAR}" "title=SmokeThread-${RUN_ID}" "csrf_token=${token}"
+  case "${LAST_STATUS}" in
+    302)
+      http_get "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "${ADMIN_JAR}"
+      THREAD_ID="$(grep -o 'ID: [^ <]*' "${LAST_BODY_FILE}" 2>/dev/null | tail -1 | sed 's/^ID: //')"
+      if [ -n "${THREAD_ID}" ]; then
+        record pass phase_j_discussion_write_check POST "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "${LAST_STATUS}" "${LAST_REDIRECT}" "created thread id=${THREAD_ID}"
+      else
+        record fail phase_j_discussion_write_check POST "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "${LAST_STATUS}" "${LAST_REDIRECT}" "thread created but id not found in listing"
+      fi
+      ;;
+    *)
+      record fail phase_j_discussion_write_check POST "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "${LAST_STATUS}" "${LAST_REDIRECT}" "thread create rejected"
+      ;;
+  esac
+
+  if [ -n "${THREAD_ID}" ]; then
+    token="$(fresh_csrf_token "${BASE_URL}/wiki/${DOC_TITLE}/discussion" "${ADMIN_JAR}")"
+    http_post_form "${BASE_URL}/wiki/${DOC_TITLE}/discussion/${THREAD_ID}/comment" "${ADMIN_JAR}" "body=smoke comment ${RUN_ID}" "csrf_token=${token}"
+    case "${LAST_STATUS}" in
+      302) record pass phase_j_comment_write_check POST "${BASE_URL}/wiki/${DOC_TITLE}/discussion/${THREAD_ID}/comment" "${LAST_STATUS}" "${LAST_REDIRECT}" "added comment to thread" ;;
+      *) record fail phase_j_comment_write_check POST "${BASE_URL}/wiki/${DOC_TITLE}/discussion/${THREAD_ID}/comment" "${LAST_STATUS}" "${LAST_REDIRECT}" "comment create rejected" ;;
+    esac
+  else
+    record skip phase_j_comment_write_check POST "${BASE_URL}/wiki/${DOC_TITLE}/discussion/{threadId}/comment" "n/a" "" "skipped: thread id not available"
+  fi
+fi
+
 echo ""
 echo "=== cleanup ==="
 if [ "${KEEP_DATA}" -eq 1 ]; then
   echo "cleanup skipped (--keep-data)"
 elif [ "${DOC_CREATED}" -eq 1 ]; then
   LEFTOVER_NOTES+=("document title=${DOC_TITLE} has no delete route in this codebase yet — remove manually via DB once available")
+  if [ -n "${THREAD_ID}" ]; then
+    LEFTOVER_NOTES+=("discussion thread id=${THREAD_ID} (and its smoke comment) has no delete route yet — remove manually via DB once available")
+  fi
 fi
 
 echo ""
