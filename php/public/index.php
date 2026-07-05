@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684, 0687, 0691, 0703).
+ * MintWiki PHP 런타임의 프론트 컨트롤러 (태스크 0394, 0419, 0592, 0674, 0676, 0677, 0678, 0679, 0680, 0681, 0682, 0683, 0684, 0687, 0691, 0703, 0706).
  *
  * 0419부터 `/health` route를 등록했고, 0526에서 GET / (home page) route를
  * 추가했다. 0592에서는 라우팅되지 않은 요청에 대해 404 오류를 반환하도록
@@ -100,7 +100,11 @@ declare(strict_types=1);
  * 등록했다 — 세 route 모두 동일한 0696 `AdminAccessGate`로 보호되고,
  * POST는 기존 `CsrfTokenService`로 CSRF 토큰을 검증한 뒤
  * `AccountRepository::block()`으로 대상 계정을 차단하고 폼으로 302
- * 리다이렉트한다. 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는
+ * 리다이렉트한다. 0706에서 `GET /wiki/{title}`의 `DocumentViewPage` 렌더러를
+ * `PlainTextDocumentRenderer`(기본값)에서 `MintWiki\Render\NamuMarkDocumentRenderer`로
+ * 교체했다 — 0704/0705 인라인/블록 파서를 실제로 호출해 저장된 위키 문법
+ * ('''굵게'''/[[링크]]/표/제목 등)을 HTML(+ 제목 2개 이상이면 목차)로
+ * 렌더링한다. 나머지 route(`docs/php-db-ui-micro-job-prompts-0351-0670.md`)는
  * 이후 태스크에서 이어진다.
  */
 
@@ -140,6 +144,7 @@ use MintWiki\Installer\InstallerLock;
 use MintWiki\Installer\InstallerRouteGate;
 use MintWiki\Installer\RequirementCheck;
 use MintWiki\Installer\SchemaApplyHandler;
+use MintWiki\Render\NamuMarkDocumentRenderer;
 use MintWiki\Revision\PdoRepository as RevisionPdoRepository;
 use MintWiki\Revision\Revision;
 use MintWiki\Security\AdminAccessGate;
@@ -566,7 +571,7 @@ $router->register('GET', '/wiki/{title}', static function (array $params) use (
     $requestPath
 ): Response {
     $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
-    $documentViewPage = new DocumentViewPage(null, $layout);
+    $documentViewPage = new DocumentViewPage(null, $layout, new NamuMarkDocumentRenderer());
     $requestedTitle = rawurldecode($params['title'] ?? '');
 
     if ($documentRepository === null) {

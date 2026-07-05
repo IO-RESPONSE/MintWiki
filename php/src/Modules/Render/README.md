@@ -20,6 +20,15 @@ DocumentRenderer의 기본 구현으로, source를 평문으로 간주하고 기
 HTML escaping과 단락 분할만 수행한다. 파서와 렌더 함수들이 추가되면
 이를 활용하도록 개선된다.
 
+### NamuMarkDocumentRenderer (태스크 0706)
+
+`MintWiki\Parser\BlockParser`(0705, 내부적으로 0704 `InlineParser`를 사용)를
+호출해 NamuMark풍 source를 실제 HTML로 렌더링하는 `DocumentRenderer` 구현.
+`BlockParseResult::headings()`/`links()`를 그대로 `RenderResult`에 옮겨 담고,
+제목이 2개 이상이면 각 제목의 앵커 id로 점프하는 목차(TOC) HTML을 본문 앞에
+붙인다. `MintWiki\Ui\DocumentViewPage`의 기본 렌더러이며, 0708 편집 미리보기와
+공유된다.
+
 ## 계약
 
 namespace 이름은 `docs/php-namespace-mapping.md` 가 고정한 값을 따른다

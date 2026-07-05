@@ -6,7 +6,7 @@ namespace MintWiki\Ui;
 
 use MintWiki\Document\Document;
 use MintWiki\Render\DocumentRenderer;
-use MintWiki\Render\PlainTextDocumentRenderer;
+use MintWiki\Render\NamuMarkDocumentRenderer;
 use MintWiki\Ui\SeoMetadata;
 
 /**
@@ -26,6 +26,13 @@ use MintWiki\Ui\SeoMetadata;
  * UX(제목 + 안내 문구 + 편집 링크)를 보여준다. `$currentPath`는 액션 탭의
  * 활성 상태 판단에, `$lastEditedBy`는 헤더의 "마지막 편집" 메타 정보 표시
  * 여부에 쓰인다 — 둘 다 알 수 없으면(빈 문자열/null) 생략된다.
+ * 0706에서 기본 렌더러를 `PlainTextDocumentRenderer`에서
+ * `NamuMarkDocumentRenderer`로 바꿨다 — 저장된 위키 문법('''굵게'''/[[링크]]/
+ * 표/제목 등)이 실제 HTML(+ 제목이 2개 이상이면 목차)로 렌더링된다. 목차는
+ * `NamuMarkDocumentRenderer`가 본문 HTML 앞에 붙여 반환하므로, 이 클래스는
+ * `$renderResult->html()`을 `.document-content` wrapper로 감싸 배치하기만
+ * 하면 된다 — 스킨 CSS(`assets/css/document-content.css`)가 이 클래스명으로
+ * 본문/표/목차 스타일을 범위 한정한다.
  */
 final class DocumentViewPage
 {
@@ -44,7 +51,7 @@ final class DocumentViewPage
     ) {
         $this->escaper = $escaper ?? new Escaper();
         $this->layout = $layout ?? new Layout();
-        $this->renderer = $renderer ?? new PlainTextDocumentRenderer();
+        $this->renderer = $renderer ?? new NamuMarkDocumentRenderer();
         $this->documentHeader = $documentHeader ?? new DocumentHeader($this->escaper);
         $this->emptyState = $emptyState ?? new EmptyState($this->escaper);
     }
@@ -99,7 +106,7 @@ final class DocumentViewPage
 
         $body = '<main>'
             . $header
-            . $contentHtml
+            . '<div class="document-content">' . $contentHtml . '</div>'
             . '</main>';
 
         $seo = new SeoMetadata(
