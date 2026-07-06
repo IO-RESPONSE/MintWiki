@@ -141,6 +141,37 @@ def test_php_deployment_package_manifest_covers_phase_j_assets():
         ), f"manifest include 패턴이 Phase J 도메인 모듈을 포함하지 않는다: {relative_path}"
 
 
+def test_php_deployment_package_manifest_covers_phase_k_assets():
+    """0718: Phase K(감사 로그 배선 + 문서 삭제 + 백업 다운로드 + 진단
+    실데이터/export, 0714-0717)가 새로 추가한 도메인 모듈(Modules/Audit)과
+    갱신한 App/Admin 파일이 배포 패키지 include 패턴(php/src/**)에 실제로
+    걸리는지 확인한다. Phase K는 새 공개 CSS/JS 자산을 추가하지 않으므로
+    (기존 관리자 콘솔/폼 스타일을 재사용) 0695/0713과 달리 CSS/JS 검사는
+    없다 — 이 사실 자체가 바뀌면(새 자산이 추가되면) 이 테스트를 갱신해야
+    한다."""
+    manifest = _manifest()
+    include_patterns = manifest["include"]
+
+    audit_module_dir = REPO_ROOT / "php" / "src" / "Modules" / "Audit"
+    audit_files = sorted(audit_module_dir.glob("*.php"))
+    assert len(audit_files) > 0, "Modules/Audit에 PHP 파일이 존재해야 한다."
+
+    phase_k_files = list(audit_files) + [
+        REPO_ROOT / "php" / "src" / "Admin" / "FileBackupRunner.php",
+        REPO_ROOT / "php" / "src" / "App" / "OperationalDiagnosticsCollector.php",
+        REPO_ROOT / "php" / "src" / "App" / "SensitiveDiagnosticsFilter.php",
+        REPO_ROOT / "php" / "src" / "Ui" / "DocumentDeletePage.php",
+    ]
+    for phase_k_file in phase_k_files:
+        assert phase_k_file.is_file(), f"Phase K 파일이 존재해야 한다: {phase_k_file}"
+
+    for phase_k_file in phase_k_files:
+        relative_path = phase_k_file.relative_to(REPO_ROOT).as_posix()
+        assert any(
+            fnmatch.fnmatch(relative_path, pattern) for pattern in include_patterns
+        ), f"manifest include 패턴이 Phase K 파일을 포함하지 않는다: {relative_path}"
+
+
 def test_php_deployment_package_manifest_patterns_are_reviewable():
     """패턴은 상대 경로이며 중복과 상위 디렉터리 탈출을 허용하지 않는다."""
     manifest = _manifest()

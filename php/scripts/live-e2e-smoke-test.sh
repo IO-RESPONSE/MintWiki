@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # 라이브 호스팅 배포본에 대한 API/HTTP 기반 end-to-end smoke test (태스크 0672,
 # 실사용 흐름에 맞춘 0688 갱신, Phase J NamuMark 렌더/편집 UX/history/
-# discussion 확인을 추가한 0713 갱신).
+# discussion 확인을 추가한 0713 갱신, Phase K 감사 로그/문서 삭제/백업
+# 다운로드/진단 실데이터+export 확인을 추가한 0718 갱신).
 #
 # post-cutover-validate.sh(골격)나 live-http-smoke-test.sh(루트 응답/민감
 # 경로 차단만 확인)와 달리, 이 스크립트는 관리자 세션으로 실제 로그인,
 # 설치 마법사(`/install`) 접속 상태, 문서 생성/편집/조회, 익명 사용자에 대한
-# 권한(읽기 허용/쓰기 거부), NamuMark 렌더/편집 화면/history/discussion
-# 확인을 curl로 직접 수행하고 결과를 기록한다.
+# 권한(읽기 허용/쓰기 거부), NamuMark 렌더/편집 화면/history/discussion,
+# 감사 로그/문서 삭제/백업 다운로드/운영 진단 확인을 curl로 직접 수행하고
+# 결과를 기록한다.
 #
 # 0672 작성 시점에는 `php/public/index.php`가 `GET /`와 `GET /health`만
 # 연결되어 있어 `/documents`, `/admin/users` 같은 가상의 route를 대상으로
@@ -53,15 +55,29 @@ Usage: php/scripts/live-e2e-smoke-test.sh --base-url URL [options]
      형태(200/302/403)를 확인한다.
   13. 관리자 세션으로 토론 스레드를 만들고(POST /wiki/{title}/discussion)
      그 스레드에 댓글을 추가한다(POST /wiki/{title}/discussion/{id}/comment).
+  14. Phase K(감사 로그, 태스크 0714) 통합 확인: 관리자 세션으로
+     `/admin/audit`을 조회해 실제 감사 이벤트(auth.login_succeeded 등)가
+     빈 상태 대신 표로 나타나는지 확인한다.
+  15. Phase K(문서 삭제, 태스크 0715) 통합 확인: 익명 사용자의 삭제
+     시도(GET /wiki/{title}/delete)가 `/login`으로 302되는지 확인하고,
+     관리자 세션으로 확인 화면을 거쳐 실제로 문서를 삭제한 뒤
+     (POST /wiki/{title}/delete) 문서 조회가 404가 되는지 확인한다.
+  16. Phase K(백업 다운로드, 태스크 0716) 통합 확인: 관리자 세션으로 백업을
+     생성하고(POST /admin/backup), 목록의 실제 파일명으로 다운로드가
+     되는지, 경로 traversal 파일명은 404로 거부되는지 확인한다.
+  17. Phase K(운영 진단, 태스크 0717) 통합 확인: 관리자 세션으로
+     `/admin/diagnostics`가 DB/스키마/캐시 섹션을 렌더링하는지,
+     `/admin/diagnostics/export` 응답에 password/secret/token/dsn 계열
+     민감 key가 없는지 확인한다.
 
 각 단계는 실패해도 스크립트를 중단하지 않는다 — route가 아직 연결되지
 않았거나(404) 전제 단계가 실패하면 "blocked"/"skip"으로 기록하고 다음
 단계로 넘어간다. SMOKE_ADMIN_USER/SMOKE_ADMIN_PASSWORD가 없으면 로그인이
-필요한 모든 단계(5-9, 13)를 안전하게 skip한다 — 설치 마법사를 거쳐 관리자
-계정을 만드는 것은 실제 자격 증명을 가진 운영자가 브라우저로 수행할 일이며
-(이 저장소의 `/install`은 DB 접속 정보·schema 적용·관리자 계정 생성을
-여러 단계로 나눠 처리하는 실제 설치 절차다), 이 스크립트가 대신 만들지
-않는다.
+필요한 모든 단계(5-9, 13-17)를 안전하게 skip한다 — 설치 마법사를 거쳐
+관리자 계정을 만드는 것은 실제 자격 증명을 가진 운영자가 브라우저로
+수행할 일이며(이 저장소의 `/install`은 DB 접속 정보·schema 적용·관리자
+계정 생성을 여러 단계로 나눠 처리하는 실제 설치 절차다), 이 스크립트가
+대신 만들지 않는다.
 
 Options:
   --base-url URL           확인할 공개 URL (필수).
@@ -347,7 +363,7 @@ fi
 if [ "${ADMIN_AUTHENTICATED}" -ne 1 ]; then
   record skip admin_console_routes_check GET "${BASE_URL}/admin" "n/a" "" "skipped: no authenticated admin session"
 else
-  for admin_path in /admin /admin/maintenance /admin/backup /admin/restore /admin/diagnostics /admin/diagnostics/files; do
+  for admin_path in /admin /admin/audit /admin/maintenance /admin/backup /admin/restore /admin/diagnostics /admin/diagnostics/files; do
     http_get "${BASE_URL}${admin_path}" "${ADMIN_JAR}"
     case "${LAST_STATUS}" in
       200) record pass admin_console_routes_check GET "${BASE_URL}${admin_path}" "${LAST_STATUS}" "${LAST_REDIRECT}" "admin route reachable" ;;
@@ -540,14 +556,137 @@ else
   fi
 fi
 
+# 10. Phase K(감사 로그, 태스크 0714) 통합 확인: 관리자 세션으로 로그인한
+#     시점에 이미 auth.login_succeeded 감사 이벤트가 기록되었으므로,
+#     /admin/audit이 빈 상태 대신 실제 이벤트 표를 보여주는지 확인한다.
+#     자격 증명이 없으면 안전하게 skip한다.
+if [ "${ADMIN_AUTHENTICATED}" -ne 1 ]; then
+  record skip phase_k_audit_log_check GET "${BASE_URL}/admin/audit" "n/a" "" "skipped: no authenticated admin session"
+else
+  http_get "${BASE_URL}/admin/audit" "${ADMIN_JAR}"
+  if [ "${LAST_STATUS}" = "200" ] \
+    && grep -q 'auth.login_succeeded' "${LAST_BODY_FILE}" 2>/dev/null \
+    && ! grep -q '감사 로그가 없습니다' "${LAST_BODY_FILE}" 2>/dev/null; then
+    record pass phase_k_audit_log_check GET "${BASE_URL}/admin/audit" "${LAST_STATUS}" "${LAST_REDIRECT}" "audit viewer shows real events (auth.login_succeeded)"
+  else
+    record fail phase_k_audit_log_check GET "${BASE_URL}/admin/audit" "${LAST_STATUS}" "${LAST_REDIRECT}" "audit viewer missing real events or still showing empty state"
+  fi
+fi
+
+# 11. Phase K(문서 삭제, 태스크 0715) 통합 확인: 익명 사용자의 삭제 시도는
+#     거부되고(/login으로 302), 관리자는 확인 화면을 거쳐 실제로 문서를
+#     삭제할 수 있으며, 삭제 후에는 문서 조회가 404가 되는지 확인한다.
+#     문서가 없으면(자격 증명 없음) 안전하게 skip한다.
+DOC_DELETED=0
+if [ "${DOC_CREATED}" -ne 1 ]; then
+  record skip phase_k_anonymous_delete_denied_check GET "${BASE_URL}/wiki/${DOC_TITLE}/delete" "n/a" "" "skipped: document was not created"
+  record skip phase_k_document_delete_check POST "${BASE_URL}/wiki/${DOC_TITLE}/delete" "n/a" "" "skipped: document was not created"
+else
+  http_get "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${ANON_JAR}"
+  case "${LAST_STATUS}" in
+    302)
+      case "${LAST_REDIRECT}" in
+        */login) record pass phase_k_anonymous_delete_denied_check GET "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${LAST_STATUS}" "${LAST_REDIRECT}" "anonymous user correctly redirected to login" ;;
+        *) record fail phase_k_anonymous_delete_denied_check GET "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${LAST_STATUS}" "${LAST_REDIRECT}" "redirected somewhere other than /login" ;;
+      esac
+      ;;
+    403) record pass phase_k_anonymous_delete_denied_check GET "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${LAST_STATUS}" "${LAST_REDIRECT}" "anonymous user denied" ;;
+    200) record fail phase_k_anonymous_delete_denied_check GET "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${LAST_STATUS}" "${LAST_REDIRECT}" "SECURITY: anonymous user was allowed to see the delete confirmation form" ;;
+    *) record blocked phase_k_anonymous_delete_denied_check GET "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${LAST_STATUS}" "${LAST_REDIRECT}" "unexpected status" ;;
+  esac
+
+  if [ "${ADMIN_AUTHENTICATED}" -ne 1 ]; then
+    record skip phase_k_document_delete_check POST "${BASE_URL}/wiki/${DOC_TITLE}/delete" "n/a" "" "skipped: no authenticated admin session"
+  else
+    http_get "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${ADMIN_JAR}"
+    if [ "${LAST_STATUS}" = "200" ] && grep -q 'name="confirm_delete"' "${LAST_BODY_FILE}" 2>/dev/null; then
+      token="$(extract_csrf_token "${LAST_BODY_FILE}")"
+      http_post_form "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${ADMIN_JAR}" "confirm_delete=1" "csrf_token=${token}"
+      case "${LAST_STATUS}" in
+        302)
+          http_get "${BASE_URL}/wiki/${DOC_TITLE}" "${ANON_JAR}"
+          if [ "${LAST_STATUS}" = "404" ]; then
+            DOC_DELETED=1
+            record pass phase_k_document_delete_check POST "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${LAST_STATUS}" "${LAST_REDIRECT}" "document deleted and now returns 404"
+          else
+            record fail phase_k_document_delete_check POST "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${LAST_STATUS}" "${LAST_REDIRECT}" "document still reachable after delete (status=${LAST_STATUS})"
+          fi
+          ;;
+        *) record fail phase_k_document_delete_check POST "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${LAST_STATUS}" "${LAST_REDIRECT}" "document delete rejected" ;;
+      esac
+    else
+      record blocked phase_k_document_delete_check GET "${BASE_URL}/wiki/${DOC_TITLE}/delete" "${LAST_STATUS}" "${LAST_REDIRECT}" "delete confirmation form route not available"
+    fi
+  fi
+fi
+
+# 12. Phase K(백업 다운로드, 태스크 0716) 통합 확인: 관리자 세션으로 백업을
+#     생성하고, 목록에 나타난 실제 파일명으로 다운로드가 되는지, 경로
+#     traversal 파일명은 404로 거부되는지 확인한다. 자격 증명이 없으면
+#     안전하게 skip한다.
+if [ "${ADMIN_AUTHENTICATED}" -ne 1 ]; then
+  record skip phase_k_backup_download_check GET "${BASE_URL}/admin/backup/download/{name}" "n/a" "" "skipped: no authenticated admin session"
+  record skip phase_k_backup_download_traversal_check GET "${BASE_URL}/admin/backup/download/..%2Foutside.json" "n/a" "" "skipped: no authenticated admin session"
+else
+  token="$(fresh_csrf_token "${BASE_URL}/admin/backup" "${ADMIN_JAR}")"
+  http_post_form "${BASE_URL}/admin/backup" "${ADMIN_JAR}" "csrf_token=${token}"
+  BACKUP_NAME=""
+  if [ "${LAST_STATUS}" = "200" ]; then
+    BACKUP_NAME="$(grep -o '/admin/backup/download/[^"]*' "${LAST_BODY_FILE}" 2>/dev/null | head -1 | sed 's#^/admin/backup/download/##')"
+  fi
+
+  if [ -z "${BACKUP_NAME}" ]; then
+    record fail phase_k_backup_download_check POST "${BASE_URL}/admin/backup" "${LAST_STATUS}" "${LAST_REDIRECT}" "backup create did not yield a downloadable file name"
+  else
+    http_get "${BASE_URL}/admin/backup/download/${BACKUP_NAME}" "${ADMIN_JAR}"
+    case "${LAST_STATUS}" in
+      200) record pass phase_k_backup_download_check GET "${BASE_URL}/admin/backup/download/${BACKUP_NAME}" "${LAST_STATUS}" "${LAST_REDIRECT}" "backup file downloaded" ;;
+      *) record fail phase_k_backup_download_check GET "${BASE_URL}/admin/backup/download/${BACKUP_NAME}" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 200 for a listed backup file" ;;
+    esac
+  fi
+
+  http_get "${BASE_URL}/admin/backup/download/..%2Foutside.json" "${ADMIN_JAR}"
+  case "${LAST_STATUS}" in
+    404) record pass phase_k_backup_download_traversal_check GET "${BASE_URL}/admin/backup/download/..%2Foutside.json" "${LAST_STATUS}" "${LAST_REDIRECT}" "path traversal name rejected" ;;
+    *) record fail phase_k_backup_download_traversal_check GET "${BASE_URL}/admin/backup/download/..%2Foutside.json" "${LAST_STATUS}" "${LAST_REDIRECT}" "expected 404 for path traversal name" ;;
+  esac
+fi
+
+# 13. Phase K(운영 진단 실데이터+export, 태스크 0717) 통합 확인: 관리자
+#     세션으로 /admin/diagnostics가 DB/스키마/캐시 섹션을 렌더링하는지,
+#     /admin/diagnostics/export 응답 본문에 password/secret/token/dsn 계열
+#     민감 key가 없는지 확인한다. 자격 증명이 없으면 안전하게 skip한다.
+if [ "${ADMIN_AUTHENTICATED}" -ne 1 ]; then
+  record skip phase_k_diagnostics_real_data_check GET "${BASE_URL}/admin/diagnostics" "n/a" "" "skipped: no authenticated admin session"
+  record skip phase_k_diagnostics_export_check GET "${BASE_URL}/admin/diagnostics/export" "n/a" "" "skipped: no authenticated admin session"
+else
+  http_get "${BASE_URL}/admin/diagnostics" "${ADMIN_JAR}"
+  if [ "${LAST_STATUS}" = "200" ] \
+    && grep -q 'aria-label="데이터베이스 상태"' "${LAST_BODY_FILE}" 2>/dev/null \
+    && grep -q 'aria-label="스키마 상태"' "${LAST_BODY_FILE}" 2>/dev/null \
+    && grep -q 'aria-label="캐시 상태"' "${LAST_BODY_FILE}" 2>/dev/null; then
+    record pass phase_k_diagnostics_real_data_check GET "${BASE_URL}/admin/diagnostics" "${LAST_STATUS}" "${LAST_REDIRECT}" "diagnostics page shows db/schema/cache sections"
+  else
+    record fail phase_k_diagnostics_real_data_check GET "${BASE_URL}/admin/diagnostics" "${LAST_STATUS}" "${LAST_REDIRECT}" "diagnostics page missing db/schema/cache sections"
+  fi
+
+  http_get "${BASE_URL}/admin/diagnostics/export" "${ADMIN_JAR}"
+  if [ "${LAST_STATUS}" = "200" ] \
+    && ! grep -Eqi '"[^"]*(password|passwd|secret|token|credential|dsn|api[_-]?key|private[_-]?key)[^"]*"[[:space:]]*:' "${LAST_BODY_FILE}" 2>/dev/null; then
+    record pass phase_k_diagnostics_export_check GET "${BASE_URL}/admin/diagnostics/export" "${LAST_STATUS}" "${LAST_REDIRECT}" "export snapshot has no sensitive-looking keys"
+  else
+    record fail phase_k_diagnostics_export_check GET "${BASE_URL}/admin/diagnostics/export" "${LAST_STATUS}" "${LAST_REDIRECT}" "export missing or contains a sensitive-looking key"
+  fi
+fi
+
 echo ""
 echo "=== cleanup ==="
 if [ "${KEEP_DATA}" -eq 1 ]; then
   echo "cleanup skipped (--keep-data)"
-elif [ "${DOC_CREATED}" -eq 1 ]; then
-  LEFTOVER_NOTES+=("document title=${DOC_TITLE} has no delete route in this codebase yet — remove manually via DB once available")
+elif [ "${DOC_CREATED}" -eq 1 ] && [ "${DOC_DELETED}" -ne 1 ]; then
+  LEFTOVER_NOTES+=("document title=${DOC_TITLE} was not deleted by phase_k_document_delete_check — remove manually via /wiki/${DOC_TITLE}/delete or DB once available")
   if [ -n "${THREAD_ID}" ]; then
-    LEFTOVER_NOTES+=("discussion thread id=${THREAD_ID} (and its smoke comment) has no delete route yet — remove manually via DB once available")
+    LEFTOVER_NOTES+=("discussion thread id=${THREAD_ID} (and its smoke comment) would have been removed together with the document delete above — remove manually via DB")
   fi
 fi
 

@@ -69,10 +69,18 @@ def test_deployment_checklist_phase_j_section_references_existing_automation():
 
 
 def test_deployment_checklist_numbering_still_ends_with_out_of_scope_and_related_docs():
-    """새 절을 11번으로 끼워 넣으면서 기존 "다루지 않는 것"/"관련 문서" 절
-    번호가 밀렸는지 확인한다."""
+    """새 절을 11번으로 끼워 넣으면서 기존 "다루지 않는 것"/"관련 문서" 절이
+    밀렸는지 확인한다. 0718에서 12절(Phase K)이 추가로 끼어들며 "다루지
+    않는 것"이 다시 13번으로 밀렸다 — 정확한 절 번호 자체보다 "Phase J
+    확인 다음에 최소 하나 이상의 절을 거쳐 다루지 않는 것/관련 문서로
+    끝난다"는 상대 순서를 확인한다(0695 테스트가 먼저 세운 관례)."""
     content = _content()
 
-    assert "## 12. 이 체크리스트가 다루지 않는 것" in content
+    assert "## 11. Phase J 확인" in content
     assert "## 관련 문서" in content
     assert "## 11. 이 체크리스트가 다루지 않는 것" not in content
+
+    phase_j_index = content.index("## 11. Phase J 확인")
+    related_docs_index = content.index("## 관련 문서")
+    out_of_scope_index = content.index("이 체크리스트가 다루지 않는 것")
+    assert phase_j_index < out_of_scope_index < related_docs_index

@@ -738,7 +738,102 @@ parser), 0706(renderer/view 통합), 0707(편집 요약 필드), 0708(편집
 댓글 작성)가 확인한다 — 관리자 자격 증명이 없으면 쓰기 시나리오는
 안전하게 skip한다.
 
-## 12. 이 체크리스트가 다루지 않는 것
+## 12. Phase K 확인 (삭제 + 감사 로그 + 백업 다운로드 + 진단, 0714-0717)
+
+문서 삭제, 실제 감사 이벤트 기록/조회, 백업 파일 직접 다운로드, 운영
+진단 실데이터+export가 배포 산출물에 빠짐없이 포함되고, 실제로 동작하며
+민감 정보를 노출하지 않는지 확인한다. 해당 태스크: 0714(PDO 감사
+recorder 배선), 0715(문서 삭제), 0716(백업 직접 다운로드), 0717(운영
+진단 실데이터+export), 0718(통합 QA/배포 패키지 갱신).
+
+### 12.1 Phase K 자산 배포 확인
+
+- [ ] 새 도메인 모듈 `php/src/Modules/Audit/**`(`PdoAuditRecorder`
+      포함)와 갱신된 `php/src/Admin/**`(`FileBackupRunner`),
+      `php/src/App/**`(`OperationalDiagnosticsCollector`,
+      `SensitiveDiagnosticsFilter`), `php/src/Ui/**`(`DocumentDeletePage`
+      등)가 배포 패키지의 `php/src/**` include 패턴에 포함되었다
+      (`php/deployment-package-manifest.json` 확인). Phase K는 새 공개
+      CSS/JS 자산을 추가하지 않는다 — 기존 관리자 콘솔/폼 스타일을
+      재사용한다.
+
+**자동화**: `tests/test_php_deployment_package_manifest.py`의
+`test_php_deployment_package_manifest_covers_phase_k_assets`가 현재
+디스크의 Phase K 도메인 모듈/파일 목록이 manifest include 패턴에 실제로
+걸리는지 회귀 검사한다.
+
+### 12.2 문서 삭제 확인
+
+- [ ] 익명 사용자가 `GET`/`POST /wiki/{title}/delete`에 접근하면
+      `/login`으로 302된다.
+- [ ] 로그인한 사용자가 삭제 권한이 있으면 위험 작업 확인 체크박스
+      (`confirm_delete`)를 갖춘 확인 화면이 나타나고, 체크박스 없이
+      제출하면 422로 거부된다.
+- [ ] 확인 체크박스에 동의하고 제출하면 문서와 관련 리비전/토론
+      스레드·댓글이 함께 삭제되고 `/`로 302된 뒤, 삭제된 문서를 다시
+      조회하면 404가 된다.
+
+**자동화**: `php/tests/Http/DocumentDeleteRouteTest.php`,
+`php/tests/Modules/Document/DocumentDeleteRepositoryTest.php`가 route/
+repository 수준에서, `php/tests/Http/UiPhaseKSmokeTest.php`가 DB 없이
+`DocumentDeletePage` 확인 화면 마크업을 확인한다. 라이브 배포본에서는
+`live-e2e-smoke-test.sh`의 `phase_k_anonymous_delete_denied_check`(익명
+거부), `phase_k_document_delete_check`(확인 화면 → 실제 삭제 → 삭제 후
+404)가 확인한다 — 관리자 자격 증명이 없으면 안전하게 skip한다.
+
+### 12.3 감사 로그 확인
+
+- [ ] 로그인/로그아웃, 문서 생성/편집/삭제, 백업 다운로드, 진단 export
+      같은 실제 작업이 `audit_event` 테이블에 기록되고, `GET
+      /admin/audit`이 빈 상태 대신 그 이벤트들을 표로 보여준다.
+
+**자동화**: `php/tests/Modules/Audit/PdoAuditRecorderTest.php`,
+`php/tests/Http/DocumentEditAuditWiringTest.php`,
+`php/tests/Security/LoginHandlerTest.php`/`LogoutHandlerTest.php`가
+recorder/배선 수준에서, `php/tests/Http/UiPhaseKSmokeTest.php`가 DB 없이
+실제 이벤트 목록을 받았을 때 `AuditViewerPage`가 빈 상태 메시지 대신
+표를 렌더링하는지 확인한다. 라이브 배포본에서는
+`live-e2e-smoke-test.sh`의 `phase_k_audit_log_check`가 관리자 로그인
+직후 `/admin/audit` 응답에 `auth.login_succeeded` 이벤트가 실제로
+나타나는지 확인한다 — 관리자 자격 증명이 없으면 안전하게 skip한다.
+
+### 12.4 백업 다운로드 확인
+
+- [ ] `GET /admin/backup/download/{name}`은 `listBackups()`가 나열하는
+      실제 백업 파일만 200으로 내려주고, 경로 traversal(`../`)이나
+      목록에 없는 파일명은 404로 거부한다.
+- [ ] `/admin/backup` 화면의 백업 목록 각 항목에 다운로드 링크가
+      걸린다.
+
+**자동화**: `php/tests/Http/BackupDownloadRouteTest.php`가 route
+수준에서 유효한 다운로드/traversal 거부/ACL을 확인하고,
+`php/tests/Http/UiPhaseKSmokeTest.php`가 DB 없이 `BackupPage` 다운로드
+링크 렌더링과 `FileBackupRunner::resolveBackupPath()`의 traversal 거부를
+확인한다. 라이브 배포본에서는 `live-e2e-smoke-test.sh`의
+`phase_k_backup_download_check`(실제 파일 다운로드),
+`phase_k_backup_download_traversal_check`(traversal 거부)가 확인한다 —
+관리자 자격 증명이 없으면 안전하게 skip한다.
+
+### 12.5 운영 진단 확인
+
+- [ ] `/admin/diagnostics`가 DB 연결 상태/버전, 스키마 적용 상태,
+      캐시 백엔드 상태를 실제 값으로 표시한다(DB 미설정/오류 상태에서도
+      500 없이 "미설정"/"오류"로 대체된다).
+- [ ] `/admin/diagnostics/export`가 위 실데이터를 JSON 파일로 내려주고,
+      DB 자격 증명(DSN/사용자명/비밀번호) 등 민감 정보는 export 본문에
+      전혀 포함되지 않는다.
+
+**자동화**: `php/tests/App/OperationalDiagnosticsCollectorTest.php`,
+`php/tests/Http/DiagnosticsExportRouteTest.php`,
+`php/tests/Ui/OperationalDiagnosticsPageTest.php`가 수집기/route/화면
+수준에서, `php/tests/Http/UiPhaseKSmokeTest.php`가 DB 없이 진단
+섹션 렌더링과 `SensitiveDiagnosticsFilter`의 민감 key 제외를 확인한다.
+라이브 배포본에서는 `live-e2e-smoke-test.sh`의
+`phase_k_diagnostics_real_data_check`(실데이터 섹션 렌더링),
+`phase_k_diagnostics_export_check`(export 본문에 민감 key 부재)가
+확인한다 — 관리자 자격 증명이 없으면 안전하게 skip한다.
+
+## 13. 이 체크리스트가 다루지 않는 것
 
 - Database 마이그레이션이나 초기화 — DB phase checklist 참고 (0411 이후)
 - PHP 런타임 버전/확장 설정 — runtime phase checklist 참고 (0396)
