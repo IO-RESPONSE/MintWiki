@@ -169,6 +169,8 @@ use MintWiki\App\AppBootstrap;
 use MintWiki\App\ConfigLoader;
 use MintWiki\App\LocalConfigLoader;
 use MintWiki\App\MaintenanceModeStateStore;
+use MintWiki\App\OperationalDiagnosticsCollector;
+use MintWiki\App\SensitiveDiagnosticsFilter;
 use MintWiki\App\StoragePathConfig;
 use MintWiki\Audit\AuditEvent;
 use MintWiki\Audit\NoOpAuditRecorder;
@@ -364,6 +366,27 @@ function mintwiki_normalize_edit_summary(string $summaryInput): string
     $trimmed = trim($summaryInput);
 
     return $trimmed === '' ? '편집 요약 없음' : $trimmed;
+}
+
+/**
+ * 패키지 VERSION 파일에서 애플리케이션 버전을 읽는다 (태스크 0717).
+ *
+ * `OperationalDiagnosticsPage::readAppVersion()`과 같은 파일을 읽는
+ * 동일한 로직이다 — 운영 진단 수집기/export 스냅샷도 같은 버전 문자열을
+ * 써야 하므로 front controller에도 같은 헬퍼를 둔다.
+ */
+function mintwiki_read_app_version(): string
+{
+    $versionFile = dirname(__DIR__) . '/VERSION';
+    $version = is_file($versionFile) ? file_get_contents($versionFile) : false;
+
+    if ($version === false) {
+        return 'unknown';
+    }
+
+    $normalizedVersion = trim($version);
+
+    return $normalizedVersion === '' ? 'unknown' : $normalizedVersion;
 }
 
 /**
@@ -630,6 +653,17 @@ $documentRenderer = new NamuMarkDocumentRenderer();
 $configLoader = new ConfigLoader((new LocalConfigLoader())->load());
 $storagePathConfig = new StoragePathConfig($configLoader);
 $backupRunner = new FileBackupRunner($storagePathConfig->rootPath() . '/backups');
+
+// 운영 진단 수집기 (태스크 0717). $pdo/$dbStatus는 위 0674 판단을 그대로
+// 재사용한다 — DB 미설정/오류 상태에서도 예외 없이 "미설정"/"오류"로
+// 대체하므로 /admin/diagnostics, /admin/diagnostics/export 모두 안전하다.
+$operationalDiagnosticsCollector = new OperationalDiagnosticsCollector(
+    $pdo,
+    $dbStatus,
+    $configLoader,
+    $storagePathConfig,
+    mintwiki_read_app_version()
+);
 
 // GET/POST /login, GET/POST /logout (태스크 0686). $accountRepository/
 // $sessionAdapter는 위에서(태스크 0691) 앞당겨 정의했다 — 로그인 상태
@@ -1897,11 +1931,16 @@ $router->register('POST', '/admin/restore', static function () use (
     return new Response(302, ['Location' => '/admin/backup']);
 });
 
-// GET /admin/diagnostics, /admin/diagnostics/files — 운영 진단 (태스크 0702).
+// GET /admin/diagnostics, /admin/diagnostics/files — 운영 진단 (태스크 0702,
+// 실데이터 연결은 0717). $operationalDiagnosticsCollector가 DB/스키마/캐시/
+// 환경 실데이터를 조회해 OperationalDiagnosticsPage에 그대로 주입한다 — DB
+// 미설정/오류 상태에서도 수집기가 예외 없이 "미설정"/"오류"로 대체하므로
+// 이 route도 죽지 않는다(0674 계약과 동일한 판단).
 $router->register('GET', '/admin/diagnostics', static function () use (
     $accountRepository,
     $sessionAdapter,
     $aclService,
+    $operationalDiagnosticsCollector,
     $requestPath
 ): Response {
     $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
@@ -1910,7 +1949,7 @@ $router->register('GET', '/admin/diagnostics', static function () use (
         return $gateResponse;
     }
 
-    return Response::html((new OperationalDiagnosticsPage(null, $layout))->render());
+    return Response::html((new OperationalDiagnosticsPage(null, $layout))->render($operationalDiagnosticsCollector->collect()));
 });
 
 $router->register('GET', '/admin/diagnostics/files', static function () use (
@@ -1926,6 +1965,54 @@ $router->register('GET', '/admin/diagnostics/files', static function () use (
     }
 
     return Response::html((new FilePermissionDiagnosticsPage(null, $layout))->render());
+});
+
+// GET /admin/diagnostics/export — 환경 진단 export 다운로드 (태스크 0717).
+//
+// $operationalDiagnosticsCollector->collectExportSnapshot()이 조립하는 평면
+// 스냅샷(앱 버전/환경, PHP 버전·SAPI·확장 목록, DB 상태·드라이버 버전, 스키마
+// 상태·최신 버전, 캐시 백엔드·도달 가능 여부)은 DB 자격 증명을 애초에 조회하지
+// 않으므로 DSN/비밀번호가 담길 수 없다. SensitiveDiagnosticsFilter를 한 번 더
+// 통과시켜 민감 key 이름을 방어적으로 제외한 뒤 JSON 첨부 파일로 내려준다.
+$router->register('GET', '/admin/diagnostics/export', static function () use (
+    $accountRepository,
+    $sessionAdapter,
+    $aclService,
+    $operationalDiagnosticsCollector,
+    $auditRecorder,
+    $requestPath
+): Response {
+    $layout = mintwiki_build_layout($requestPath, $accountRepository, $sessionAdapter, $aclService);
+    $gateResponse = mintwiki_authorize_admin_route($accountRepository, $sessionAdapter, $aclService, $layout);
+    if ($gateResponse !== null) {
+        return $gateResponse;
+    }
+
+    $snapshot = SensitiveDiagnosticsFilter::filter($operationalDiagnosticsCollector->collectExportSnapshot());
+    $exportFilename = 'mintwiki-diagnostics-' . gmdate('Ymd-His') . '.json';
+
+    [$subjectType, $subjectId] = mintwiki_resolve_acl_subject($accountRepository, $sessionAdapter);
+    try {
+        $auditRecorder->record(new AuditEvent(
+            id: mintwiki_generate_uuid_v4(),
+            module: 'diagnostics',
+            action: 'exported',
+            occurredAt: new \DateTimeImmutable('now'),
+            actorId: $subjectType === AclSubjectType::Anonymous ? 'anonymous' : $subjectId,
+            metadata: ['entity_id' => $exportFilename]
+        ));
+    } catch (\Throwable $exception) {
+        \error_log('Audit recording failed: ' . $exception->getMessage());
+    }
+
+    $body = json_encode($snapshot, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR) . "\n";
+
+    return new Response(200, [
+        'Content-Type' => 'application/json',
+        'Content-Disposition' => 'attachment; filename="' . $exportFilename . '"',
+        'Content-Length' => (string) strlen($body),
+        'X-Content-Type-Options' => 'nosniff',
+    ], $body);
 });
 
 // GET /health — 헬스체크 (태스크 0419, DB 상태 필드는 0674)

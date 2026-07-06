@@ -4,11 +4,19 @@ declare(strict_types=1);
 
 namespace MintWiki\Ui;
 
+use MintWiki\App\ConfigLoader;
+use MintWiki\App\LocalConfigLoader;
+use MintWiki\App\SensitiveDiagnosticsFilter;
+
 /**
- * 운영 진단 page의 서버 렌더링 (태스크 0590).
+ * 운영 진단 page의 서버 렌더링 (태스크 0590, 실데이터 연결은 0717).
  *
  * DB 상태, 스키마 상태, 캐시 상태 등 운영 관련 진단 정보를 표시한다.
- * 모든 사용자 입력은 escaping되어 XSS를 방지한다.
+ * 모든 사용자 입력은 escaping되어 XSS를 방지한다. 0717부터
+ * `MintWiki\App\OperationalDiagnosticsCollector`가 조립한 실데이터를
+ * `render()`의 `$diagnostics` 인자로 주입받는다 — 인자를 생략하면(직접
+ * 인스턴스화하는 단위 테스트 등) DB/스키마/캐시가 모두 "확인되지 않음"
+ * 상태의 안전한 기본값으로 대체된다.
  */
 final class OperationalDiagnosticsPage
 {
@@ -26,17 +34,24 @@ final class OperationalDiagnosticsPage
     /**
      * 운영 진단 page를 렌더링한다.
      *
-     * @param array<string, string>|null $environmentDiagnostics 환경 진단 export 미리보기 값
+     * @param array{
+     *     db?: array{status: string, version: string},
+     *     schema?: array{status: string, migration: string},
+     *     cache?: array{status: string, usage: string},
+     *     environment?: array<string, string>
+     * }|null $diagnostics `OperationalDiagnosticsCollector::collect()`가 반환하는 구조의 실데이터
      */
-    public function render(?array $environmentDiagnostics = null): string
+    public function render(?array $diagnostics = null): string
     {
+        $diagnostics ??= [];
+
         $appVersionSection = $this->renderAppVersionSection();
-        $dbStatusSection = $this->renderDatabaseStatusSection();
-        $schemaStatusSection = $this->renderSchemaStatusSection();
-        $cacheStatusSection = $this->renderCacheStatusSection();
+        $dbStatusSection = $this->renderDatabaseStatusSection($diagnostics['db'] ?? $this->defaultDatabaseDiagnostics());
+        $schemaStatusSection = $this->renderSchemaStatusSection($diagnostics['schema'] ?? $this->defaultSchemaDiagnostics());
+        $cacheStatusSection = $this->renderCacheStatusSection($diagnostics['cache'] ?? $this->defaultCacheDiagnostics());
         $filePermissionSection = $this->renderFilePermissionSection();
         $environmentExportSection = $this->renderEnvironmentExportSection(
-            $environmentDiagnostics ?? $this->defaultEnvironmentDiagnostics(),
+            $diagnostics['environment'] ?? $this->defaultEnvironmentDiagnostics(),
         );
 
         $body = '<main>'
@@ -67,44 +82,78 @@ final class OperationalDiagnosticsPage
 
     /**
      * 데이터베이스 상태 섹션을 렌더링한다.
+     *
+     * @param array{status: string, version: string} $diagnostics
      */
-    private function renderDatabaseStatusSection(): string
+    private function renderDatabaseStatusSection(array $diagnostics): string
     {
         return '<section aria-label="데이터베이스 상태">'
             . '<h2>데이터베이스</h2>'
             . '<dl>'
-            . '<dt>상태</dt><dd>연결 중</dd>'
-            . '<dt>버전</dt><dd>placeholder</dd>'
+            . '<dt>상태</dt><dd>' . $this->escaper->html($diagnostics['status']) . '</dd>'
+            . '<dt>버전</dt><dd>' . $this->escaper->html($diagnostics['version']) . '</dd>'
             . '</dl>'
             . '</section>';
     }
 
     /**
      * 스키마 상태 섹션을 렌더링한다.
+     *
+     * @param array{status: string, migration: string} $diagnostics
      */
-    private function renderSchemaStatusSection(): string
+    private function renderSchemaStatusSection(array $diagnostics): string
     {
         return '<section aria-label="스키마 상태">'
             . '<h2>스키마</h2>'
             . '<dl>'
-            . '<dt>상태</dt><dd>검증 중</dd>'
-            . '<dt>마이그레이션</dt><dd>placeholder</dd>'
+            . '<dt>상태</dt><dd>' . $this->escaper->html($diagnostics['status']) . '</dd>'
+            . '<dt>마이그레이션</dt><dd>' . $this->escaper->html($diagnostics['migration']) . '</dd>'
             . '</dl>'
             . '</section>';
     }
 
     /**
      * 캐시 상태 섹션을 렌더링한다.
+     *
+     * @param array{status: string, usage: string} $diagnostics
      */
-    private function renderCacheStatusSection(): string
+    private function renderCacheStatusSection(array $diagnostics): string
     {
         return '<section aria-label="캐시 상태">'
             . '<h2>캐시</h2>'
             . '<dl>'
-            . '<dt>상태</dt><dd>대기 중</dd>'
-            . '<dt>사용 현황</dt><dd>placeholder</dd>'
+            . '<dt>상태</dt><dd>' . $this->escaper->html($diagnostics['status']) . '</dd>'
+            . '<dt>사용 현황</dt><dd>' . $this->escaper->html($diagnostics['usage']) . '</dd>'
             . '</dl>'
             . '</section>';
+    }
+
+    /**
+     * `$diagnostics` 인자가 없을 때 쓰는 데이터베이스 상태 기본값 — 아직
+     * `OperationalDiagnosticsCollector`가 실행되지 않았음을 뜻하므로
+     * "확인 전"으로 표시한다.
+     *
+     * @return array{status: string, version: string}
+     */
+    private function defaultDatabaseDiagnostics(): array
+    {
+        return ['status' => '확인 전', 'version' => '-'];
+    }
+
+    /**
+     * @return array{status: string, migration: string}
+     */
+    private function defaultSchemaDiagnostics(): array
+    {
+        return ['status' => '확인 전', 'migration' => '-'];
+    }
+
+    /**
+     * @return array{status: string, usage: string}
+     */
+    private function defaultCacheDiagnostics(): array
+    {
+        return ['status' => '확인 전', 'usage' => '-'];
     }
 
     /**
@@ -120,7 +169,7 @@ final class OperationalDiagnosticsPage
     }
 
     /**
-     * 환경 진단 export placeholder 섹션을 렌더링한다.
+     * 환경 진단 export 섹션을 렌더링한다 — export 다운로드 링크와 미리보기 표.
      *
      * @param array<string, string> $diagnostics 환경 진단 값
      */
@@ -128,9 +177,9 @@ final class OperationalDiagnosticsPage
     {
         $html = '<section aria-label="환경 진단 export">'
             . '<h2>환경 진단 export</h2>'
-            . '<p>지원 요청에 첨부할 환경 진단 export 파일 생성을 준비 중입니다.</p>'
+            . '<p>지원 요청에 첨부할 환경 진단 export 파일을 다운로드합니다.</p>'
             . '<p>민감 정보는 export 대상에서 제외됩니다.</p>'
-            . '<button type="button" disabled>진단 export 준비 중</button>'
+            . '<p><a href="/admin/diagnostics/export">환경 진단 export 다운로드</a></p>'
             . '<table>'
             . '<thead><tr>'
             . '<th scope="col">항목</th>'
@@ -138,7 +187,7 @@ final class OperationalDiagnosticsPage
             . '</tr></thead>'
             . '<tbody>';
 
-        foreach ($this->safeEnvironmentDiagnostics($diagnostics) as $key => $value) {
+        foreach (SensitiveDiagnosticsFilter::filter($diagnostics) as $key => $value) {
             $html .= '<tr>'
                 . '<th scope="row">' . $this->escaper->html($key) . '</th>'
                 . '<td>' . $this->escaper->html($value) . '</td>'
@@ -149,17 +198,22 @@ final class OperationalDiagnosticsPage
     }
 
     /**
-     * 기본 환경 진단 export placeholder 값을 반환한다.
+     * `$diagnostics['environment']` 인자가 없을 때 쓰는 환경 진단 기본값.
+     * APP_ENV는 `ConfigLoader`(환경변수 `WIKI_ENVIRONMENT` 또는 설정 파일의
+     * `environment` 값)로 실제 조회하며, 아무 것도 설정되어 있지 않으면
+     * `.env.sample`과 동일한 기본값 "production"으로 대체한다.
      *
      * @return array<string, string>
      */
     private function defaultEnvironmentDiagnostics(): array
     {
+        $appEnv = (new ConfigLoader((new LocalConfigLoader())->load()))->get('environment', 'production');
+
         return [
             'APP_VERSION' => $this->appVersion,
             'PHP_VERSION' => PHP_VERSION,
             'PHP_SAPI' => PHP_SAPI,
-            'APP_ENV' => 'placeholder',
+            'APP_ENV' => is_string($appEnv) ? $appEnv : 'production',
         ];
     }
 
@@ -178,38 +232,5 @@ final class OperationalDiagnosticsPage
         $normalizedVersion = trim($version);
 
         return $normalizedVersion === '' ? 'unknown' : $normalizedVersion;
-    }
-
-    /**
-     * 민감한 환경 값이 export preview에 포함되지 않도록 제외한다.
-     *
-     * @param array<string, string> $diagnostics 환경 진단 값
-     *
-     * @return array<string, string>
-     */
-    private function safeEnvironmentDiagnostics(array $diagnostics): array
-    {
-        $safeDiagnostics = [];
-
-        foreach ($diagnostics as $key => $value) {
-            if ($this->isSensitiveEnvironmentKey($key)) {
-                continue;
-            }
-
-            $safeDiagnostics[$key] = $value;
-        }
-
-        return $safeDiagnostics;
-    }
-
-    /**
-     * 환경 변수 이름만 보고 민감 정보 가능성이 큰 항목을 판정한다.
-     */
-    private function isSensitiveEnvironmentKey(string $key): bool
-    {
-        $pattern = '/(password|passwd|secret|token|credential|auth|cookie|session'
-            . '|api[_-]?key|private[_-]?key|(^|[_-])key($|[_-]))/i';
-
-        return preg_match($pattern, $key) === 1;
     }
 }
